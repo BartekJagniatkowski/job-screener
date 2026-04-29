@@ -14,25 +14,27 @@ sześć warstw analizy zanim pojawi się pytanie "czy warto aplikować".
 - **Menedżer środowiska:** uv (plik `pyproject.toml` + `uv.lock`)
 - **Zależności Python:** tylko `flask` — zero zewnętrznych bibliotek do CSS/Markdown
 - **Nie używamy:** npm, webpack, żadnych frameworków JS
-- **`main.py`** — stub wygenerowany przez `uv init`, nieużywany przez aplikację
+- **`main.py`** — CLI entry point z `argparse` (port, host, debug)
 
 ## Uruchamianie
 
 ```bash
-# lokalnie (deweloper)
-bash run.sh                # = uv run --env-file config.env python app.py
-
 # produkcja — daemon gunicorn
-bash start.sh              # gunicorn -w 2, PID w /tmp/screener.pid
-bash restart.sh            # stop.sh → sleep 1 → run.sh
+bash server.sh start       # gunicorn -w 2, PID w /tmp/screener.pid
+bash server.sh stop        # zatrzymanie daemona
+bash server.sh restart     # stop → sleep 1 → start
+bash server.sh status      # czy działa i jaki PID
+
+# deweloper (bez daemona)
+uv run --env-file config.env python app.py
 
 # zarządzanie zależnościami
 uv add nazwa-biblioteki    # dodanie nowej zależności
 uv sync                    # odtworzenie środowiska (np. po sklonowaniu repo)
 ```
 
-`start.sh` uruchamia gunicorn z 2 workerami jako daemon; logi w `/tmp/screener-access.log`
-i `/tmp/screener-error.log`. Na lokalnym developerze używaj `run.sh`.
+`server.sh start` uruchamia gunicorn z 2 workerami jako daemon; logi w `/tmp/screener-access.log`
+i `/tmp/screener-error.log`. PID zapisywany w `/tmp/screener.pid`.
 
 `uv.lock` jest commitowany do Gita — gwarantuje identyczne wersje na każdym środowisku.
 `.venv/` jest ignorowany przez Git — uv tworzy je lokalnie automatycznie.
@@ -54,9 +56,7 @@ job-screener/
 ├── config.env.template — szablon konfiguracji
 ├── pyproject.toml      — zależności i metadane projektu (zastąpił requirements.txt)
 ├── uv.lock             — zablokowane wersje zależności (commitowany)
-├── run.sh              — lokalne uruchomienie: uv run --env-file config.env python app.py
-├── start.sh            — produkcja: gunicorn daemon, 2 workery
-├── restart.sh          — stop.sh → sleep 1 → run.sh
+├── server.sh           — zarządzanie serwerem: start|stop|restart|status
 ├── static/
 │   ├── style.css       — WSZYSTKIE style aplikacji (zero inline stylów w szablonach)
 │   └── fonts/
