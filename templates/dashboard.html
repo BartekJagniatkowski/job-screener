@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+{% block title %}Analiza — Job Screener{% endblock %}
+
+{% block content %}
+<div class="page-title">Analiza oferty</div>
+<p class="page-sub">Podaj link i/lub treść ogłoszenia. Oba pola są zapisywane do bazy.</p>
+
+<!-- Job detail modal -->
+<div id="job-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-container">
+    <div class="modal-header">
+      <button class="modal-nav-btn" id="modal-prev" onclick="navigateModal(-1)">←</button>
+      <span class="modal-counter" id="modal-counter"></span>
+      <button class="modal-nav-btn" id="modal-next" onclick="navigateModal(1)">→</button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+{% if not has_api_key %}
+<div class="notice warn">⚠ Brak klucza API. Skontaktuj się z administratorem aplikacji.</div>
+{% endif %}
+{% if not has_cv %}
+<div class="notice">Nie masz jeszcze CV w profilu. <a href="{{ url_for('settings') }}" class="link-accent">Uzupełnij w Ustawieniach →</a></div>
+{% endif %}
+
+<div class="card card-mb">
+  <div class="card-body">
+    <div class="field">
+      <label>Link do ogłoszenia</label>
+      <input type="url" id="input-url" placeholder="https://www.linkedin.com/jobs/view/...">
+    </div>
+    <div class="field">
+      <label>Treść ogłoszenia</label>
+      <textarea id="input-text" rows="8" placeholder="Wklej treść ogłoszenia — wymagane gdy link jest niedostępny (LinkedIn, Indeed itp.)"></textarea>
+    </div>
+    <button class="btn btn-primary" id="analyze-btn" onclick="runAnalysis()" {% if not has_api_key %}disabled{% endif %}>
+      Analizuj ogłoszenie →
+    </button>
+  </div>
+</div>
+
+<div id="source-status" class="source-status"></div>
+<div id="loading" class="notice" style="display:none;">
+  <span class="spinner"></span> Analizuję — może potrwać 20–40 sekund…
+</div>
+<div id="error-box" style="display:none;" class="notice warn"></div>
+<div id="result-box"></div>
+
+{% if jobs %}
+<div class="dashboard-recent">
+  <div class="section-label">Ostatnie analizy</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Rola</th>
+        <th>Firma</th>
+        <th>Werdykt</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for j in jobs[:10] %}
+      {% if j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}
+      {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}
+      {% elif j.applied %}{% set row_cls = 'row-applied' %}
+      {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}
+      {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}
+      {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}
+      {% else %}{% set row_cls = '' %}{% endif %}
+      <tr class="clickable{% if row_cls %} {{ row_cls }}{% endif %}" data-job-id="{{ j.id }}" onclick="openModal({{ j.id }})">
+        <td class="td-date">{{ j.analyzed_at }}</td>
+        <td class="td-role">{{ j.role or '—' }}</td>
+        <td class="fw-500">{{ j.company or 'Nieznana' }}</td>
+        <td>{%- if j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Odmowa</span>
+            {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Zgłoszono</span>
+            {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Odrzucona','warning':'Wymaga uwagi','worth_considering':'Do rozważenia'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if jobs|length > 10 %}
+  <div class="recent-more">
+    <a href="{{ url_for('history') }}" class="td-mono td-dim">Zobacz wszystkie ({{ jobs|length }}) →</a>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const vLabel = v => ({rejected:'Odrzucona', warning:'Wymaga uwagi', worth_considering:'Do rozważenia'}[v]||v);
+const sClass = s => ({ok:'ok', warning:'warning', flag:'flag'}[s]||'unknown');
+const sLabel = s => ({ok:'Bez zastrzeżeń', warning:'Wymaga uwagi', flag:'Czerwona flaga'}[s]||'—');
+
+let openLayers = {};
+function toggleLayer(id) {
+  openLayers[id] = !openLayers[id];
+  document.getElementById('lb-'+id).classList.toggle('open', openLayers[id]);
+  document.getElementById('lc-'+id).classList.toggle('open', openLayers[id]);
+}
+
+function mkLayer(id, name, status, findings) {
+  return `<div class="layer">
+    <div class="layer-hdr" onclick="toggleLayer('${id}')">
+      <div class="layer-left">
+        <div class="dot dot-${sClass(status)}"></div>
+        <div><div class="layer-name">${name}</div><div class="layer-status-label">${sLabel(status)}</div></div>
+      </div>
+      <span class="chev" id="lc-${id}">▶</span>
+    </div>
+    <div class="layer-body" id="lb-${id}">${findings||'—'}</div>
+  </div>`;
+}
+
+function renderResult(r, jobId, sourceUrl, sourceText) {
+  openLayers = {};
+  const l = r.layers||{};
+  const fit = r.fit||{};
+  const fitFindings = [
+    fit.strengths ? '<strong>Mocne:</strong> '+fit.strengths : '',
+    fit.gaps      ? '<strong>Luki:</strong> '+fit.gaps : '',
+    fit.improve   ? '<strong>Do wzmocnienia:</strong> '+fit.improve : ''
+  ].filter(Boolean).join('<br><br>');
+
+  // always show both rejection options; soft = AI verdict unconfirmed, rejected = user confirmed
+  const isSoftRejected = r.verdict === 'rejected' && !r.zero_list_hit;
+  const verdictOpts = `
+    <optgroup label="Analiza oferty">
+      <option value="worth_considering" ${r.verdict==='worth_considering'?'selected':''}>Do rozważenia</option>
+      <option value="warning" ${r.verdict==='warning'?'selected':''}>Wymaga uwagi</option>
+      <option value="rejected_soft" ${isSoftRejected?'selected':''}>Odrzucona (model)</option>
+      <option value="rejected" ${r.verdict==='rejected'&&!isSoftRejected?'selected':''}>Odrzucona</option>
+    </optgroup>
+    <optgroup label="Aplikacja">
+      <option value="applied">Zgłoszono</option>
+    </optgroup>`;
+
+  // source preview
+  const sourceHtml = `
+    <div class="layer">
+      <div class="layer-hdr" onclick="toggleLayer('src-new')">
+        <div class="layer-left">
+          <div class="dot dot-unknown"></div>
+          <div><div class="layer-name">Źródło ogłoszenia</div>
+          <div class="layer-status-label">${sourceUrl ? 'Link' : ''}${sourceUrl && sourceText ? ' + ' : ''}${sourceText ? 'Treść' : ''}</div></div>
+        </div>
+        <span class="chev" id="lc-src-new">▶</span>
+      </div>
+      <div class="layer-body" id="lb-src-new">
+        ${sourceUrl ? `<div class="source-url-label">Link</div><a href="${sourceUrl}" target="_blank" class="source-url-link">${sourceUrl}</a>` : ''}
+        ${sourceText ? `<div class="source-url-label" class="${sourceUrl?'source-preview-label-gap':''}">Treść</div><div class="source-text" class="source-preview-text">${sourceText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
+      </div>
+    </div>`;
+
+  return `<div class="card" style="animation: fadeIn 0.3s ease;">
+    <div class="card-header">
+      <span class="badge badge-${r.verdict}" id="result-badge">${vLabel(r.verdict)}</span>
+      <div class="card-header-body">
+        <div class="card-title">${r.company_name||'—'} — ${r.role_title||'—'}</div>
+        <div class="card-sub">${r.verdict_summary||''}</div>
+        ${r.zero_list_hit ? `<div class="card-meta" text-red">⛔ Lista zero: ${r.zero_list_reason}</div>` : ''}
+      </div>
+      <div class="verdict-select-wrap">
+        <label class="verdict-select-label">Werdykt:</label>
+        <select class="verdict-select" onchange="setVerdictInline(this.value)">
+          ${verdictOpts}
+        </select>
+      </div>
+    </div>
+    ${mkLayer('triage','Triage', r.triage?.status, r.triage?.findings)}
+    ${mkLayer('prod','Warstwa produktowa', l.product?.status, l.product?.findings)}
+    ${mkLayer('biz','Warstwa biznesowa', l.business?.status, l.business?.findings)}
+    ${mkLayer('rep','Warstwa reputacyjna', l.reputation?.status, l.reputation?.findings)}
+    ${mkLayer('val','Warstwa wartości', l.values?.status, l.values?.findings)}
+    ${mkLayer('fit','Dopasowanie kompetencyjne', fit.status, fitFindings)}
+    ${mkLayer('gut','Gut feeling', 'unknown', r.gut_feeling)}
+    ${sourceHtml}
+  </div>`;
+}
+
+let currentJobId = null;
+
+async function setVerdictInline(value) {
+  if (!currentJobId) return;
+  const badge = document.getElementById('result-badge');
+  const labels = {rejected:'Odrzucona', rejected_soft:'Odrzucona', warning:'Wymaga uwagi', worth_considering:'Do rozważenia', applied:'Zgłoszono'};
+  const badgeClass = {applied:'applied'};
+  try {
+    const fd = new FormData();
+    let url;
+    if (value === 'applied') {
+      fd.append('status', 'applied');
+      url = `/job/${currentJobId}/status`;
+    } else {
+      fd.append('verdict', value);
+      url = `/job/${currentJobId}/verdict`;
+    }
+    const resp = await fetch(url, {method:'POST', body:fd});
+    const data = await resp.json();
+    if (data.ok && badge) {
+      badge.className = 'badge badge-' + (badgeClass[value] || value);
+      badge.textContent = labels[value] || value;
+    }
+  } catch(e) { console.error(e); }
+}
+
+const SCRAPE_ERRORS = {
+  timeout:  { title: 'Serwer nie odpowiedział', fallback: true },
+  notfound: { title: 'Ogłoszenie nie istnieje (404)', fallback: false },
+  blocked:  { title: 'Treść niedostępna', fallback: true },
+  network:  { title: 'Błąd sieci', fallback: true },
+};
+
+async function runAnalysis(force = false) {
+  const url = document.getElementById('input-url').value.trim();
+  const text = document.getElementById('input-text').value.trim();
+  if (!url && !text) { alert('Podaj link lub treść ogłoszenia.'); return; }
+
+  const statusEl = document.getElementById('source-status');
+
+  // check for duplicate
+  try {
+    const chkFd = new FormData();
+    if (url) chkFd.append('url', url);
+    if (text) chkFd.append('text', text);
+    const chk = await fetch('/check_source', {method:'POST', body:chkFd});
+    const chkData = await chk.json();
+    if (chkData.exists) {
+      statusEl.className = 'source-status notice warn';
+      statusEl.style.display = 'block';
+      statusEl.textContent = `⚠ To ogłoszenie było już analizowane (${chkData.analyzed_at}). Analiza zostanie mimo to uruchomiona.`;
+    } else {
+      statusEl.className = 'source-status notice ok';
+      statusEl.style.display = 'block';
+      statusEl.textContent = '✓ Nowe ogłoszenie — nie istnieje jeszcze w bazie.';
+    }
+  } catch(e) { statusEl.style.display = 'none'; }
+
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('error-box').style.display = 'none';
+  document.getElementById('result-box').innerHTML = '';
+
+  const fd = new FormData();
+  if (url) fd.append('url', url);
+  if (text) fd.append('text', text);
+  if (force) fd.append('force', '1');
+
+  try {
+    const resp = await fetch('/analyze', {method:'POST', body:fd});
+    const data = await resp.json();
+    document.getElementById('loading').style.display = 'none';
+    statusEl.style.display = 'none';
+
+    if (data.scrape_error) {
+      const info = SCRAPE_ERRORS[data.error_code] || {title:'Błąd', fallback:true};
+      document.getElementById('error-box').innerHTML =
+        `<strong>${info.title}</strong><br>${data.error_detail || ''}` +
+        (info.fallback ? '<br><br>Wklej treść ogłoszenia w polu powyżej i spróbuj ponownie.' : '');
+      document.getElementById('error-box').style.display = 'block';
+      if (info.fallback) document.getElementById('input-text').focus();
+      document.getElementById('analyze-btn').disabled = false;
+      return;
+    }
+
+    if (data.duplicate) {
+      const p = data.previous;
+      document.getElementById('result-box').innerHTML = `
+        <div class="notice warn duplicate-notice">
+          <div class="td-mono" duplicate-label">⚠ To ogłoszenie było już analizowane</div>
+          <div duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
+          <div class="td-mono duplicate-meta">
+            Analizowano: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
+          </div>
+          <div class="duplicate-actions">
+            <a href="/job/${p.id}" class="btn btn-secondary btn-sm">Zobacz poprzednią analizę →</a>
+            <button class="btn btn-secondary btn-sm" onclick="runAnalysis(true)">Analizuj ponownie</button>
+          </div>
+        </div>`;
+      document.getElementById('result-box').scrollIntoView({behavior:'smooth', block:'nearest'});
+    } else if (data.error) {
+      document.getElementById('error-box').textContent = 'Błąd: ' + data.error;
+      document.getElementById('error-box').style.display = 'block';
+    } else {
+      // fetch job_id of the newly saved record
+      currentJobId = null;
+      try {
+        const hjResp = await fetch('/history_latest');
+        const hjData = await hjResp.json();
+        currentJobId = hjData.id || null;
+      } catch(e) {}
+      document.getElementById('result-box').innerHTML = renderResult(
+        data.result, currentJobId, data.source_url, data.source_text
+      );
+      document.getElementById('result-box').scrollIntoView({behavior:'smooth', block:'nearest'});
+    }
+  } catch(e) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-box').textContent = 'Błąd połączenia: ' + e.message;
+    document.getElementById('error-box').style.display = 'block';
+  }
+  document.getElementById('analyze-btn').disabled = false;
+}
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey) && e.key==='Enter') runAnalysis();
+});
+
+const style = document.createElement('style');
+style.textContent = '@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }';
+document.head.appendChild(style);
+
+// ── Recent jobs modal ─────────────────────────────────────────────────────
+
+let JOB_IDS = {{ jobs[:10] | map(attribute='id') | list | tojson }};
+let modalIdx = -1;
+let _skipPushState = false;
+
+async function openModal(jobId) {
+  modalIdx = JOB_IDS.indexOf(jobId);
+  await loadModalJob(jobId);
+  document.getElementById('job-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  updateModalNav();
+  if (_skipPushState) {
+    history.replaceState({jobId}, '', location.pathname + '?job=' + jobId);
+    _skipPushState = false;
+  } else {
+    history.pushState({jobId}, '', location.pathname + '?job=' + jobId);
+  }
+}
+
+function closeModal() {
+  document.getElementById('job-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  if (new URLSearchParams(location.search).get('job')) {
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+async function navigateModal(delta) {
+  const next = modalIdx + delta;
+  if (next < 0 || next >= JOB_IDS.length) return;
+  modalIdx = next;
+  await loadModalJob(JOB_IDS[modalIdx]);
+  updateModalNav();
+  history.replaceState({jobId: JOB_IDS[modalIdx]}, '', location.pathname + '?job=' + JOB_IDS[modalIdx]);
+}
+
+async function loadModalJob(jobId) {
+  const body = document.getElementById('modal-body');
+  body.innerHTML = '<div class="modal-loading">Ładowanie…</div>';
+  try {
+    const resp = await fetch(`/job/${jobId}/partial`);
+    if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Błąd ładowania.</div>'; return; }
+    body.innerHTML = await resp.text();
+    body.scrollTop = 0;
+  } catch(e) {
+    body.innerHTML = '<div class="modal-loading">Błąd połączenia.</div>';
+  }
+}
+
+function updateModalNav() {
+  document.getElementById('modal-prev').disabled = modalIdx <= 0;
+  document.getElementById('modal-next').disabled = modalIdx >= JOB_IDS.length - 1;
+  document.getElementById('modal-counter').textContent = `${modalIdx + 1} / ${JOB_IDS.length}`;
+}
+
+// close on backdrop click
+document.getElementById('job-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('job-modal')) closeModal();
+});
+
+// keyboard navigation
+document.addEventListener('keydown', e => {
+  if (document.getElementById('job-modal').style.display === 'none') return;
+  if (e.key === 'Escape') { closeModal(); return; }
+  if (e.key === 'ArrowLeft')  { navigateModal(-1); return; }
+  if (e.key === 'ArrowRight') { navigateModal(1);  return; }
+});
+
+// popstate: back/forward browser navigation
+window.addEventListener('popstate', e => {
+  const modal = document.getElementById('job-modal');
+  if (e.state && e.state.jobId && JOB_IDS.includes(e.state.jobId)) {
+    _skipPushState = true;
+    openModal(e.state.jobId);
+  } else if (modal.style.display !== 'none') {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+});
+
+// auto-open if ?job= present on page load
+(function() {
+  const jobId = parseInt(new URLSearchParams(location.search).get('job'));
+  if (jobId && JOB_IDS.includes(jobId)) {
+    _skipPushState = true;
+    openModal(jobId);
+  }
+})();
+
+// ── Table row helpers ─────────────────────────────────────────────────────
+
+function updateTableRow(jobId, status, verdict) {
+  const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+  if (!row) return;
+  row.classList.remove('row-rejected', 'row-rejected-soft', 'row-applied', 'row-company-rejected', 'row-worth-considering', 'row-warning');
+  if (status === 'rejected')              row.classList.add('row-rejected');
+  else if (status === 'company_rejected') row.classList.add('row-company-rejected');
+  else if (status === 'applied')          row.classList.add('row-applied');
+  else if (status === 'rejected_soft')    row.classList.add('row-rejected-soft');
+  else if (verdict === 'worth_considering') row.classList.add('row-worth-considering');
+  else if (verdict === 'warning')         row.classList.add('row-warning');
+
+  const badge = row.querySelector('.badge');
+  if (badge) {
+    if (status === 'applied') {
+      badge.className = 'badge badge-applied'; badge.textContent = 'Zgłoszono';
+    } else if (status === 'company_rejected') {
+      badge.className = 'badge badge-company_rejected'; badge.textContent = 'Odmowa';
+    } else {
+      badge.className = `badge badge-${verdict}`;
+      badge.textContent = {rejected:'Odrzucona', warning:'Wymaga uwagi', worth_considering:'Do rozważenia'}[verdict] || verdict;
+    }
+    badge.dataset.verdict = verdict;
+  }
+}
+
+function readCurrentState() {
+  const select = document.getElementById('status-select');
+  const status = select ? select.value : 'worth_considering';
+  const badge = document.querySelector('#modal-body .badge');
+  const verdict = badge
+    ? (badge.dataset.verdict || badge.className.match(/badge-([\w_]+)/)?.[1] || 'worth_considering')
+    : 'worth_considering';
+  return { status, verdict };
+}
+
+// ── Layer accordions ──────────────────────────────────────────────────────
+
+function tog(id) {
+  const lb = document.getElementById('lb-' + id);
+  const ch = document.getElementById('lc-' + id);
+  if (!lb || !ch) return;
+  const open = lb.classList.toggle('open');
+  ch.classList.toggle('open', open);
+}
+
+// ── Job actions (called from job_partial.html) ────────────────────────────
+
+function getCurrentJobId() { return JOB_IDS[modalIdx]; }
+
+async function setStatus(status) {
+  const jobId = getCurrentJobId();
+  try {
+    const fd = new FormData();
+    fd.append('status', status);
+    const resp = await fetch(`/job/${jobId}/status`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      await loadModalJob(jobId);
+      const { status: s, verdict: v } = readCurrentState();
+      updateTableRow(jobId, s, v);
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function confirmDelete() {
+  if (!confirm('Usunąć tę analizę z bazy? Tej operacji nie można cofnąć.')) return;
+  const jobId = getCurrentJobId();
+  try {
+    const resp = await fetch(`/job/${jobId}/delete`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.ok) {
+      closeModal();
+      const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+      if (row) row.remove();
+      JOB_IDS.splice(modalIdx, 1);
+      if (modalIdx >= JOB_IDS.length) modalIdx = JOB_IDS.length - 1;
+    } else {
+      alert('Błąd: ' + (data.error || 'nieznany'));
+    }
+  } catch(e) { alert('Błąd połączenia: ' + e.message); }
+}
+
+async function reanalyze() {
+  const jobId = getCurrentJobId();
+  const btn = document.getElementById('reanalyze-btn');
+  const statusEl = document.getElementById('reanalyze-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analizuję…'; }
+  if (statusEl) { statusEl.style.display = 'none'; statusEl.className = 'notice'; }
+  try {
+    const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.ok) {
+      if (statusEl) { statusEl.style.display='block'; statusEl.textContent='Analiza zakończona. Przekierowuję…'; }
+      setTimeout(() => { window.location.href = '/job/' + data.new_job_id; }, 1200);
+    } else {
+      if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Błąd: '+(data.error||'nieznany'); }
+      if (btn) { btn.disabled=false; btn.textContent='Analizuj ponownie'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Błąd połączenia: '+e.message; }
+    if (btn) { btn.disabled=false; btn.textContent='Analizuj ponownie'; }
+  }
+}
+
+function showUrlEdit() {
+  const el = document.getElementById('url-edit');
+  if (el) el.style.display = 'block';
+}
+
+async function saveUrl() {
+  const jobId = getCurrentJobId();
+  const urlInput = document.getElementById('url-input');
+  const statusEl = document.getElementById('url-status');
+  const url = urlInput ? urlInput.value.trim() : '';
+  if (!url.startsWith('http')) {
+    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Podaj prawidłowy URL.'; }
+    return;
+  }
+  try {
+    const fd = new FormData();
+    fd.append('url', url);
+    const resp = await fetch(`/job/${jobId}/url`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='Link zapisany.'; }
+      setTimeout(() => loadModalJob(jobId), 900);
+    } else {
+      if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Błąd zapisu.'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Błąd połączenia.'; }
+  }
+}
+</script>
+{% endblock %}

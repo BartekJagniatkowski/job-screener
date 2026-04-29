@@ -1,0 +1,23 @@
+# Konfiguracja — nigdy nie commituj kluczy API
+config.env
+
+# Baza danych — dane użytkowników zostają lokalnie
+data/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Logi serwera
+*.log

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Job Screener{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+{% block head %}{% endblock %}
+<script>
+  (function(){
+    var t = localStorage.getItem('theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+</head>
+<body>
+{% if session.user_id %}
+<nav>
+  <a href="{{ url_for('dashboard') }}" class="nav-brand">Job Screener</a>
+  <div class="nav-links">
+    <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Analiza</a>
+    <a href="{{ url_for('history') }}" {% if request.endpoint in ('history','job_detail') %}class="active"{% endif %}>Historia</a>
+    <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Ustawienia</a>
+    <a href="{{ url_for('export') }}">Eksport CSV</a>
+    <a href="{{ url_for('logout') }}">Wyloguj</a>
+    <button class="btn-theme-toggle" id="theme-toggle" title="Zmień motyw"></button>
+  </div>
+</nav>
+{% endif %}
+
+<div class="container">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for msg in messages %}
+        <div class="flash info">{{ msg }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+
+{% block scripts %}{% endblock %}
+<script>
+  (function(){
+    var btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    function applyTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      btn.textContent = t === 'light' ? '☾' : '☀';
+      btn.title = t === 'light' ? 'Tryb ciemny' : 'Tryb jasny';
+      localStorage.setItem('theme', t);
+    }
+    var current = localStorage.getItem('theme') || 'dark';
+    applyTheme(current);
+    btn.addEventListener('click', function(){
+      applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    });
+  })();
+</script>
+
+<footer>
+  <a href="/changelog">Changelog</a>
+</footer>
+</body>
+</html>

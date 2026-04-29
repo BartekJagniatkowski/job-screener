@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}Historia — Job Screener{% endblock %}
+{% block content %}
+<div class="page-title">Historia analiz</div>
+<p class="page-sub">Wszystkie przeanalizowane oferty. <a href="{{ url_for('export') }}" style="color:var(--accent);">Pobierz CSV →</a></p>
+
+<!-- Job detail modal -->
+<div id="job-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-container">
+    <div class="modal-header">
+      <button class="modal-nav-btn" id="modal-prev" onclick="navigateModal(-1)">←</button>
+      <span class="modal-counter" id="modal-counter"></span>
+      <button class="modal-nav-btn" id="modal-next" onclick="navigateModal(1)">→</button>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+{% if not jobs %}
+<div class="notice">Brak analiz. <a href="{{ url_for('dashboard') }}" style="color:var(--accent);">Przeanalizuj pierwszą ofertę →</a></div>
+{% else %}
+<div class="filter-bar">
+  <span class="filter-label">Pokaż:</span>
+  <button class="filter-btn active fb-worth_considering" onclick="toggleFilter('worth_considering', this)">Do rozważenia</button>
+  <button class="filter-btn active fb-warning" onclick="toggleFilter('warning', this)">Wymaga uwagi</button>
+  <button class="filter-btn active fb-rejected_soft" onclick="toggleFilter('rejected_soft', this)">Odrzucona (model)</button>
+  <button class="filter-btn active fb-rejected" onclick="toggleFilter('rejected', this)">Odrzucona</button>
+  <button class="filter-btn active fb-applied" onclick="toggleFilter('applied', this)">Zgłoszono</button>
+  <button class="filter-btn active fb-company_rejected" onclick="toggleFilter('company_rejected', this)">Odmowa</button>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Rola</th>
+      <th>Firma</th>
+      <th>Werdykt</th>
+      <th>L0</th>
+      <th>Triage</th>
+      <th>Produkt</th>
+      <th>Biznes</th>
+      <th>Reput.</th>
+      <th>Wartości</th>
+      <th>Dopas.</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for j in jobs %}
+    {% if j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}{% set cat = 'rejected' %}
+    {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}{% set cat = 'company_rejected' %}
+    {% elif j.applied %}{% set row_cls = 'row-applied' %}{% set cat = 'applied' %}
+    {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}{% set cat = 'rejected_soft' %}
+    {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat = 'worth_considering' %}
+    {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{% set cat = 'warning' %}
+    {% else %}{% set row_cls = '' %}{% set cat = j.verdict or 'unknown' %}{% endif %}
+    <tr class="clickable{% if row_cls %} {{ row_cls }}{% endif %}" data-job-id="{{ j.id }}" data-category="{{ cat }}" onclick="openModal({{ j.id }})">
+      <td class="td-date">{{ j.analyzed_at }}</td>
+      <td class="td-role">{{ j.role or '—' }}</td>
+      <td class="fw-500">{{ j.company or 'Nieznana' }}</td>
+      <td>{%- if j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Odmowa</span>
+          {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Zgłoszono</span>
+          {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Odrzucona','warning':'Wymaga uwagi','worth_considering':'Do rozważenia'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
+      <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'TAK' if j.zero_list_hit else '—' }}</td>
+      <td><span class="dot dot-{{ j.triage_status or 'unknown' }}"></span></td>
+      <td><span class="dot dot-{{ j.product_status or 'unknown' }}"></span></td>
+      <td><span class="dot dot-{{ j.business_status or 'unknown' }}"></span></td>
+      <td><span class="dot dot-{{ j.reputation_status or 'unknown' }}"></span></td>
+      <td><span class="dot dot-{{ j.values_status or 'unknown' }}"></span></td>
+      <td><span class="dot dot-{{ j.fit_status or 'unknown' }}"></span></td>
+      <td class="td-mono {% if j.company_rejected %}td-orange{% elif j.applied %}td-green{% else %}td-dim{% endif %}">{{ '✕' if j.company_rejected else ('✓' if j.applied else '—') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let JOB_IDS = {{ jobs | map(attribute='id') | list | tojson }};
+let modalIdx = -1;
+let _skipPushState = false;
+
+// ── Modal core ────────────────────────────────────────────────────────────
+
+async function openModal(jobId) {
+  modalIdx = JOB_IDS.indexOf(jobId);
+  await loadModalJob(jobId);
+  document.getElementById('job-modal').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  updateModalNav();
+  if (_skipPushState) {
+    history.replaceState({jobId}, '', location.pathname + '?job=' + jobId);
+    _skipPushState = false;
+  } else {
+    history.pushState({jobId}, '', location.pathname + '?job=' + jobId);
+  }
+}
+
+function closeModal() {
+  document.getElementById('job-modal').style.display = 'none';
+  document.body.style.overflow = '';
+  if (new URLSearchParams(location.search).get('job')) {
+    history.replaceState(null, '', location.pathname);
+  }
+}
+
+async function navigateModal(delta) {
+  const next = modalIdx + delta;
+  if (next < 0 || next >= JOB_IDS.length) return;
+  modalIdx = next;
+  await loadModalJob(JOB_IDS[modalIdx]);
+  updateModalNav();
+  history.replaceState({jobId: JOB_IDS[modalIdx]}, '', location.pathname + '?job=' + JOB_IDS[modalIdx]);
+}
+
+async function loadModalJob(jobId) {
+  const body = document.getElementById('modal-body');
+  body.innerHTML = '<div class="modal-loading">Ładowanie…</div>';
+  try {
+    const resp = await fetch(`/job/${jobId}/partial`);
+    if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Błąd ładowania.</div>'; return; }
+    body.innerHTML = await resp.text();
+    body.scrollTop = 0;
+  } catch(e) {
+    body.innerHTML = '<div class="modal-loading">Błąd połączenia.</div>';
+  }
+}
+
+function updateModalNav() {
+  document.getElementById('modal-prev').disabled = modalIdx <= 0;
+  document.getElementById('modal-next').disabled = modalIdx >= JOB_IDS.length - 1;
+  document.getElementById('modal-counter').textContent = `${modalIdx + 1} / ${JOB_IDS.length}`;
+}
+
+// close on backdrop click
+document.getElementById('job-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('job-modal')) closeModal();
+});
+
+// keyboard navigation
+document.addEventListener('keydown', e => {
+  if (document.getElementById('job-modal').style.display === 'none') return;
+  if (e.key === 'Escape') { closeModal(); return; }
+  if (e.key === 'ArrowLeft')  { navigateModal(-1); return; }
+  if (e.key === 'ArrowRight') { navigateModal(1);  return; }
+});
+
+// popstate: back/forward browser navigation
+window.addEventListener('popstate', e => {
+  const modal = document.getElementById('job-modal');
+  if (e.state && e.state.jobId && JOB_IDS.includes(e.state.jobId)) {
+    _skipPushState = true;
+    openModal(e.state.jobId);
+  } else if (modal.style.display !== 'none') {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+});
+
+// auto-open if ?job= present on page load
+(function() {
+  const jobId = parseInt(new URLSearchParams(location.search).get('job'));
+  if (jobId && JOB_IDS.includes(jobId)) {
+    _skipPushState = true;
+    openModal(jobId);
+  }
+})();
+
+// ── Table row helpers ─────────────────────────────────────────────────────
+
+function updateTableRow(jobId, status, verdict) {
+  const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+  if (!row) return;
+  row.classList.remove('row-rejected', 'row-rejected-soft', 'row-applied', 'row-company-rejected', 'row-worth-considering', 'row-warning');
+  if (status === 'rejected')              row.classList.add('row-rejected');
+  else if (status === 'company_rejected') row.classList.add('row-company-rejected');
+  else if (status === 'applied')          row.classList.add('row-applied');
+  else if (status === 'rejected_soft')    row.classList.add('row-rejected-soft');
+  else if (verdict === 'worth_considering') row.classList.add('row-worth-considering');
+  else if (verdict === 'warning')         row.classList.add('row-warning');
+
+  // update data-category for filter
+  const newCat = (status === 'applied' || status === 'company_rejected' || status === 'rejected' || status === 'rejected_soft')
+    ? status : verdict;
+  row.dataset.category = newCat;
+  applyFilter();
+
+  const badge = row.querySelector('.badge');
+  if (badge) {
+    if (status === 'applied') {
+      badge.className = 'badge badge-applied'; badge.textContent = 'Zgłoszono';
+    } else if (status === 'company_rejected') {
+      badge.className = 'badge badge-company_rejected'; badge.textContent = 'Odmowa';
+    } else {
+      badge.className = `badge badge-${verdict}`;
+      badge.textContent = {rejected:'Odrzucona', warning:'Wymaga uwagi', worth_considering:'Do rozważenia'}[verdict] || verdict;
+    }
+    badge.dataset.verdict = verdict;
+  }
+  const statusCell = row.querySelector('td:last-child');
+  if (statusCell) {
+    if (status === 'company_rejected') { statusCell.textContent = '✕'; statusCell.className = 'td-mono td-orange'; }
+    else if (status === 'applied')     { statusCell.textContent = '✓'; statusCell.className = 'td-mono td-green'; }
+    else                               { statusCell.textContent = '—'; statusCell.className = 'td-mono td-dim'; }
+  }
+}
+
+// reads current state from the freshly loaded partial DOM
+function readCurrentState() {
+  const select = document.getElementById('status-select');
+  const status = select ? select.value : 'worth_considering';
+  // verdict stored in data-verdict attribute; fallback to badge class for legacy entries
+  const badge = document.querySelector('#modal-body .badge');
+  const verdict = badge
+    ? (badge.dataset.verdict || badge.className.match(/badge-([\w_]+)/)?.[1] || 'worth_considering')
+    : 'worth_considering';
+  return { status, verdict };
+}
+
+// ── Layer accordions ──────────────────────────────────────────────────────
+
+function tog(id) {
+  const lb = document.getElementById('lb-' + id);
+  const ch = document.getElementById('lc-' + id);
+  if (!lb || !ch) return;
+  const open = lb.classList.toggle('open');
+  ch.classList.toggle('open', open);
+}
+
+// ── Job actions (called from job_partial.html) ────────────────────────────
+
+function getCurrentJobId() { return JOB_IDS[modalIdx]; }
+
+async function setStatus(status) {
+  const jobId = getCurrentJobId();
+  try {
+    const fd = new FormData();
+    fd.append('status', status);
+    const resp = await fetch(`/job/${jobId}/status`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      await loadModalJob(jobId);
+      const { status: s, verdict: v } = readCurrentState();
+      updateTableRow(jobId, s, v);
+    } else {
+      const el = document.getElementById('reanalyze-status');
+      if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Błąd: '+(data.error||'nieznany'); }
+    }
+  } catch(e) { console.error(e); }
+}
+
+async function confirmDelete() {
+  if (!confirm('Usunąć tę analizę z bazy? Tej operacji nie można cofnąć.')) return;
+  const jobId = getCurrentJobId();
+  try {
+    const resp = await fetch(`/job/${jobId}/delete`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.ok) {
+      closeModal();
+      const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+      if (row) row.remove();
+      JOB_IDS.splice(modalIdx, 1);
+      if (modalIdx >= JOB_IDS.length) modalIdx = JOB_IDS.length - 1;
+    } else {
+      alert('Błąd: ' + (data.error || 'nieznany'));
+    }
+  } catch(e) { alert('Błąd połączenia: ' + e.message); }
+}
+
+async function reanalyze() {
+  const jobId = getCurrentJobId();
+  const btn = document.getElementById('reanalyze-btn');
+  const statusEl = document.getElementById('reanalyze-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Analizuję…'; }
+  if (statusEl) { statusEl.style.display = 'none'; statusEl.className = 'notice'; }
+  try {
+    const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST' });
+    const data = await resp.json();
+    if (data.ok) {
+      if (statusEl) { statusEl.style.display='block'; statusEl.textContent='Analiza zakończona. Przekierowuję…'; }
+      setTimeout(() => { window.location.href = '/job/' + data.new_job_id; }, 1200);
+    } else {
+      if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Błąd: '+(data.error||'nieznany'); }
+      if (btn) { btn.disabled=false; btn.textContent='Analizuj ponownie'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Błąd połączenia: '+e.message; }
+    if (btn) { btn.disabled=false; btn.textContent='Analizuj ponownie'; }
+  }
+}
+
+function showUrlEdit() {
+  const el = document.getElementById('url-edit');
+  if (el) el.style.display = 'block';
+}
+
+// ── Category filter ───────────────────────────────────────────────────────
+
+const FILTER_STORAGE_KEY = 'history_hidden_categories';
+const hiddenCategories = new Set(JSON.parse(localStorage.getItem(FILTER_STORAGE_KEY) || '[]'));
+
+function toggleFilter(cat, btn) {
+  if (hiddenCategories.has(cat)) {
+    hiddenCategories.delete(cat);
+    btn.classList.add('active');
+  } else {
+    hiddenCategories.add(cat);
+    btn.classList.remove('active');
+  }
+  localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify([...hiddenCategories]));
+  applyFilter();
+}
+
+function applyFilter() {
+  document.querySelectorAll('tbody tr[data-category]').forEach(row => {
+    row.style.display = hiddenCategories.has(row.dataset.category) ? 'none' : '';
+  });
+}
+
+// restore button states on load
+(function() {
+  hiddenCategories.forEach(cat => {
+    const btn = document.querySelector(`.filter-btn.fb-${cat}`);
+    if (btn) btn.classList.remove('active');
+  });
+  applyFilter();
+})();
+
+async function saveUrl() {
+  const jobId = getCurrentJobId();
+  const urlInput = document.getElementById('url-input');
+  const statusEl = document.getElementById('url-status');
+  const url = urlInput ? urlInput.value.trim() : '';
+  if (!url.startsWith('http')) {
+    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Podaj prawidłowy URL.'; }
+    return;
+  }
+  try {
+    const fd = new FormData();
+    fd.append('url', url);
+    const resp = await fetch(`/job/${jobId}/url`, { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (data.ok) {
+      if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='Link zapisany.'; }
+      setTimeout(() => loadModalJob(jobId), 900);
+    } else {
+      if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Błąd zapisu.'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Błąd połączenia.'; }
+  }
+}
+</script>
+{% endblock %}

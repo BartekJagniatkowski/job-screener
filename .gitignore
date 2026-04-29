@@ -1,0 +1,6 @@
+config.env
+data/
+*.db
+.DS_Store
+.vscode/
+job-screener.code*
