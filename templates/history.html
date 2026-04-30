@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Historia — Job Screener{% endblock %}
+{% block title %}History — Job Screener{% endblock %}
 {% block content %}
-<div class="page-title">Historia analiz</div>
-<p class="page-sub">Wszystkie przeanalizowane oferty. <a href="{{ url_for('export') }}" style="color:var(--accent);">Pobierz CSV →</a></p>
+<div class="page-title">Analysis history</div>
+<p class="page-sub">All analyzed listings. <a href="{{ url_for('export') }}" style="color:var(--accent);">Download CSV →</a></p>
 
 <!-- Job detail modal -->
 <div id="job-modal" class="modal-overlay" style="display:none;">
@@ -18,24 +18,24 @@
 </div>
 
 {% if not jobs %}
-<div class="notice">Brak analiz. <a href="{{ url_for('dashboard') }}" style="color:var(--accent);">Przeanalizuj pierwszą ofertę →</a></div>
+<div class="notice">No analyses yet. <a href="{{ url_for('dashboard') }}" style="color:var(--accent);">Analyze your first listing →</a></div>
 {% else %}
 <div class="filter-bar">
-  <span class="filter-label">Pokaż:</span>
-  <button class="filter-btn active fb-worth_considering" onclick="toggleFilter('worth_considering', this)">Do rozważenia</button>
-  <button class="filter-btn active fb-warning" onclick="toggleFilter('warning', this)">Wymaga uwagi</button>
-  <button class="filter-btn active fb-rejected_soft" onclick="toggleFilter('rejected_soft', this)">Odrzucona (model)</button>
-  <button class="filter-btn active fb-rejected" onclick="toggleFilter('rejected', this)">Odrzucona</button>
-  <button class="filter-btn active fb-applied" onclick="toggleFilter('applied', this)">Zgłoszono</button>
-  <button class="filter-btn active fb-company_rejected" onclick="toggleFilter('company_rejected', this)">Odmowa</button>
+  <span class="filter-label">Show:</span>
+  <button class="filter-btn active fb-worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
+  <button class="filter-btn active fb-warning" onclick="toggleFilter('warning', this)">Needs review</button>
+  <button class="filter-btn active fb-rejected_soft" onclick="toggleFilter('rejected_soft', this)">Rejected (AI)</button>
+  <button class="filter-btn active fb-rejected" onclick="toggleFilter('rejected', this)">Rejected</button>
+  <button class="filter-btn active fb-applied" onclick="toggleFilter('applied', this)">Applied</button>
+  <button class="filter-btn active fb-company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
 </div>
 <table>
   <thead>
     <tr>
-      <th>Data</th>
-      <th>Rola</th>
-      <th>Firma</th>
-      <th>Werdykt</th>
+      <th>Date</th>
+      <th>Role</th>
+      <th>Company</th>
+      <th>Verdict</th>
       <th>L0</th>
       <th>Triage</th>
       <th>Produkt</th>
@@ -58,11 +58,11 @@
     <tr class="clickable{% if row_cls %} {{ row_cls }}{% endif %}" data-job-id="{{ j.id }}" data-category="{{ cat }}" onclick="openModal({{ j.id }})">
       <td class="td-date">{{ j.analyzed_at }}</td>
       <td class="td-role">{{ j.role or '—' }}</td>
-      <td class="fw-500">{{ j.company or 'Nieznana' }}</td>
-      <td>{%- if j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Odmowa</span>
-          {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Zgłoszono</span>
-          {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Odrzucona','warning':'Wymaga uwagi','worth_considering':'Do rozważenia'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
-      <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'TAK' if j.zero_list_hit else '—' }}</td>
+      <td class="fw-500">{{ j.company or 'Unknown' }}</td>
+      <td>{%- if j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
+          {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
+          {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
+      <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'YES' if j.zero_list_hit else '—' }}</td>
       <td><span class="dot dot-{{ j.triage_status or 'unknown' }}"></span></td>
       <td><span class="dot dot-{{ j.product_status or 'unknown' }}"></span></td>
       <td><span class="dot dot-{{ j.business_status or 'unknown' }}"></span></td>
@@ -118,14 +118,14 @@ async function navigateModal(delta) {
 
 async function loadModalJob(jobId) {
   const body = document.getElementById('modal-body');
-  body.innerHTML = '<div class="modal-loading">Ładowanie…</div>';
+  body.innerHTML = '<div class="modal-loading">Loading…</div>';
   try {
     const resp = await fetch(`/job/${jobId}/partial`);
-    if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Błąd ładowania.</div>'; return; }
+    if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Loading error.</div>'; return; }
     body.innerHTML = await resp.text();
     body.scrollTop = 0;
   } catch(e) {
-    body.innerHTML = '<div class="modal-loading">Błąd połączenia.</div>';
+    body.innerHTML = '<div class="modal-loading">Connection error.</div>';
   }
 }
 
@@ -191,12 +191,12 @@ function updateTableRow(jobId, status, verdict) {
   const badge = row.querySelector('.badge');
   if (badge) {
     if (status === 'applied') {
-      badge.className = 'badge badge-applied'; badge.textContent = 'Zgłoszono';
+      badge.className = 'badge badge-applied'; badge.textContent = 'Applied';
     } else if (status === 'company_rejected') {
-      badge.className = 'badge badge-company_rejected'; badge.textContent = 'Odmowa';
+      badge.className = 'badge badge-company_rejected'; badge.textContent = 'Rejected by company';
     } else {
       badge.className = `badge badge-${verdict}`;
-      badge.textContent = {rejected:'Odrzucona', warning:'Wymaga uwagi', worth_considering:'Do rozważenia'}[verdict] || verdict;
+      badge.textContent = {rejected:'Rejected', warning:'Needs review', worth_considering:'Worth considering'}[verdict] || verdict;
     }
     badge.dataset.verdict = verdict;
   }
@@ -247,13 +247,13 @@ async function setStatus(status) {
       updateTableRow(jobId, s, v);
     } else {
       const el = document.getElementById('reanalyze-status');
-      if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Błąd: '+(data.error||'nieznany'); }
+      if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Error: '+(data.error||'unknown'); }
     }
   } catch(e) { console.error(e); }
 }
 
 async function confirmDelete() {
-  if (!confirm('Usunąć tę analizę z bazy? Tej operacji nie można cofnąć.')) return;
+  if (!confirm('Delete this analysis? This action cannot be undone.')) return;
   const jobId = getCurrentJobId();
   try {
     const resp = await fetch(`/job/${jobId}/delete`, { method: 'POST' });
@@ -265,30 +265,30 @@ async function confirmDelete() {
       JOB_IDS.splice(modalIdx, 1);
       if (modalIdx >= JOB_IDS.length) modalIdx = JOB_IDS.length - 1;
     } else {
-      alert('Błąd: ' + (data.error || 'nieznany'));
+      alert('Error: ' + (data.error || 'unknown'));
     }
-  } catch(e) { alert('Błąd połączenia: ' + e.message); }
+  } catch(e) { alert('Connection error: ' + e.message); }
 }
 
 async function reanalyze() {
   const jobId = getCurrentJobId();
   const btn = document.getElementById('reanalyze-btn');
   const statusEl = document.getElementById('reanalyze-status');
-  if (btn) { btn.disabled = true; btn.textContent = 'Analizuję…'; }
+  if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
   if (statusEl) { statusEl.style.display = 'none'; statusEl.className = 'notice'; }
   try {
     const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST' });
     const data = await resp.json();
     if (data.ok) {
-      if (statusEl) { statusEl.style.display='block'; statusEl.textContent='Analiza zakończona. Przekierowuję…'; }
+      if (statusEl) { statusEl.style.display='block'; statusEl.textContent='Analysis complete. Redirecting…'; }
       setTimeout(() => { window.location.href = '/job/' + data.new_job_id; }, 1200);
     } else {
-      if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Błąd: '+(data.error||'nieznany'); }
-      if (btn) { btn.disabled=false; btn.textContent='Analizuj ponownie'; }
+      if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Error: '+(data.error||'unknown'); }
+      if (btn) { btn.disabled=false; btn.textContent='Re-analyze'; }
     }
   } catch(e) {
-    if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Błąd połączenia: '+e.message; }
-    if (btn) { btn.disabled=false; btn.textContent='Analizuj ponownie'; }
+    if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Connection error: '+e.message; }
+    if (btn) { btn.disabled=false; btn.textContent='Re-analyze'; }
   }
 }
 
@@ -335,7 +335,7 @@ async function saveUrl() {
   const statusEl = document.getElementById('url-status');
   const url = urlInput ? urlInput.value.trim() : '';
   if (!url.startsWith('http')) {
-    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Podaj prawidłowy URL.'; }
+    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Please enter a valid URL.'; }
     return;
   }
   try {
@@ -344,13 +344,13 @@ async function saveUrl() {
     const resp = await fetch(`/job/${jobId}/url`, { method: 'POST', body: fd });
     const data = await resp.json();
     if (data.ok) {
-      if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='Link zapisany.'; }
+      if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='URL saved.'; }
       setTimeout(() => loadModalJob(jobId), 900);
     } else {
-      if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Błąd zapisu.'; }
+      if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Save error.'; }
     }
   } catch(e) {
-    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Błąd połączenia.'; }
+    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Connection error.'; }
   }
 }
 </script>
