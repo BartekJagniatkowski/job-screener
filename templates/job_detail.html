@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}{{ job.company }} — Job Screener{% endblock %}
+{% block title %}{{ job.company or 'Unknown' }} — Job Screener{% endblock %}
 
 {% block content %}
 <div class="detail-nav">
-  <a href="{{ url_for('history') }}" class="detail-nav-back">← Historia</a>
+  <a href="{{ url_for('history') }}" class="detail-nav-back">← History</a>
   <div class="detail-nav-actions">
     {%- if job.company_rejected %}{% set cur_status = 'company_rejected' %}
     {%- elif job.applied %}{% set cur_status = 'applied' %}
@@ -37,35 +37,35 @@
 </div>
 <div id="reanalyze-status" class="notice" style="display:none;"></div>
 
-{% set vl = {'rejected':'Odrzucona','warning':'Wymaga uwagi','worth_considering':'Do rozważenia'} %}
-{% set sl = {'ok':'Bez zastrzeżeń','warning':'Wymaga uwagi','flag':'Czerwona flaga'} %}
+{% set vl = {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'} %}
+{% set sl = {'ok':'No issues','warning':'Needs review','flag':'Red flag'} %}
 {% set sc = {'ok':'ok','warning':'warning','flag':'flag'} %}
 
 <div class="card">
   <div class="card-header card-header--vertical">
-    {%- if job.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ job.verdict }}">Odmowa</span>
-    {%- elif job.applied %}<span class="badge badge-applied" data-verdict="{{ job.verdict }}">Zgłoszono</span>
+    {%- if job.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ job.verdict }}">Rejected by company</span>
+    {%- elif job.applied %}<span class="badge badge-applied" data-verdict="{{ job.verdict }}">Applied</span>
     {%- else %}<span class="badge badge-{{ job.verdict }}" data-verdict="{{ job.verdict }}">{{ vl.get(job.verdict, job.verdict) }}</span>{% endif %}
     <div class="card-title">{{ job.role or '—' }}</div>
-    <div class="card-company">{{ job.company or 'Nieznana' }}</div>
+    <div class="card-company">{{ job.company or 'Unknown' }}</div>
     {% if job.verdict_summary %}<div class="card-sub">{{ job.verdict_summary }}</div>{% endif %}
     {% if job.zero_list_hit %}
-    <div class="card-meta text-red">⛔ Lista zero: {{ job.zero_list_reason }}</div>
+    <div class="card-meta text-red">⛔ Zero list: {{ job.zero_list_reason }}</div>
     {% if raw.get('zero_list_evidence') %}
-    <div class="evidence"><span class="evidence-label">Dowód z ogłoszenia</span>
+    <div class="evidence"><span class="evidence-label">Evidence from listing</span>
       {{ raw.get('zero_list_evidence') }}
     </div>
     {% endif %}
     {% endif %}
     {% if raw.get('yellow_list_hit') %}
-    <div class="card-meta text-yellow">⚠ Lista żółta: {{ raw.get('yellow_list_reason') }}</div>
+    <div class="card-meta text-yellow">⚠ Yellow list: {{ raw.get('yellow_list_reason') }}</div>
     {% endif %}
     <div class="card-meta">
-      Analizowano: {{ job.analyzed_at }}
+      Analyzed: {{ job.analyzed_at }}
       {% if job.company_rejected and job.company_rejected_at %}
-      &nbsp;·&nbsp; <span class="text-accent">✕ Odmowa: {{ job.company_rejected_at }}</span>
+      &nbsp;·&nbsp; <span class="text-accent">✕ Rejected by company: {{ job.company_rejected_at }}</span>
       {% elif job.applied and job.applied_at %}
-      &nbsp;·&nbsp; <span class="text-green">✓ Zgłoszono: {{ job.applied_at }}</span>
+      &nbsp;·&nbsp; <span class="text-green">✓ Applied: {{ job.applied_at }}</span>
       {% endif %}
     </div>
   </div>
@@ -152,12 +152,12 @@
           <div class="source-text">{{ job.source_full }}</div>
           <div class="source-url-section">
             {% if job.job_url %}
-              <div class="source-url-label">Link do ogłoszenia</div>
+              <div class="source-url-label">Listing URL</div>
               <a href="{{ job.job_url }}" target="_blank" rel="noopener"
 class="source-url-link">{{ job.job_url }}</a>
-              <button onclick="showUrlEdit()" class="btn-inline">zmień</button>
+              <button onclick="showUrlEdit()" class="btn-inline">change</button>
             {% else %}
-              <div class="source-url-label">Dodaj link do ogłoszenia</div>
+              <div class="source-url-label">Add listing URL</div>
             {% endif %}
             <div id="url-edit" {% if job.job_url %}style="display:none"{% endif %}>
               <div class="source-url-input-row">
@@ -165,7 +165,7 @@ class="source-url-link">{{ job.job_url }}</a>
                   value="{{ job.job_url or ''}}"
                   placeholder="https://..."
                   onkeydown="if(event.key==='Enter') saveUrl()">
-                <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Zapisz link</button>
+                <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Save URL</button>
               </div>
               <div id="url-status" class="notice" style="display:none; margin-top:6px;"></div>
             </div>
@@ -173,9 +173,9 @@ class="source-url-link">{{ job.job_url }}</a>
         {% endif %}
       {% elif job.source %}
         <div class="source-old-text">{{ job.source }}</div>
-        <div class="source-old-hint">Pełna treść niedostępna — ogłoszenie zostało przeanalizowane przed wprowadzeniem tej funkcji.</div>
+        <div class="source-old-hint">Full text unavailable — listing was analyzed before this feature was introduced.</div>
       {% else %}
-        <div class="source-none">Brak zapisanego źródła.</div>
+        <div class="source-none">No source saved.</div>
       {% endif %}
     </div>
   </div>
@@ -230,27 +230,27 @@ async function setStatus(status) {
     } else {
       statusEl.className = 'notice warn';
       statusEl.style.display = 'block';
-      statusEl.textContent = 'Błąd: ' + (data.error || 'nieznany');
+      statusEl.textContent = 'Error: ' + (data.error || 'unknown');
     }
   } catch(e) {
     statusEl.className = 'notice warn';
     statusEl.style.display = 'block';
-    statusEl.textContent = 'Błąd połączenia: ' + e.message;
+    statusEl.textContent = 'Connection error: ' + e.message;
   }
 }
 
 async function confirmDelete() {
-  if (!confirm('Usunąć tę analizę z bazy? Tej operacji nie można cofnąć.')) return;
+  if (!confirm('Delete this analysis? This action cannot be undone.')) return;
   try {
     const resp = await fetch('/job/{{ job.id }}/delete', { method: 'POST' });
     const data = await resp.json();
     if (data.ok) {
       window.location.href = '/history';
     } else {
-      alert('Błąd: ' + (data.error || 'nieznany'));
+      alert('Error: ' + (data.error || 'unknown'));
     }
   } catch(e) {
-    alert('Błąd połączenia: ' + e.message);
+    alert('Connection error: ' + e.message);
   }
 }
 
@@ -264,7 +264,7 @@ async function saveUrl() {
   if (!url.startsWith('http')) {
     statusEl.style.color = '#e74c3c';
     statusEl.style.display = 'block';
-    statusEl.textContent = 'Podaj prawidłowy URL.';
+    statusEl.textContent = 'Please enter a valid URL.';
     return;
   }
   try {
@@ -275,17 +275,17 @@ async function saveUrl() {
     if (data.ok) {
       statusEl.style.color = '#3dba73';
       statusEl.style.display = 'block';
-      statusEl.textContent = 'Link zapisany.';
+      statusEl.textContent = 'URL saved.';
       setTimeout(() => location.reload(), 900);
     } else {
       statusEl.style.color = '#e74c3c';
       statusEl.style.display = 'block';
-      statusEl.textContent = data.error || 'Błąd zapisu.';
+      statusEl.textContent = data.error || 'Save error.';
     }
   } catch(e) {
     statusEl.style.color = '#e74c3c';
     statusEl.style.display = 'block';
-    statusEl.textContent = 'Błąd połączenia.';
+    statusEl.textContent = 'Connection error.';
   }
 }
 
@@ -293,7 +293,7 @@ async function reanalyze() {
   const btn = document.getElementById('reanalyze-btn');
   const statusEl = document.getElementById('reanalyze-status');
   btn.disabled = true;
-  btn.textContent = 'Analizuję…';
+  btn.textContent = 'Analyzing…';
   statusEl.style.display = 'none';
   statusEl.className = 'notice';
 
@@ -302,21 +302,21 @@ async function reanalyze() {
     const data = await resp.json();
     if (data.ok) {
       statusEl.style.display = 'block';
-      statusEl.textContent = 'Analiza zakończona. Nowy wpis został zapisany.';
+      statusEl.textContent = 'Analysis complete. New entry saved.';
       setTimeout(() => {
         window.location.href = '/job/' + data.new_job_id;
       }, 1200);
     } else {
       statusEl.style.display = 'block';
       statusEl.className = 'notice warn';
-      statusEl.textContent = 'Błąd: ' + (data.error || 'nieznany błąd');
+      statusEl.textContent = 'Error: ' + (data.error || 'unknown error');
       btn.disabled = false;
-      btn.textContent = 'Analizuj ponownie';
+      btn.textContent = 'Re-analyze';
     }
   } catch(e) {
     statusEl.style.display = 'block';
     statusEl.className = 'notice warn';
-    statusEl.textContent = 'Błąd połączenia: ' + e.message;
+    statusEl.textContent = 'Connection error: ' + e.message;
     btn.disabled = false;
     btn.textContent = 'Analizuj ponownie';
   }
