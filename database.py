@@ -113,6 +113,8 @@ def init_db() -> None:
             ("verdict_confirmed INTEGER DEFAULT 0", "jobs"),
             ("company_rejected INTEGER DEFAULT 0", "jobs"),
             ("company_rejected_at DATE", "jobs"),
+            ("role_archetype TEXT", "jobs"),
+            ("fit_score REAL", "jobs"),
             # kept for migration chain: old DBs may not have this yet before rename
             ("lista_zolta TEXT DEFAULT ''", "users"),
         ]:
@@ -373,8 +375,9 @@ def save_job(
                     verdict_summary, triage_findings, product_findings,
                     business_findings, reputation_findings, values_findings,
                     fit_strengths, fit_gaps, fit_improve,
-                    gut_feeling, source, source_full, source_hash, reasoning, job_url, raw_json
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    gut_feeling, source, source_full, source_hash, reasoning, job_url,
+                    role_archetype, fit_score, raw_json
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 user_id,
                 d("company_name", ""),
@@ -404,6 +407,8 @@ def save_job(
                 compute_hash(dedup_source),
                 d("_reasoning", ""),
                 source_url.strip() or "",
+                (result.get("triage") or {}).get("role_archetype", None),
+                fit.get("score", None),
                 _json.dumps(result, ensure_ascii=False),
             ))
         except sqlite3.IntegrityError as e:
