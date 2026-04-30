@@ -134,7 +134,7 @@
       {% if job.source_full %}
         {% if job.source_full.startswith('http') %}
           <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
-          <div class="source-url-hint">Link może być już nieaktywny jeśli ogłoszenie zostało usunięte.</div>
+          <div class="source-url-hint">URL may be inactive if the listing was removed.</div>
         {% else %}
           <div class="source-text">{{ job.source_full }}</div>
           <div class="source-url-section">
@@ -151,7 +151,7 @@
                   value="{{ job.job_url or '' }}"
                   placeholder="https://..."
                   onkeydown="if(event.key==='Enter') saveUrl()">
-                <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Zapisz link</button>
+                <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Save URL</button>
               </div>
               <div id="url-status" class="notice" style="display:none; margin-top:6px;"></div>
             </div>
@@ -159,9 +159,9 @@
         {% endif %}
       {% elif job.source %}
         <div class="source-old-text">{{ job.source }}</div>
-        <div class="source-old-hint">Pełna treść niedostępna — ogłoszenie zostało przeanalizowane przed wprowadzeniem tej funkcji.</div>
+        <div class="source-old-hint">Full text unavailable — listing was analyzed before this feature was introduced.</div>
       {% else %}
-        <div class="source-none">Brak zapisanego źródła.</div>
+        <div class="source-none">No source saved.</div>
       {% endif %}
     </div>
   </div>
