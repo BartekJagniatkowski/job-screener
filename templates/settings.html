@@ -1,43 +1,43 @@
 {% extends "base.html" %}
-{% block title %}Ustawienia — Job Screener{% endblock %}
+{% block title %}Settings — Job Screener{% endblock %}
 {% block content %}
-<div class="page-title">Ustawienia profilu</div>
-<p class="page-sub">Twoje CV i kryteria są używane w każdej analizie. Im dokładniejsze, tym lepsze wyniki.</p>
+<div class="page-title">Profile settings</div>
+<p class="page-sub">Your CV and criteria are used in every analysis. The more detail, the better the results.</p>
 
 <form method="POST">
   <div class="field">
-    <label>CV — opis doświadczenia i kompetencji</label>
-    <div class="field-hint">Napisz w formie ciągłego tekstu lub punktów. Im więcej kontekstu, tym lepsze dopasowanie do ofert.</div>
+    <label>CV — experience and skills</label>
+    <div class="field-hint">Write as continuous text or bullet points. More context = better job matching.</div>
     <textarea name="cv" rows="14" placeholder="Np.:&#10;Specjalizacja: product discovery, facilitation, advisory&#10;&#10;Doświadczenie:&#10;- Senior Product Manager @ FirmaX (2022–2025): discovery workshops, AI product strategy...&#10;- Product Designer @ FirmaY (2019–2022): e-commerce, supply chain...&#10;&#10;Kompetencje: user research, journey mapping, stakeholder alignment...&#10;Języki: polski (native), angielski (biegły)">{{ user.cv or '' }}</textarea>
   </div>
 
   <div class="field">
-    <label>Reguła Zero — co odrzucam bez analizy</label>
-    <div class="field-hint">Branże, kategorie firm lub inne kryteria, które dyskwalifikują ofertę na wstępie.</div>
+    <label>Zero Rule — auto-reject without analysis</label>
+    <div class="field-hint">Industries, company categories, or criteria that disqualify a listing immediately.</div>
     <textarea name="zero_list" rows="8" placeholder="Np.:&#10;- Alkohol, papierosy, hazard&#10;- Uzbrojenie i obronność&#10;- Finanse (banki, fintechy, trading)">{{ user.zero_list or '' }}</textarea>
   </div>
 
   <div class="field">
-    <label>Lista żółta — wymaga uwagi, ale nie odrzuca</label>
-    <div class="field-hint">Branże i kategorie, które automatycznie ustawiają werdykt "wymaga uwagi" — ale analiza jest kontynuowana.</div>
+    <label>Yellow list — needs attention, but not auto-rejected</label>
+    <div class="field-hint">Industries that automatically set verdict to "needs review" — analysis continues.</div>
     <textarea name="yellow_list" rows="5" placeholder="Np.:&#10;- Ubezpieczenia (gdy nie są core business)&#10;- Fintech (weryfikuj model przychodowy)&#10;- Sektor publiczny / rządowy">{{ user.yellow_list or '' }}</textarea>
   </div>
 
   <div class="field">
-    <label>Dodatkowe kryteria i priorytety</label>
-    <div class="field-hint">Preferowane sektory, typy ról, czerwone flagi kulturowe, itp.</div>
+    <label>Additional criteria and priorities</label>
+    <div class="field-hint">Preferred sectors, role types, cultural red flags, etc.</div>
     <textarea name="criteria" rows="6" placeholder="Np.:&#10;Preferuję: healthcare, social impact, AI ethics&#10;Unikam: execution PM bez discovery, growth PM (A/B testy jako core)&#10;Czerwona flaga: Glassdoor poniżej 3.5 z wyraźnym trendem spadkowym">{{ user.criteria or '' }}</textarea>
   </div>
 
   <div style="display:flex; gap:12px; align-items:center;">
-    <button type="submit" class="btn btn-primary">Zapisz profil →</button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Anuluj</a>
+    <button type="submit" class="btn btn-primary">Save profile →</button>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
   </div>
 </form>
 
 <div class="export-section">
-  <div class="section-label">Eksport danych</div>
-  <p class="page-sub" style="margin-bottom:16px;">Pobierz wszystkie swoje analizy jako plik CSV (otwieralny w Excelu i Google Sheets).</p>
-  <a href="{{ url_for('export') }}" class="btn btn-secondary">Pobierz CSV →</a>
+  <div class="section-label">Data export</div>
+  <p class="page-sub" style="margin-bottom:16px;">Download all your analyses as a CSV file (opens in Excel and Google Sheets).</p>
+  <a href="{{ url_for('export') }}" class="btn btn-secondary">Download CSV →</a>
 </div>
 {% endblock %}
