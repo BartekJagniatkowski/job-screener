@@ -377,7 +377,7 @@ def save_job(
                     fit_strengths, fit_gaps, fit_improve,
                     gut_feeling, source, source_full, source_hash, reasoning, job_url,
                     role_archetype, fit_score, raw_json
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """, (
                 user_id,
                 d("company_name", ""),
@@ -655,6 +655,99 @@ def export_csv(user_id: int) -> str:
     return out.getvalue()
 
 
+
+
+def get_analytics(user_id: int) -> dict:
+    """
+    Aggregate job analysis data for the analytics dashboard.
+
+    Returns a dict with:
+      verdict_distribution: counts per verdict category
+      funnel: total / applied / company_rejected
+      layer_flags: per-layer counts of ok / warning / flag
+      fit_score_avg: average fit score (None if no scored records)
+      fit_score_distribution: list of (range_label, count) tuples
+      archetype_distribution: counts per role_archetype value
+      zero_list_hits: count of zero_list_hit=1 records
+    """
+    with get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM jobs WHERE user_id=?", (user_id,)
+        ).fetchall()
+
+    verdict_distribution = {
+        'worth_considering': 0,
+        'warning': 0,
+        'rejected_confirmed': 0,
+        'rejected_soft': 0,
+    }
+    funnel = {'total': 0, 'applied': 0, 'company_rejected': 0}
+    layers = ['triage', 'product', 'business', 'reputation', 'values', 'fit']
+    layer_flags = {l: {'ok': 0, 'warning': 0, 'flag': 0, 'unknown': 0} for l in layers}
+    fit_scores = []
+    archetype_distribution = {}
+    zero_list_hits = 0
+
+    for row in rows:
+        funnel['total'] += 1
+        if row['applied']:
+            funnel['applied'] += 1
+        if row['company_rejected']:
+            funnel['company_rejected'] += 1
+        if row['zero_list_hit']:
+            zero_list_hits += 1
+
+        v = row['verdict'] or ''
+        vc = row['verdict_confirmed'] or 0
+        if v == 'worth_considering':
+            verdict_distribution['worth_considering'] += 1
+        elif v == 'warning':
+            verdict_distribution['warning'] += 1
+        elif v == 'rejected' and vc:
+            verdict_distribution['rejected_confirmed'] += 1
+        elif v == 'rejected' and not vc:
+            verdict_distribution['rejected_soft'] += 1
+
+        for layer in layers:
+            col = f"{layer}_status"
+            status = (row[col] or 'unknown') if col in row.keys() else 'unknown'
+            if status not in layer_flags[layer]:
+                status = 'unknown'
+            layer_flags[layer][status] += 1
+
+        fs = row['fit_score']
+        if fs is not None:
+            try:
+                fit_scores.append(float(fs))
+            except (TypeError, ValueError):
+                pass
+
+        arch = row['role_archetype']
+        if arch:
+            archetype_distribution[arch] = archetype_distribution.get(arch, 0) + 1
+
+    fit_score_avg = round(sum(fit_scores) / len(fit_scores), 2) if fit_scores else None
+
+    buckets = [('1.0–2.0', 0), ('2.0–3.0', 0), ('3.0–4.0', 0), ('4.0–5.0', 0)]
+    for s in fit_scores:
+        if s < 2.0:
+            buckets[0] = (buckets[0][0], buckets[0][1] + 1)
+        elif s < 3.0:
+            buckets[1] = (buckets[1][0], buckets[1][1] + 1)
+        elif s < 4.0:
+            buckets[2] = (buckets[2][0], buckets[2][1] + 1)
+        else:
+            buckets[3] = (buckets[3][0], buckets[3][1] + 1)
+
+    return {
+        'verdict_distribution': verdict_distribution,
+        'funnel': funnel,
+        'layer_flags': layer_flags,
+        'fit_score_avg': fit_score_avg,
+        'fit_score_distribution': buckets,
+        'archetype_distribution': dict(sorted(archetype_distribution.items(), key=lambda x: -x[1])),
+        'zero_list_hits': zero_list_hits,
+    }
 def user_count() -> int:
     """
     Pobierz liczbę użytkowników w bazie.
