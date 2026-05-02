@@ -1,133 +1,134 @@
 # Job Screener
 
-Narzędzie do etycznej analizy ofert pracy. Każde ogłoszenie przechodzi przez sześć warstw analizy zanim pojawi się pytanie „czy warto aplikować": triage, produktową, biznesową, reputacyjną, wartości i dopasowanie kompetencyjne do Twojego profilu.
+A tool for ethical analysis of job listings. Every listing passes through six analysis layers before the question "is it worth applying?" is answered: triage, product, business, reputation, values, and skills fit against your profile.
 
 ---
 
-## Wymagania
+## Requirements
 
 - Python 3.9+
-- [uv](https://docs.astral.sh/uv/getting-started/installation/) — menedżer środowiska i zależności
-- Klucz API Anthropic (`claude-sonnet-4-6`)
+- [uv](https://docs.astral.sh/uv/getting-started/installation/) — environment and dependency manager
+- Anthropic API key (`claude-sonnet-4-6`)
 
 ---
 
-## Szybki start (lokalnie)
+## Quick start (local)
 
 ```bash
-# 1. Sklonuj repo i przejdź do katalogu
+# 1. Clone the repo and enter the directory
 git clone https://github.com/BartekBroda/job-screener
 cd job-screener
 
-# 2. Skopiuj i uzupełnij konfigurację
+# 2. Copy and fill in the configuration
 cp config.env.template config.env
-# wpisz swój ANTHROPIC_API_KEY w config.env
+# add your ANTHROPIC_API_KEY to config.env
 
-# 3. Zainstaluj zależności i uruchom
+# 3. Install dependencies and run
 uv sync
-bash run.sh
+bash server.sh start
 ```
 
-Przeglądarka otworzy się automatycznie pod adresem `http://localhost:5000`.
+The browser will open automatically at `http://localhost:5000`.
 
 ---
 
-## Pierwsze uruchomienie
+## First run
 
-Przy pierwszym uruchomieniu aplikacja poprosi o utworzenie konta administratora.
+On first launch the app will prompt you to create an admin account.
 
-Po zalogowaniu przejdź do **Ustawień** i uzupełnij:
+After logging in go to **Settings** and fill in:
 
-| Pole | Opis |
+| Field | Description |
 |---|---|
-| **CV** | Twoje doświadczenie i kompetencje — im dokładniejsze, tym lepsze dopasowanie |
-| **Lista Zero** | Firmy, branże lub kategorie powodujące automatyczne odrzucenie bez dalszej analizy |
-| **Lista Żółta** | Sygnały wymuszające werdykt „wymaga uwagi", nawet gdy pozostałe warstwy są zielone |
-| **Dodatkowe kryteria** | Preferowane sektory, czerwone flagi kulturowe, priorytety w ocenie ofert |
+| **CV** | Your experience and skills — the more detail, the better the matching |
+| **Zero Rule** | Companies, industries, or categories that trigger automatic rejection without further analysis |
+| **Yellow List** | Signals that force a "needs review" verdict even when all other layers are green |
+| **Additional criteria** | Preferred sectors, cultural red flags, priorities in evaluating listings |
 
 ---
 
-## Zarządzanie aplikacją
+## Managing the server
 
 ```bash
-bash run.sh        # lokalne uruchomienie z hot-reload (deweloper)
-bash start.sh      # produkcja: gunicorn daemon, 2 workery
-bash stop.sh       # zatrzymanie daemona
-bash restart.sh    # restart (stop → run)
+bash server.sh start    # production: gunicorn daemon, 2 workers
+bash server.sh stop     # stop the daemon
+bash server.sh restart  # restart (stop → start)
+bash server.sh status   # check if running and which PID
+
+uv run --env-file config.env python app.py  # development (no daemon, hot-reload)
 ```
 
-Logi produkcyjne: `/tmp/screener-access.log`, `/tmp/screener-error.log`
+Production logs: `/tmp/screener-access.log`, `/tmp/screener-error.log`
 
 ---
 
-## Deployment na serwer
+## Deployment to a server
 
 ```bash
-./deploy.sh user@twojserwer.pl /var/www/job-screener
+./deploy.sh user@yourserver.com /var/www/job-screener
 ```
 
-Skrypt skopiuje pliki, zainstaluje zależności przez `uv` i uruchomi serwis. Po deploymencie:
+The script copies files, installs dependencies via `uv`, and starts the service. After deployment:
 
-1. Utwórz `/var/www/job-screener/config.env` z kluczem API
+1. Create `/var/www/job-screener/config.env` with your API key
 2. `sudo systemctl restart job-screener`
-3. Skonfiguruj nginx (przykład w output skryptu)
+3. Configure nginx (example in the script output)
 
 ---
 
-## Zapraszanie nowych użytkowników
+## Inviting new users
 
-Ustaw `INVITE_TOKEN` w `config.env`. Nowe konta można tworzyć tylko przez link:
+Set `INVITE_TOKEN` in `config.env`. New accounts can only be created via:
 
 ```
-https://twoja.domena.pl/register?token=TWOJ_TOKEN
+https://your.domain.com/register?token=YOUR_TOKEN
 ```
 
 ---
 
-## Konfiguracja (`config.env`)
+## Configuration (`config.env`)
 
-| Zmienna | Opis |
+| Variable | Description |
 |---|---|
-| `ANTHROPIC_API_KEY` | Klucz API Anthropic (wymagany) |
-| `SECRET_KEY` | Klucz sesji Flask (zmień na serwerze) |
-| `INVITE_TOKEN` | Token zaproszenia dla nowych użytkowników |
-| `PORT` | Port aplikacji (domyślnie: `5000`) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (required) |
+| `SECRET_KEY` | Flask session key (change on the server) |
+| `INVITE_TOKEN` | Invitation token for new users |
+| `PORT` | Application port (default: `5000`) |
 
 ---
 
-## Funkcje
+## Features
 
-- **Analiza z URL lub wklejonej treści** — scrapuje ogłoszenie automatycznie; gdy strona blokuje (LinkedIn, Indeed itp.) prosi o wklejenie treści
-- **Sześć warstw analizy** z werdyktem i uzasadnieniem; warstwa reputacyjna korzysta z wiedzy modelu o firmie (Glassdoor, media, historia C-level)
-- **Modal szczegółów** — kliknięcie wiersza w historii lub dashboardzie otwiera szczegóły w miejscu; nawigacja ← → między ogłoszeniami, URL odzwierciedla aktualnie oglądane ogłoszenie
-- **Werdykty i stany** — warta rozważenia / wymaga uwagi / odrzucona przez model / odrzucona (potwierdzona); oznaczanie wysłanych zgłoszeń
-- **Historia analiz** — tabela z filtrowaniem wizualnym według kategorii, eksport do CSV
-- **Tryb jasny/ciemny** — przełącznik w nawigacji, preferencja zapisywana w przeglądarce
-- **Multi-user** — każdy użytkownik ma oddzielny profil, listy i historię
+- **Analysis from URL or pasted text** — scrapes the listing automatically; when the site blocks (LinkedIn, Indeed, etc.) prompts to paste the content
+- **Six analysis layers** with verdict and justification; the reputation layer uses the model's knowledge about the company (Glassdoor, media, C-level history)
+- **Detail modal** — clicking a row in history or dashboard opens the details in place; ← → navigation between listings, URL reflects the currently viewed listing
+- **Verdicts and states** — worth considering / needs review / rejected (AI) / rejected (confirmed); mark submitted applications
+- **Analysis history** — table with visual category filtering, CSV export from Settings
+- **Light/dark mode** — toggle in navigation, preference saved in the browser
+- **Multi-user** — each user has a separate profile, lists, and history
 
 ---
 
-## Struktura plików
+## File structure
 
 ```
 job-screener/
-├── app.py              — routing Flask, auth, endpointy
-├── analyzer.py         — prompt i integracja z Claude API
-├── database.py         — schemat SQLite, migracje, operacje
-├── scraper.py          — pobieranie treści URL, normalizacja
-├── static/style.css    — wszystkie style (zero inline CSS w szablonach)
-├── templates/          — szablony Jinja2
-├── data/screener.db    — baza danych (tworzona automatycznie, nie commitować)
-├── config.env          — konfiguracja lokalna (nie commitować)
-├── config.env.template — szablon konfiguracji
-├── pyproject.toml      — zależności projektu (uv)
-├── run.sh              — uruchomienie lokalne
-├── start.sh / stop.sh / restart.sh — zarządzanie daemonem
-└── deploy.sh           — deployment na serwer
+├── app.py              — Flask routing, auth, endpoints
+├── analyzer.py         — system prompt and Claude API integration
+├── database.py         — SQLite schema, migrations, operations
+├── scraper.py          — URL content fetching, normalisation
+├── static/style.css    — all styles (zero inline CSS in templates)
+├── templates/          — Jinja2 templates
+├── data/screener.db    — database (created automatically, do not commit)
+├── config.env          — local configuration (do not commit)
+├── config.env.template — configuration template
+├── pyproject.toml      — project dependencies (uv)
+├── server.sh           — server management: start|stop|restart|status
+└── deploy.sh           — deployment script
 ```
 
 ---
 
-## Eksport danych
+## Data export
 
-Historia → **Pobierz CSV** — plik zawiera wszystkie warstwy analizy i otwiera się w Excelu i Google Sheets.
+Settings → **Download CSV** — the file contains all analysis layers and opens in Excel and Google Sheets.
