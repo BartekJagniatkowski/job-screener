@@ -50,6 +50,7 @@ job-screener/
 ├── database.py         — SQLite: schemat, migracje, operacje na danych
 ├── scraper.py          — pobieranie treści URL, normalize_url, blokowane domeny
 ├── main.py             — stub wygenerowany przez uv init (nieużywany)
+├── 11DESIGN.md         — wzorce design systemu ElevenLabs (referencja stylistyczna, nie commitowany)
 ├── CHANGELOG.md        — historia wersji (edytuj tekstowo, renderowana przez /changelog)
 ├── CLAUDE.md           — ten plik
 ├── config.env          — klucz API i SECRET_KEY (nigdy nie commitować)
@@ -322,12 +323,27 @@ Hover na kolorowych wierszach: `box-shadow: inset 0 0 0 9999px var(--hover-overl
 zamiast `filter: brightness()` — nie wpływa na kolory badge'y i kropek.
 
 ### Kluczowe klasy użytkowe
-`.btn-sm`, `.btn-danger`
+`.page-title`, `.page-sub` — nagłówek i podtytuł strony (Nohemi font-weight 200)
+`.field`, `.field-hint` — wrapper pola formularza i jego etykieta
+`.flash`, `.flash.info`, `.flash.error` — komunikaty flash z serwera
+`.nav-brand`, `.nav-links` — logo i linki nawigacji
+`.btn-primary`, `.btn-secondary`, `.btn-sm`, `.btn-danger`
 `.btn-theme-toggle` — przycisk ☀/☾ przełączający tryb jasny/ciemny
+`.btn-applied`, `.btn-applied.is-applied` — przycisk "Zgłoszono" (zielony gdy aktywny)
+`.btn-company-rejected.is-rejected` — przycisk odmowy (niebieski gdy aktywny)
+`.dot`, `.dot-ok`, `.dot-warning`, `.dot-flag`, `.dot-unknown` — kolorowe kropki statusu warstw
+`.spinner` — animowany wskaźnik ładowania
+`.source-status` — wynik walidacji źródła (duplikat / ok / błąd scrapera)
+`.source-url-section` — wrapper sekcji URL ogłoszenia
+`.source-preview-text`, `.source-preview-label-gap` — podgląd treści źródłowej
+`.grid2` — dwukolumnowy układ grid (staje się 1-kolumnowy na mobile)
+`.link-accent` — link w kolorze accent (złoty)
+`.auth-hint` — dodatkowy tekst pod formularzem logowania/rejestracji
 `.text-red`, `.text-yellow`, `.text-green`, `.text-accent`
 `.td-date`, `.td-role`, `.td-mono`, `.fw-500`
-`.td-dim`, `.td-red`, `.td-green`, `.td-orange`
+`.td-dim`, `.td-red`, `.td-green`, `.td-orange`, `.td-blue`
 `.card-body`, `.card-mb`, `.card-header-body`
+`.card-sub`, `.card-meta` — podtytuł i metadane w nagłówku karty
 `.card-header--vertical` — pionowy układ nagłówka karty: badge → rola → firma → summary → daty (używany w modal i widoku szczegółowym)
 `.card-company` — nazwa firmy pod tytułem roli w pionowym nagłówku karty
 `.card-source-url` — link do ogłoszenia w nagłówku karty, pod podsumowaniem; ucięty wielokropkiem
