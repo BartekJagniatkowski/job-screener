@@ -24,7 +24,6 @@
     <a href="{{ url_for('history') }}" {% if request.endpoint in ('history','job_detail') %}class="active"{% endif %}>History</a>
     <a href="{{ url_for('analytics') }}" {% if request.endpoint == 'analytics' %}class="active"{% endif %}>Analytics</a>
     <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
-    <a href="{{ url_for('export') }}">Export CSV</a>
     <a href="{{ url_for('logout') }}">Logout</a>
     <button class="btn-theme-toggle" id="theme-toggle" title="Toggle theme"></button>
   </div>

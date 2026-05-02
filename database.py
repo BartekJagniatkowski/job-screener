@@ -58,25 +58,25 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 """
 
-DEFAULT_ZERO_LIST = """- Alkohol, papierosy, hazard, seks industry
-- Uzbrojenie i obronność (dostawcy komponentów militarnych, AI dla wojska, fundusze defense tech)
-- Big pharma, ubezpieczenia, finanse (banki, fintechy, trading)
-- Marketing i e-commerce jako core business (napędzanie niekontrolowanej konsumpcji)
+DEFAULT_ZERO_LIST = """- Alcohol, tobacco, gambling, sex industry
+- Weapons and defense (military component suppliers, AI for defense, defense tech funds)
+- Big pharma, insurance, finance (banks, fintechs, trading)
+- Marketing and e-commerce as core business (driving uncontrolled consumption)
 
-Uwaga: powiązanie przez bezpośredniego inwestora/współzałożyciela aktywnie zarządzającego firmą z powyższych kategorii = czerwona flaga (nie automatyczne odrzucenie). Powiązanie przez inwestora inwestora = zbyt daleko.""".strip()
+Note: connection through a direct investor/co-founder actively managing a company from the above categories = red flag (not automatic rejection). Connection through an investor's investor = too distant.""".strip()
 
-DEFAULT_CRITERIA = """Szukam ról na przecięciu product discovery, strategy i ludzkiego wymiaru produktu.
-Preferuję: healthcare, science, social impact, AI ethics, edtech.
-Unikam: execution PM bez komponentu discovery, growth PM (A/B testy jako core), technical PM od integracji narzędzi.
-Czerwona flaga kulturowa: kwartalny rytm zwolnień, toksyczny leadership (Glassdoor < 3.5 z wyraźnym trendem spadkowym).""".strip()
+DEFAULT_CRITERIA = """Looking for roles at the intersection of product discovery, strategy, and the human dimension of products.
+Prefer: healthcare, science, social impact, AI ethics, edtech.
+Avoid: execution PM without discovery component, growth PM (A/B testing as core), technical PM focused on tool integrations.
+Cultural red flag: quarterly layoff cycles, toxic leadership (Glassdoor < 3.5 with a clear downward trend).""".strip()
 
 
 def get_conn() -> sqlite3.Connection:
     """
-    Otwórz połączenie z bazą danych w trybie WAL.
-    
+    Open a database connection in WAL mode.
+
     Returns:
-        Połączenie SQLite z ustawioną row_factory na Row
+        SQLite connection with row_factory set to Row
     """
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -87,17 +87,17 @@ def get_conn() -> sqlite3.Connection:
 
 def init_db() -> None:
     """
-    Inicjalizuj bazę danych i wykonaj migracje.
-    
-    Funkcja jest idempotentna — można ją wywołać wielokrotnie bez ryzyka duplikacji
-    kolumn lub danych. Obsługuje migrację z polskimi nazwami kolumn na angielskie,
-    a także backfill wartości dla istniejących rekordów.
-    
-    Migracje obejmują:
-    - Dodanie nowych kolumn (idempotentne ALTER TABLE ADD COLUMN)
-    - Przemianowanie kolumn z polskich na angielskie nazwy
-    - Migracja wartości werdyktów i statusów z polskich na angielskie
-    - Backfill verdict_confirmed dla istniejących rekordów
+    Initialize the database and run migrations.
+
+    Idempotent — safe to call multiple times without risk of duplicate columns or data.
+    Handles migration from Polish column names to English,
+    as well as backfilling values for existing records.
+
+    Migrations include:
+    - Adding new columns (idempotent ALTER TABLE ADD COLUMN)
+    - Renaming columns from Polish to English names
+    - Migrating verdict and status values from Polish to English
+    - Backfilling verdict_confirmed for existing records
     """
     with get_conn() as conn:  # type: ignore
         conn.executescript(SCHEMA)
@@ -192,13 +192,13 @@ def init_db() -> None:
 
 def hash_password(password: str) -> str:
     """
-    Zasoli hasło przy użyciu SHA-256.
-    
+    Hash a password with SHA-256 and a random salt.
+
     Args:
-        password: Hasło do zasolenia
-    
+        password: Password to hash
+
     Returns:
-        String w formacie "salt:hash" gdzie salt to 16-hex znaków
+        String in format "salt:hash" where salt is 16 hex characters
     """
     salt = secrets.token_hex(16)
     h = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
@@ -207,14 +207,14 @@ def hash_password(password: str) -> str:
 
 def verify_password(password: str, stored: str) -> bool:
     """
-    Sprawdź czy podane hasło pasuje do zasolonego hashu.
-    
+    Check whether a password matches a stored salted hash.
+
     Args:
-        password: Podane hasło
-        stored: Zasolony hash z bazy (format: "salt:hash")
-    
+        password: Provided password
+        stored: Stored salted hash (format: "salt:hash")
+
     Returns:
-        True jeśli hasła się zgadzają, False w przeciwnym przypadku
+        True if the passwords match, False otherwise
     """
     try:
         salt, h = stored.split(":", 1)
@@ -225,14 +225,14 @@ def verify_password(password: str, stored: str) -> bool:
 
 def create_user(username: str, password: str) -> bool:
     """
-    Stwórz nowe konto użytkownika.
-    
+    Create a new user account.
+
     Args:
-        username: Nazwa użytkownika (będzie zapisana w lowercase)
-        password: Hasło do zasolenia
-    
+        username: Username (stored in lowercase)
+        password: Password to hash
+
     Returns:
-        True jeśli konto zostało utworzone, False jeśli nazwa użytkownika jest już zajęta
+        True if the account was created, False if the username is already taken
     """
     try:
         with get_conn() as conn:
@@ -248,13 +248,13 @@ def create_user(username: str, password: str) -> bool:
 
 def get_user(username: str) -> Optional[sqlite3.Row]:
     """
-    Pobierz użytkownika po nazwie użytkownika.
-    
+    Fetch a user by username.
+
     Args:
-        username: Nazwa użytkownika
-    
+        username: Username
+
     Returns:
-        sqlite3.Row z danymi użytkownika lub None jeśli nie znaleziono
+        sqlite3.Row with user data, or None if not found
     """
     with get_conn() as conn:
         return conn.execute(
@@ -265,13 +265,13 @@ def get_user(username: str) -> Optional[sqlite3.Row]:
 
 def get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
     """
-    Pobierz użytkownika po ID.
-    
+    Fetch a user by ID.
+
     Args:
-        user_id: ID użytkownika
-    
+        user_id: User ID
+
     Returns:
-        sqlite3.Row z danymi użytkownika lub None jeśli nie znaleziono
+        sqlite3.Row with user data, or None if not found
     """
     with get_conn() as conn:
         return conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
@@ -279,14 +279,14 @@ def get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
 
 def update_user_profile(user_id: int, cv: str, zero_list: str, criteria: str, yellow_list: str = "") -> None:
     """
-    Zaktualizuj profil użytkownika.
-    
+    Update a user's profile.
+
     Args:
-        user_id: ID użytkownika
-        cv: Treść CV
-        zero_list: Treść listy zero
-        criteria: Dodatkowe kryteria
-        yellow_list: Treść listy żółtej (opcjonalne, domyślnie puste)
+        user_id: User ID
+        cv: CV content
+        zero_list: Zero list content
+        criteria: Additional criteria
+        yellow_list: Yellow list content (optional, empty by default)
     """
     with get_conn() as conn:
         conn.execute(
@@ -297,29 +297,29 @@ def update_user_profile(user_id: int, cv: str, zero_list: str, criteria: str, ye
 
 def compute_hash(text: str) -> str:
     """
-    Oblicz SHA-256 hash z podanego tekstu.
-    
+    Compute a SHA-256 hash of the given text.
+
     Args:
-        text: Tekst do zhashowania (nieważne czy URL czy treść)
-    
+        text: Text to hash (URL or listing content)
+
     Returns:
-        64-hex znakowy SHA-256 hash
+        64-hex-character SHA-256 hash
     """
     return hashlib.sha256(text.strip().lower().encode()).hexdigest()
 
 
 def check_duplicate(user_id: int, source: str) -> Optional[sqlite3.Row]:
     """
-    Sprawdź czy już istnieje analiza z tym samym źródłem.
-    
-    source może być URL lub treść. Hash jest obliczany po usunięciu białych znaków.
-    
+    Check whether an analysis already exists for the same source.
+
+    source can be a URL or content text. Hash is computed after stripping whitespace.
+
     Args:
-        user_id: ID użytkownika
-        source: URL lub treść ogłoszenia
-    
+        user_id: User ID
+        source: URL or listing content
+
     Returns:
-        Rekord z bazą jeśli istnieje duplikat, None inaczej
+        Record from the database if a duplicate exists, None otherwise
     """
     clean_source = source.strip() if source else ""
     h = compute_hash(clean_source)
@@ -338,16 +338,16 @@ def save_job(
     source_text: str = ""
 ) -> None:
     """
-    Zapisz wynik analizy do bazy danych.
-    
+    Save an analysis result to the database.
+
     source_url — job listing URL (stored as job_url and used for deduplication)
     source_text — listing content (scraped or pasted by the user)
-    
+
     Args:
-        user_id: ID użytkownika
-        result: Wynik analizy z JSON
-        source_url: URL ogłoszenia (lub pusty)
-        source_text: Treść ogłoszenia (scraped lub wklejona)
+        user_id: User ID
+        result: Analysis result from JSON
+        source_url: Job listing URL (or empty)
+        source_text: Job listing content (scraped or pasted)
     """
     import json as _json
     d = result.get
@@ -417,14 +417,14 @@ def save_job(
 
 def get_jobs(user_id: int, limit: int = 100) -> list[dict]:
     """
-    Pobierz ostatnie n rekordów z bazy.
-    
+    Fetch the most recent n records from the database.
+
     Args:
-        user_id: ID użytkownika
-        limit: Maksymalna liczba rekordów (domyślnie 100)
-    
+        user_id: User ID
+        limit: Maximum number of records (default 100)
+
     Returns:
-        Lista słowników z danymi z bazy
+        List of dictionaries with data from the database
     """
     with get_conn() as conn:
         return conn.execute(
@@ -435,14 +435,14 @@ def get_jobs(user_id: int, limit: int = 100) -> list[dict]:
 
 def get_job(job_id: int, user_id: int) -> Optional[sqlite3.Row]:
     """
-    Pobierz konkretny rekord z bazy.
-    
+    Fetch a specific record from the database.
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-    
+        job_id: Database record ID
+        user_id: User ID
+
     Returns:
-        sqlite3.Row z danymi lub None jeśli nie znaleziono
+        sqlite3.Row with data, or None if not found
     """
     with get_conn() as conn:
         return conn.execute(
@@ -453,20 +453,20 @@ def get_job(job_id: int, user_id: int) -> Optional[sqlite3.Row]:
 
 def update_verdict(job_id: int, user_id: int, verdict: str) -> bool:
     """
-    Ręczna zmiana werdyktu.
-    
+    Manually update the verdict.
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-        verdict: Nowy werdykt (rejected, warning, worth_considering)
-    
+        job_id: Database record ID
+        user_id: User ID
+        verdict: New verdict (rejected, warning, worth_considering)
+
     Returns:
-        True jeśli rekord został zaktualizowany, False inaczej
-    
+        True if the record was updated, False otherwise
+
     Notes:
-        'rejected_soft' ustawia verdict='rejected', verdict_confirmed=0
-        (opinia AI, niepotwierdzona). Wszystkie inne wartości ustawiają
-        verdict_confirmed=1 (potwierdzone przez użytkownika).
+        'rejected_soft' sets verdict='rejected', verdict_confirmed=0
+        (AI opinion, unconfirmed). All other values set
+        verdict_confirmed=1 (confirmed by the user).
     """
     confirmed = True
     if verdict == "rejected_soft":
@@ -485,15 +485,15 @@ def update_verdict(job_id: int, user_id: int, verdict: str) -> bool:
 
 def update_job_url(job_id: int, user_id: int, url: str) -> bool:
     """
-    Ręczne dołączenie URL do wpisu.
-    
+    Manually attach a URL to a job record.
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-        url: URL do zapisania
-    
+        job_id: Database record ID
+        user_id: User ID
+        url: URL to save
+
     Returns:
-        True jeśli rekord został zaktualizowany
+        True if the record was updated
     """
     with get_conn() as conn:
         cur = conn.execute(
@@ -505,14 +505,14 @@ def update_job_url(job_id: int, user_id: int, url: str) -> bool:
 
 def delete_job(job_id: int, user_id: int) -> bool:
     """
-    Usuń wpis z bazy.
-    
+    Delete a job record from the database.
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-    
+        job_id: Database record ID
+        user_id: User ID
+
     Returns:
-        True jeśli wpis istniał i należał do użytkownika, False inaczej
+        True if the record existed and belonged to the user, False otherwise
     """
     with get_conn() as conn:
         cur = conn.execute(
@@ -524,15 +524,15 @@ def delete_job(job_id: int, user_id: int) -> bool:
 
 def update_applied(job_id: int, user_id: int, applied: bool) -> bool:
     """
-    Ustaw lub usuń status wysłania aplikacji.
-    
+    Set or clear the application-sent status.
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-        applied: True jeśli aplikacja została wysłana
-    
+        job_id: Database record ID
+        user_id: User ID
+        applied: True if the application was sent
+
     Returns:
-        True jeśli rekord został zaktualizowany
+        True if the record was updated
     """
     date = datetime.date.today().isoformat() if applied else None
     with get_conn() as conn:
@@ -545,15 +545,15 @@ def update_applied(job_id: int, user_id: int, applied: bool) -> bool:
 
 def update_company_rejected(job_id: int, user_id: int, rejected: bool) -> bool:
     """
-    Ustaw lub usuń status odmowy ze strony firmy.
-    
+    Set or clear the company-rejected status.
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-        rejected: True jeśli firma odmówiła
-    
+        job_id: Database record ID
+        user_id: User ID
+        rejected: True if the company rejected the application
+
     Returns:
-        True jeśli rekord został zaktualizowany
+        True if the record was updated
     """
     date = datetime.date.today().isoformat() if rejected else None
     with get_conn() as conn:
@@ -566,21 +566,21 @@ def update_company_rejected(job_id: int, user_id: int, rejected: bool) -> bool:
 
 def update_job_status(job_id: int, user_id: int, status: str) -> bool:
     """
-    Zjednoczona aktualizacja statusu z dropdownu.
-    
+    Unified status update from the dropdown.
+
     Verdict values (worth_considering, warning, rejected_soft, rejected):
       set verdict + verdict_confirmed, clear applied and company_rejected.
     Application values (applied, company_rejected):
       set application fields, leave verdict unchanged.
-    
+
     Args:
-        job_id: ID wpisu z bazy
-        user_id: ID użytkownika
-        status: Nowy status (worth_considering, warning, rejected_soft, rejected,
+        job_id: Database record ID
+        user_id: User ID
+        status: New status (worth_considering, warning, rejected_soft, rejected,
                 applied, company_rejected)
-    
+
     Returns:
-        True jeśli rekord został zaktualizowany
+        True if the record was updated
     """
     today = datetime.date.today().isoformat()
 
@@ -629,16 +629,16 @@ def update_job_status(job_id: int, user_id: int, status: str) -> bool:
 
 def export_csv(user_id: int) -> str:
     """
-    Eksportuj dane do CSV.
-    
+    Export data to CSV.
+
     Args:
-        user_id: ID użytkownika
-    
+        user_id: User ID
+
     Returns:
-        String CSV lub pusty string jeśli brak danych
-    
+        CSV string or empty string if no data
+
     Notes:
-        Eksportuje max 10 000 rekordów (konfiguracja: limit=10000)
+        Exports up to 10,000 records (config: limit=10000)
     """
     rows = get_jobs(user_id, limit=10000)
     if not rows:
@@ -715,14 +715,14 @@ def get_analytics(user_id: int) -> dict:
                 status = 'unknown'
             layer_flags[layer][status] += 1
 
-        fs = row['fit_score']
+        fs = row['fit_score'] if 'fit_score' in row.keys() else None
         if fs is not None:
             try:
                 fit_scores.append(float(fs))
             except (TypeError, ValueError):
                 pass
 
-        arch = row['role_archetype']
+        arch = row['role_archetype'] if 'role_archetype' in row.keys() else None
         if arch:
             archetype_distribution[arch] = archetype_distribution.get(arch, 0) + 1
 
@@ -750,10 +750,10 @@ def get_analytics(user_id: int) -> dict:
     }
 def user_count() -> int:
     """
-    Pobierz liczbę użytkowników w bazie.
-    
+    Return the number of users in the database.
+
     Returns:
-        Liczba użytkowników
+        User count
     """
     with get_conn() as conn:
         return conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]

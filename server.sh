@@ -20,6 +20,10 @@ _start() {
     --access-logfile /tmp/screener-access.log \
     --error-logfile /tmp/screener-error.log
 
+  for i in 1 2 3 4 5; do
+    [ -f "$PID_FILE" ] && break
+    sleep 0.5
+  done
   echo "Serwer uruchomiony (PID: $(cat "$PID_FILE"))."
 }
 

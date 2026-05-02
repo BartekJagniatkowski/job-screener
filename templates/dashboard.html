@@ -50,14 +50,14 @@
 
 {% if jobs %}
 <div class="dashboard-recent">
-  <div class="section-label">Ostatnie analizy</div>
+  <div class="section-label">Recent analyses</div>
   <table>
     <thead>
       <tr>
-        <th>Data</th>
-        <th>Rola</th>
-        <th>Firma</th>
-        <th>Werdykt</th>
+        <th>Date</th>
+        <th>Role</th>
+        <th>Company</th>
+        <th>Verdict</th>
       </tr>
     </thead>
     <tbody>
@@ -82,7 +82,7 @@
   </table>
   {% if jobs|length > 10 %}
   <div class="recent-more">
-    <a href="{{ url_for('history') }}" class="td-mono td-dim">Zobacz wszystkie ({{ jobs|length }}) →</a>
+    <a href="{{ url_for('history') }}" class="td-mono td-dim">View all ({{ jobs|length }}) →</a>
   </div>
   {% endif %}
 </div>
@@ -120,22 +120,22 @@ function renderResult(r, jobId, sourceUrl, sourceText) {
   const l = r.layers||{};
   const fit = r.fit||{};
   const fitFindings = [
-    fit.strengths ? '<strong>Mocne:</strong> '+fit.strengths : '',
-    fit.gaps      ? '<strong>Luki:</strong> '+fit.gaps : '',
-    fit.improve   ? '<strong>Do wzmocnienia:</strong> '+fit.improve : ''
+    fit.strengths ? '<strong>Strengths:</strong> '+fit.strengths : '',
+    fit.gaps      ? '<strong>Gaps:</strong> '+fit.gaps : '',
+    fit.improve   ? '<strong>To strengthen:</strong> '+fit.improve : ''
   ].filter(Boolean).join('<br><br>');
 
   // always show both rejection options; soft = AI verdict unconfirmed, rejected = user confirmed
   const isSoftRejected = r.verdict === 'rejected' && !r.zero_list_hit;
   const verdictOpts = `
-    <optgroup label="Analiza oferty">
-      <option value="worth_considering" ${r.verdict==='worth_considering'?'selected':''}>Do rozważenia</option>
-      <option value="warning" ${r.verdict==='warning'?'selected':''}>Wymaga uwagi</option>
-      <option value="rejected_soft" ${isSoftRejected?'selected':''}>Odrzucona (model)</option>
-      <option value="rejected" ${r.verdict==='rejected'&&!isSoftRejected?'selected':''}>Odrzucona</option>
+    <optgroup label="Job analysis">
+      <option value="worth_considering" ${r.verdict==='worth_considering'?'selected':''}>Worth considering</option>
+      <option value="warning" ${r.verdict==='warning'?'selected':''}>Needs review</option>
+      <option value="rejected_soft" ${isSoftRejected?'selected':''}>Rejected (AI)</option>
+      <option value="rejected" ${r.verdict==='rejected'&&!isSoftRejected?'selected':''}>Rejected</option>
     </optgroup>
-    <optgroup label="Aplikacja">
-      <option value="applied">Zgłoszono</option>
+    <optgroup label="Application">
+      <option value="applied">Applied</option>
     </optgroup>`;
 
   // source preview
@@ -144,8 +144,8 @@ function renderResult(r, jobId, sourceUrl, sourceText) {
       <div class="layer-hdr" onclick="toggleLayer('src-new')">
         <div class="layer-left">
           <div class="dot dot-unknown"></div>
-          <div><div class="layer-name">Źródło ogłoszenia</div>
-          <div class="layer-status-label">${sourceUrl ? 'Link' : ''}${sourceUrl && sourceText ? ' + ' : ''}${sourceText ? 'Treść' : ''}</div></div>
+          <div><div class="layer-name">Listing source</div>
+          <div class="layer-status-label">${sourceUrl ? 'URL' : ''}${sourceUrl && sourceText ? ' + ' : ''}${sourceText ? 'Text' : ''}</div></div>
         </div>
         <span class="chev" id="lc-src-new">▶</span>
       </div>
@@ -274,7 +274,7 @@ async function runAnalysis(force = false) {
           <div class="td-mono" duplicate-label">⚠ This listing was already analyzed</div>
           <div duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
           <div class="td-mono duplicate-meta">
-            Analizowano: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
+            Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
           </div>
           <div class="duplicate-actions">
             <a href="/job/${p.id}" class="btn btn-secondary btn-sm">View previous analysis →</a>

@@ -13,25 +13,25 @@
     <div class="verdict-select-wrap">
       <label for="status-select" class="verdict-select-label">Status:</label>
       <select id="status-select" class="verdict-select" onchange="setStatus(this.value)">
-        <optgroup label="Analiza oferty">
-          <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Do rozważenia</option>
-          <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Wymaga uwagi</option>
-          <option value="rejected_soft"     {% if cur_status == 'rejected_soft' %}selected{% endif %}>Odrzucona (model)</option>
-          <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Odrzucona</option>
+        <optgroup label="Job analysis">
+          <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
+          <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
+          <option value="rejected_soft"     {% if cur_status == 'rejected_soft' %}selected{% endif %}>Rejected (AI)</option>
+          <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Rejected</option>
         </optgroup>
-        <optgroup label="Aplikacja">
-          <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Zgłoszono</option>
-          <option value="company_rejected"  {% if cur_status == 'company_rejected' %}selected{% endif %}>Odmowa</option>
+        <optgroup label="Application">
+          <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Applied</option>
+          <option value="company_rejected"  {% if cur_status == 'company_rejected' %}selected{% endif %}>Rejected by company</option>
         </optgroup>
       </select>
     </div>
     {% if job.source_full or job.source %}
     <button id="reanalyze-btn" class="btn btn-secondary btn-sm" onclick="reanalyze()">
-      Analizuj ponownie
+      Re-analyze
     </button>
     {% endif %}
     <button class="btn btn-secondary btn-sm btn-danger" onclick="confirmDelete()">
-      Usuń
+      Delete
     </button>
   </div>
 </div>
@@ -86,7 +86,7 @@
     <div class="layer-body" id="lb-{{id}}">
       {{ findings or '—' }}
       {% if evidence %}
-      <div class="evidence"><span class="evidence-label">Dowód z ogłoszenia</span>
+      <div class="evidence"><span class="evidence-label">Evidence from listing</span>
         {{ evidence }}
       </div>
       {% endif %}
@@ -96,13 +96,13 @@
 
   {{ layer('triage','Triage', job.triage_status, job.triage_findings,
     raw.get('triage',{}).get('evidence')) }}
-  {{ layer('prod','Warstwa produktowa', job.product_status, job.product_findings,
+  {{ layer('prod','Product layer', job.product_status, job.product_findings,
     raw.get('layers',{}).get('product',{}).get('evidence')) }}
-  {{ layer('biz','Warstwa biznesowa', job.business_status, job.business_findings,
+  {{ layer('biz','Business layer', job.business_status, job.business_findings,
     raw.get('layers',{}).get('business',{}).get('evidence')) }}
-  {{ layer('rep','Warstwa reputacyjna', job.reputation_status, job.reputation_findings,
+  {{ layer('rep','Reputation layer', job.reputation_status, job.reputation_findings,
     raw.get('layers',{}).get('reputation',{}).get('evidence')) }}
-  {{ layer('val','Warstwa wartości', job.values_status, job.values_findings,
+  {{ layer('val','Values layer', job.values_status, job.values_findings,
     raw.get('layers',{}).get('values',{}).get('evidence')) }}
 
   <div class="layer">
@@ -130,14 +130,14 @@
       <div class="layer-left">
         <div class="dot dot-unknown"></div>
         <div>
-          <div class="layer-name">Źródło ogłoszenia</div>
+          <div class="layer-name">Listing source</div>
           <div class="layer-status-label">
             {%- if job.source_full and job.source_full.startswith('http') -%}
               Link
             {%- elif job.source_full -%}
-              Treść ogłoszenia
+              Listing text
             {%- else -%}
-              Brak danych
+              No data
             {%- endif -%}
           </div>
         </div>
@@ -148,7 +148,7 @@
       {% if job.source_full %}
         {% if job.source_full.startswith('http') %}
           <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
-          <div class="source-url-hint">Link może być już nieaktywny jeśli ogłoszenie zostało usunięte.</div>
+          <div class="source-url-hint">URL may be inactive if the listing was removed.</div>
         {% else %}
           <div class="source-text">{{ job.source_full }}</div>
           <div class="source-url-section">
@@ -196,12 +196,12 @@ function tog(id) {
 async function setStatus(status) {
   const statusEl = document.getElementById('reanalyze-status');
   const verdictLabels = {
-    worth_considering: 'Do rozważenia',
-    warning: 'Wymaga uwagi',
-    rejected_soft: 'Odrzucona (model)',
-    rejected: 'Odrzucona',
-    applied: 'Zgłoszono',
-    company_rejected: 'Odmowa',
+    worth_considering: 'Worth considering',
+    warning: 'Needs review',
+    rejected_soft: 'Rejected (AI)',
+    rejected: 'Rejected',
+    applied: 'Applied',
+    company_rejected: 'Rejected by company',
   };
   try {
     const fd = new FormData();
@@ -211,15 +211,15 @@ async function setStatus(status) {
     if (data.ok) {
       statusEl.className = 'notice';
       statusEl.style.display = 'block';
-      statusEl.textContent = `Status zmieniony na: ${verdictLabels[status] || status}`;
+      statusEl.textContent = `Status changed to: ${verdictLabels[status] || status}`;
       const badge = document.querySelector('.card-header .badge');
       if (badge) {
         if (status === 'applied') {
           badge.className = 'badge badge-applied';
-          badge.textContent = 'Zgłoszono';
+          badge.textContent = 'Applied';
         } else if (status === 'company_rejected') {
           badge.className = 'badge badge-company_rejected';
-          badge.textContent = 'Odmowa';
+          badge.textContent = 'Rejected by company';
         } else {
           const verdictCls = status === 'rejected_soft' ? 'rejected' : status;
           badge.className = 'badge badge-' + verdictCls;
@@ -319,7 +319,7 @@ async function reanalyze() {
     statusEl.className = 'notice warn';
     statusEl.textContent = 'Connection error: ' + e.message;
     btn.disabled = false;
-    btn.textContent = 'Analizuj ponownie';
+    btn.textContent = 'Re-analyze';
   }
 }
 </script>

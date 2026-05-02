@@ -1,11 +1,11 @@
 """
-scraper.py — pobieranie treści ogłoszeń z URL
-Zwraca (text, error_code, error_detail) gdzie error_code to:
-  None       — sukces
-  'timeout'  — serwer nie odpowiedział w czasie
-  'notfound' — strona nie istnieje (404)
-  'blocked'  — strona istnieje ale blokuje dostęp (403, JS, pusta treść)
-  'network'  — inny błąd sieciowy
+scraper.py — fetches job listing content from URLs
+Returns (text, error_code, error_detail) where error_code is:
+  None       — success
+  'timeout'  — server did not respond in time
+  'notfound' — page not found (404)
+  'blocked'  — page exists but blocks access (403, JS, empty content)
+  'network'  — other network error
 """
 
 import urllib.request
@@ -15,16 +15,16 @@ from html.parser import HTMLParser
 from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
 
 
-# Parametry query string do usunięcia z URL (wszystkie lowercase — porównanie przez k.lower())
+# Query string parameters to strip from URL (all lowercase — compared via k.lower())
 _STRIP_PARAMS = {
-    # tracking ogólny
+    # generic tracking
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
     'utm_id', 'utm_source_platform', 'utm_creative_format', 'utm_marketing_tactic',
     # LinkedIn
     'refid', 'trackingid', 'originalsubdomain',
     # Indeed
     'from', 'vjk', 'jsa',
-    # ogólne
+    # generic
     'ref', 'source', 'src', 'referrer', 'origin',
     'fbclid', 'gclid', 'msclkid', 'dclid', 'twclid',
     'mc_eid', 'mc_cid',
@@ -34,8 +34,8 @@ _STRIP_PARAMS = {
 
 def normalize_url(url: str) -> str:
     """
-    Usuwa parametry śledzące i śmieci z URL.
-    Zachowuje parametry specyficzne dla job boardów (np. jobId, currentJobId).
+    Remove tracking parameters and noise from URL.
+    Preserves job-board-specific parameters (e.g. jobId, currentJobId).
     """
     if not url:
         return url
@@ -43,11 +43,11 @@ def normalize_url(url: str) -> str:
     if not url:
         return url
     if not url.startswith('http'):
-        return url  # użytkownik wkleił treść
+        return url  # user pasted content directly
     try:
         parsed = urlparse(url.strip())
-        # usuń fragment (#...) — zawsze śmieć
-        # filtruj parametry query
+        # strip fragment (#...) — always noise
+        # filter query parameters
         clean_params = [
             (k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=False)
             if k.lower() not in _STRIP_PARAMS
@@ -62,7 +62,7 @@ def normalize_url(url: str) -> str:
 
 
 class _TextExtractor(HTMLParser):
-    """Wyodrębnia tekst z HTML pomijając skrypty, style i metadane."""
+    """Extracts text from HTML, skipping scripts, styles, and metadata."""
 
     SKIP_TAGS = {'script', 'style', 'head', 'noscript', 'svg', 'iframe'}
 
@@ -93,13 +93,13 @@ def _html_to_text(html: str) -> str:
     except Exception:
         pass
     text = '\n'.join(parser.chunks)
-    # kompresuj wielokrotne puste linie
+    # compress multiple blank lines
     text = re.sub(r'\n{3,}', '\n\n', text)
     return text.strip()
 
 
 def _looks_like_js_wall(html: str, text: str) -> bool:
-    """Heurystyki wykrywające strony wymagające JavaScriptu."""
+    """Heuristics for detecting pages that require JavaScript."""
     html_lower = html.lower()
     signals = [
         'enable javascript',
@@ -115,13 +115,13 @@ def _looks_like_js_wall(html: str, text: str) -> bool:
     for s in signals:
         if s in html_lower:
             return True
-    # Bardzo mała treść przy dużym HTML = prawdopodobnie JS wall
+    # Very little text relative to large HTML = likely JS wall
     if len(html) > 5000 and len(text) < 200:
         return True
     return False
 
 
-# Domeny które zawsze blokują scraping — zwracamy blocked bez próby pobierania
+# Domains that always block scraping — return blocked without attempting a request
 BLOCKED_DOMAINS = {
     'linkedin.com', 'www.linkedin.com',
     'indeed.com', 'pl.indeed.com', 'www.indeed.com',
@@ -132,16 +132,16 @@ BLOCKED_DOMAINS = {
 }
 
 BLOCKED_DOMAIN_MSG = {
-    'linkedin.com': 'LinkedIn wymaga zalogowania i blokuje automatyczny dostęp. Skopiuj treść ogłoszenia ręcznie.',
-    'indeed.com': 'Indeed blokuje automatyczny dostęp. Skopiuj treść ogłoszenia ręcznie.',
-    'glassdoor.com': 'Glassdoor wymaga zalogowania. Skopiuj treść ogłoszenia ręcznie.',
-    'pracuj.pl': 'Pracuj.pl blokuje automatyczny dostęp. Skopiuj treść ogłoszenia ręcznie.',
-    'nofluffjobs.com': 'NoFluffJobs blokuje automatyczny dostęp. Skopiuj treść ogłoszenia ręcznie.',
-    'justjoin.it': 'JustJoin.it blokuje automatyczny dostęp. Skopiuj treść ogłoszenia ręcznie.',
+    'linkedin.com': 'LinkedIn requires login and blocks automated access. Copy the job description manually.',
+    'indeed.com': 'Indeed blocks automated access. Copy the job description manually.',
+    'glassdoor.com': 'Glassdoor requires login. Copy the job description manually.',
+    'pracuj.pl': 'Pracuj.pl blocks automated access. Copy the job description manually.',
+    'nofluffjobs.com': 'NoFluffJobs blocks automated access. Copy the job description manually.',
+    'justjoin.it': 'JustJoin.it blocks automated access. Copy the job description manually.',
 }
 
 def _get_domain(url: str) -> str:
-    """Wyodrębnij domenę z URL."""
+    """Extract the domain from a URL."""
     try:
         return urlparse(url).netloc.lower()
     except Exception as e:
@@ -151,14 +151,14 @@ def _get_domain(url: str) -> str:
 
 def fetch(url: str, timeout: int = 12) -> tuple:
     """
-    Pobiera treść ogłoszenia z URL.
-    Zwraca: (text: str|None, error_code: str|None, error_detail: str|None)
+    Fetch job listing content from a URL.
+    Returns: (text: str|None, error_code: str|None, error_detail: str|None)
     """
-    # sprawdź znane domeny blokujące przed próbą połączenia
+    # check known blocking domains before attempting a connection
     domain = _get_domain(url)
     base_domain = '.'.join(domain.split('.')[-2:]) if domain else ''
     if domain in BLOCKED_DOMAINS or base_domain in BLOCKED_DOMAINS:
-        msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or               'Ta strona blokuje automatyczny dostęp. Skopiuj treść ogłoszenia ręcznie.'
+        msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or               'This site blocks automated access. Copy the job description manually.'
         return None, 'blocked', msg
 
     headers = {
@@ -168,7 +168,7 @@ def fetch(url: str, timeout: int = 12) -> tuple:
             'Chrome/122.0.0.0 Safari/537.36'
         ),
         'Accept': 'text/html,application/xhtml+xml,*/*;q=0.9',
-        'Accept-Language': 'pl,en;q=0.9',
+        'Accept-Language': 'en,pl;q=0.9',
     }
 
     req = urllib.request.Request(url, headers=headers)
@@ -177,37 +177,37 @@ def fetch(url: str, timeout: int = 12) -> tuple:
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             content_type = resp.headers.get('Content-Type', '')
             if 'text/html' not in content_type and 'text/plain' not in content_type:
-                return None, 'blocked', f'Nieobsługiwany typ treści: {content_type}'
+                return None, 'blocked', f'Unsupported content type: {content_type}'
             html = resp.read().decode('utf-8', errors='replace')
             max_size = 5 * 1024 * 1024  # 5MB
             if len(html) > max_size:
-                return None, 'blocked', f'Strona zwróciła zbyt dużą treść: {len(html)} bytes (prawdopodobnie wymaga JavaScript)'
+                return None, 'blocked', f'Page returned too much content: {len(html)} bytes (likely requires JavaScript)'
 
     except urllib.error.HTTPError as e:
         if e.code == 404:
-            return None, 'notfound', f'Strona nie istnieje (HTTP {e.code})'
+            return None, 'notfound', f'Page not found (HTTP {e.code})'
         if e.code in (401, 403, 429):
-            return None, 'blocked', f'Dostęp zablokowany (HTTP {e.code})'
-        return None, 'network', f'Błąd HTTP {e.code}'
+            return None, 'blocked', f'Access blocked (HTTP {e.code})'
+        return None, 'network', f'HTTP error {e.code}'
 
     except urllib.error.URLError as e:
         reason = str(e.reason)
         if 'timed out' in reason.lower() or 'timeout' in reason.lower():
-            return None, 'timeout', 'Serwer nie odpowiedział w czasie (timeout)'
-        return None, 'network', f'Błąd sieci: {reason}'
+            return None, 'timeout', 'Server did not respond in time (timeout)'
+        return None, 'network', f'Network error: {reason}'
 
     except TimeoutError:
-        return None, 'timeout', 'Serwer nie odpowiedział w czasie (timeout)'
+        return None, 'timeout', 'Server did not respond in time (timeout)'
 
     except Exception as e:
-        return None, 'network', f'Nieoczekiwany błąd: {str(e)}'
+        return None, 'network', f'Unexpected error: {str(e)}'
 
     text = _html_to_text(html)
 
     if _looks_like_js_wall(html, text):
-        return None, 'blocked', 'Strona wymaga JavaScript lub stosuje ochronę przed botami (Cloudflare itp.)'
+        return None, 'blocked', 'Page requires JavaScript or uses bot protection (Cloudflare, etc.)'
 
     if len(text) < 100:
-        return None, 'blocked', 'Strona nie zwróciła czytelnej treści — prawdopodobnie wymaga logowania lub JavaScript'
+        return None, 'blocked', 'Page did not return readable content — likely requires login or JavaScript'
 
     return text, None, None

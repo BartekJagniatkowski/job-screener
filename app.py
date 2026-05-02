@@ -7,6 +7,7 @@ from typing import Optional
 import threading
 import time
 import webbrowser
+import html as _html
 import json as _json
 from flask import (
     Flask, render_template, request, redirect, url_for,
@@ -32,17 +33,17 @@ API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def current_user() -> Optional[sqlite3.Row]:
     """
-    Pobierz aktualnego użytkownika z sesji.
-    
+    Return the current user from the session.
+
     Returns:
-        sqlite3.Row z danymi użytkownika lub None
+        sqlite3.Row with user data, or None
     """
     uid = session.get("user_id")
     return get_user_by_id(uid) if uid else None
 
 
 def login_required(f):
-    """Dekorator sprawdzający zalogowanie."""
+    """Decorator that requires an authenticated session."""
     @functools.wraps(f)
     def decorated(*args, **kwargs):
         if not session.get("user_id"):
@@ -69,8 +70,8 @@ def index() -> str:
 @app.route("/login", methods=["GET", "POST"])
 def login() -> str:
     """
-    Strona logowania.
-    
+    Login page.
+
     Returns:
         HTML szablon logowania
     """
@@ -92,8 +93,8 @@ def login() -> str:
 @app.route("/register", methods=["GET", "POST"])
 def register() -> str:
     """
-    Strona rejestracji.
-    
+    Registration page.
+
     Returns:
         HTML szablon rejestracji
     """
@@ -131,8 +132,8 @@ def register() -> str:
 @app.route("/logout")
 def logout() -> str:
     """
-    Wyloguj użytkownika.
-    
+    Log out the current user.
+
     Returns:
         Redirect to login page
     """
@@ -144,8 +145,8 @@ def logout() -> str:
 @login_required
 def dashboard() -> str:
     """
-    Strona dashboarda użytkownika.
-    
+    User dashboard page.
+
     Returns:
         HTML szablon dashboarda
     """
@@ -163,23 +164,23 @@ def dashboard() -> str:
 def run_analyze():
     user = current_user()
     if not API_KEY:
-        return jsonify({"error": "Brak klucza API. Skontaktuj się z administratorem."}), 400
+        return jsonify({"error": "No API key configured. Contact the administrator."}), 400
 
     url = normalize_url(request.form.get("url", "").strip())
     text = request.form.get("text", "").strip()
     force = request.form.get("force", "0")
 
     if not url and not text:
-        return jsonify({"error": "Podaj link lub treść ogłoszenia."}), 400
+        return jsonify({"error": "Provide a URL or job description text."}), 400
 
     input_text = None
     scraped = False
 
     if text:
-        # użytkownik podał treść — użyj jej bezpośrednio
+        # user provided text — use directly
         input_text = text
     elif url:
-        # tylko URL — spróbuj scrapowania
+        # URL only — attempt scraping
         scraped_text, err_code, err_detail = scrape_url(url)
         if scraped_text:
             input_text = scraped_text
@@ -191,7 +192,7 @@ def run_analyze():
                 "error_detail": err_detail,
             })
 
-    # deduplicacja po URL jeśli dostępny, inaczej po treści
+    # deduplicate by URL if available, otherwise by text
     dedup_key = url or text
     if force != "1":
         duplicate = check_duplicate(user["id"], dedup_key)
@@ -238,14 +239,14 @@ def check_source():
 def reanalyze(job_id):
     user = current_user()
     if not API_KEY:
-        return jsonify({"error": "Brak klucza API."}), 400
+        return jsonify({"error": "No API key configured."}), 400
     job = get_job(job_id, user["id"])
     if not job:
-        return jsonify({"error": "Analiza nie istnieje."}), 404
+        return jsonify({"error": "Analysis not found."}), 404
     source = (job["source_full"] or job["source"] or "").strip()
     if not source:
-        return jsonify({"error": "Brak zapisanej treści ogłoszenia — nie można ponownie przeanalizować."}), 400
-    # re-analiza: source to URL, source_full to treść
+        return jsonify({"error": "No saved listing content — cannot re-analyze."}), 400
+    # re-analyze: source is URL, source_full is text
     saved_url = job["job_url"] or (source if source.startswith("http") else "")
     saved_text = job["source_full"] or ""
     if saved_text and not saved_text.startswith("http"):
@@ -265,7 +266,7 @@ def reanalyze(job_id):
     try:
         result = analyze(user, input_text, "text", API_KEY)
         save_job(user["id"], result, source_url=saved_url, source_text=input_text)
-        # zwróć id nowego wpisu
+        # return the new entry's id
         new_job = get_jobs(user["id"], limit=1)[0]
         return jsonify({"ok": True, "new_job_id": new_job["id"]})
     except sqlite3.IntegrityError as e:
@@ -283,7 +284,7 @@ def set_verdict(job_id):
         # normalize for response — rejected_soft maps to rejected in DB
         actual = "rejected" if verdict == "rejected_soft" else verdict
         return jsonify({"ok": True, "verdict": actual})
-    return jsonify({"error": "Nieprawidłowy werdykt lub brak dostępu."}), 400
+    return jsonify({"error": "Invalid verdict or access denied."}), 400
 
 
 @app.route("/job/<int:job_id>/url", methods=["POST"])
@@ -292,10 +293,10 @@ def set_job_url(job_id):
     user = current_user()
     url = request.form.get("url", "").strip()
     if not url.startswith("http"):
-        return jsonify({"error": "Podaj prawidłowy URL (zaczynający się od http)."}), 400
+        return jsonify({"error": "Please enter a valid URL (must start with http)."}), 400
     if update_job_url(job_id, user["id"], url):
         return jsonify({"ok": True})
-    return jsonify({"error": "Brak dostępu lub rekord nie istnieje."}), 400
+    return jsonify({"error": "Access denied or record not found."}), 400
 
 
 @app.route("/job/<int:job_id>/delete", methods=["POST"])
@@ -304,7 +305,7 @@ def remove_job(job_id):
     user = current_user()
     if delete_job(job_id, user["id"]):
         return jsonify({"ok": True})
-    return jsonify({"error": "Brak dostępu lub rekord nie istnieje."}), 400
+    return jsonify({"error": "Access denied or record not found."}), 400
 
 
 @app.route("/job/<int:job_id>/applied", methods=["POST"])
@@ -314,7 +315,7 @@ def set_applied(job_id):
     applied = request.form.get("applied", "0") == "1"
     if update_applied(job_id, user["id"], applied):
         return jsonify({"ok": True, "applied": applied})
-    return jsonify({"error": "Brak dostępu lub rekord nie istnieje."}), 400
+    return jsonify({"error": "Access denied or record not found."}), 400
 
 
 @app.route("/job/<int:job_id>/status", methods=["POST"])
@@ -324,7 +325,7 @@ def set_job_status(job_id):
     status = request.form.get("status", "").strip()
     if update_job_status(job_id, user["id"], status):
         return jsonify({"ok": True})
-    return jsonify({"error": "Nieprawidłowy status lub brak dostępu."}), 400
+    return jsonify({"error": "Invalid status or access denied."}), 400
 
 
 @app.route("/job/<int:job_id>/company_rejected", methods=["POST"])
@@ -334,13 +335,13 @@ def set_company_rejected(job_id):
     rejected = request.form.get("rejected", "0") == "1"
     if update_company_rejected(job_id, user["id"], rejected):
         return jsonify({"ok": True, "rejected": rejected})
-    return jsonify({"error": "Brak dostępu lub rekord nie istnieje."}), 400
+    return jsonify({"error": "Access denied or record not found."}), 400
 
 
 @app.route("/changelog")
 def changelog():
     md_path = pathlib.Path(__file__).parent / "CHANGELOG.md"
-    md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else "Brak pliku CHANGELOG.md"
+    md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else "CHANGELOG.md not found"
 
     def md_to_html(text):
         lines = text.split("\n")
@@ -452,7 +453,7 @@ def export():
     resp = make_response(csv_data)
     resp.headers["Content-Type"] = "text/csv; charset=utf-8"
     resp.headers["Content-Disposition"] = \
-        f"attachment; filename=oferty_{user['username']}.csv"
+        f"attachment; filename=jobs_{user['username']}.csv"
     return resp
 
 

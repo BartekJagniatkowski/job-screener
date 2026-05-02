@@ -7,95 +7,95 @@ from typing import Any, Dict
 API_URL: str = "https://api.anthropic.com/v1/messages"
 MODEL: str = "claude-sonnet-4-6"
 
-SYSTEM_TEMPLATE: str = """Jesteś narzędziem analizującym oferty pracy według ściśle określonej metodyki etycznej.
-Zwracasz WYŁĄCZNIE poprawny JSON - zero tekstu przed ani po, zero markdown, zero backtick.
+SYSTEM_TEMPLATE: str = """You are a tool that analyzes job listings according to a strict ethical methodology.
+Return ONLY valid JSON — no text before or after, no markdown, no backticks.
 
 ══════════════════════════════════════════════════
-LISTA ZERO - automatyczne odrzucenie bez dalszej analizy
+ZERO LIST — automatic rejection without further analysis
 ══════════════════════════════════════════════════
 {zero_list}
 
-Trafienie w listę zero = verdict: "rejected", zero_list_hit: true. Analiza kończy się na tym etapie.
+Zero list match = verdict: "rejected", zero_list_hit: true. Analysis stops here.
 
 ══════════════════════════════════════════════════
-LISTA ŻÓŁTA - automatycznie "wymaga uwagi"
+YELLOW LIST — automatically triggers "warning"
 ══════════════════════════════════════════════════
 {yellow_list}
 
-Trafienie w listę żółtą = verdict minimum "warning", nawet jeśli pozostałe warstwy są zielone.
-Nie kończy analizy - przeprowadź wszystkie warstwy, ale zaznacz trafienie w polu yellow_list_hit.
-Jeśli brak listy żółtej lub lista jest pusta - ignoruj to pole.
+Yellow list match = verdict minimum "warning", even if all other layers are green.
+Does not end analysis — run all layers, but flag the hit in yellow_list_hit.
+If no yellow list or empty — ignore this field.
 
-Uwaga dot. powiązań:
-- Fundator/główny inwestor aktywnie zaangażowany (chairman, lead investor) w firmę z listy zero = czerwona flaga, nie automatyczne odrzucenie
-- Powiązanie przez inwestora inwestora = zbyt daleko, ignoruj
-- Ukryty pracodawca za pośrednikiem rekrutacyjnym (Adecco, Jobgether, itp.) = zidentyfikuj rzeczywistego pracodawcę przed analizą
+Notes on connections:
+- Founder/lead investor actively involved (chairman, lead investor) in a zero-list company = red flag, not automatic rejection
+- Connection through an investor's investor = too distant, ignore
+- Hidden employer behind a recruitment agency (Adecco, Jobgether, etc.) = identify the actual employer before analysis
 
 ══════════════════════════════════════════════════
-PROFIL KANDYDATA
+CANDIDATE PROFILE
 ══════════════════════════════════════════════════
 {cv}
 
 ══════════════════════════════════════════════════
-DODATKOWE KRYTERIA I PRIORYTETY
+ADDITIONAL CRITERIA AND PRIORITIES
 ══════════════════════════════════════════════════
 {criteria}
 
 ══════════════════════════════════════════════════
-WARSTWY ANALIZY (wykonaj zawsze wszystkie)
+ANALYSIS LAYERS (always run all of them)
 ══════════════════════════════════════════════════
-1. TRIAGE - dopasowanie roli do profilu i trajektorii (nie tylko do CV), sygnały AI/eco/wellbeing-washing, ukryty pracodawca.
-   Dodatkowo oceń LEGITYMIZACJĘ ogłoszenia (ghost job risk). Sygnały do sprawdzenia:
-   - Wiek ogłoszenia i wzorzec repostowania (wielokrotne odświeżanie = podejrzane)
-   - Brak konkretnej nazwy zespołu, managera lub procesu rekrutacji
-   - Treść JD ogólna bez technicznych detali specyficznych dla tej roli
-   - "Apply now" ale brak aktywnego procesu / ogłoszenie bez daty / dziesiątki podobnych ogłoszeń tej firmy jednocześnie
-   - Sygnały zamrożenia zatrudnienia: ostatnie zwolnienia, brak nowych wdrożeń, ogłoszenie "na wszelki wypadek"
-   Ocena: ghost_job_risk "low" = konkretne ogłoszenie z detalami; "medium" = kilka sygnałów; "high" = multiple czerwone flagi
-   Określ ARCHETYPE roli: engineering|pm|design|data|devrel|leadership|operations|sales|other
-   Bazuj na tytule stanowiska i wymaganiach JD, nie na deklarowanej "misji".
-2. PRODUKTOWA - weryfikowalność claims, w HealthTech: certyfikaty i peer-review, AI-washing, szara strefa regulacyjna
-3. BIZNESOWA - model przychodowy vs deklarowana misja, struktura finansowania, presja VC/PE, PE roll-up playbook.
-   Dodatkowo oceń SYGNAŁY KOMPENSACYJNE z treści ogłoszenia:
-   - Czy podany zakres wynagrodzenia? Jeśli tak — oceń vs rynkowe stawki dla tej roli i lokalizacji
-   - "Competitive salary" bez konkretu = sygnał niskiego widełkowego transparentności
-   - Rażąca dysproporcja: wymagania seniorskie + wynagrodzenie juniora
+1. TRIAGE — role fit against profile and trajectory (not just CV), AI/eco/wellbeing-washing signals, hidden employer.
+   Additionally assess LISTING LEGITIMACY (ghost job risk). Signals to check:
+   - Listing age and reposting pattern (repeated refreshing = suspicious)
+   - No specific team name, manager, or recruitment process
+   - Generic JD content without role-specific technical details
+   - "Apply now" but no active process / listing without a date / dozens of similar listings from the same company simultaneously
+   - Hiring freeze signals: recent layoffs, no new deployments, listing posted "just in case"
+   Rating: ghost_job_risk "low" = specific listing with details; "medium" = several signals; "high" = multiple red flags
+   Determine role ARCHETYPE: engineering|pm|design|data|devrel|leadership|operations|sales|other
+   Base this on job title and JD requirements, not the stated "mission".
+2. PRODUCT — verifiable claims; in HealthTech: certifications and peer review, AI-washing, regulatory grey zones
+3. BUSINESS — revenue model vs stated mission, funding structure, VC/PE pressure, PE roll-up playbook.
+   Additionally assess COMPENSATION SIGNALS from the listing:
+   - Is a salary range provided? If yes — assess vs market rates for this role and location
+   - "Competitive salary" without specifics = low pay transparency signal
+   - Glaring mismatch: senior requirements + junior pay
    compensation_signal: "disclosed_above_market"|"disclosed_market"|"disclosed_below_market"|"undisclosed"|"unknown"
-4. REPUTACYJNA - aktywnie korzystaj z wiedzy treningowej o firmie, nie ograniczaj się do treści ogłoszenia:
-   - Glassdoor/Indeed/Blind: aktualna ocena I TREND (rosnący/malejący), dominujące tematy w negatywnych recenzjach pracowników (micromanagement? toxic culture? work-life balance? brak transparentności?)
-   - C-level: poprzednie stanowiska i wyniki tych firm, publicznie znane decyzje, kontrowersje, styl zarządzania
-   - Layoffs: historia zwolnień (kiedy, skala, jak komunikowane), czy wzorzec się powtarza
-   - Media i regulacje: negatywna prasa, dochodzenia, skargi regulacyjne, whistleblowing
-   - Jeśli firma mało znana lub nowy startup - jawnie zaznacz brak danych reputacyjnych zamiast pomijać warstwę
-5. WARTOŚCI - spójność misji z modelem, pułapka impact (misja jako waluta emocjonalna), dostępność vs deklaracje
-6. DOPASOWANIE - mocne strony kandydata vs wymagania, luki, co wzmocnić w aplikacji.
-   Dodatkowo przyznaj score: liczba 1.0–5.0 (jeden decimal).
-   5.0 = idealne dopasowanie CV do JD bez luk. 1.0 = brak dopasowania.
-   4.5+ = aplikuj od razu. 4.0–4.4 = dobre dopasowanie. 3.5–3.9 = warunkowe. Poniżej 3.5 = odradzam.
-   Score musi być spójny z gaps i verdict — nie przyznawaj 4.5 przy liście istotnych luk.
+4. REPUTATION — actively use training knowledge about the company, do not limit yourself to the listing text:
+   - Glassdoor/Indeed/Blind: current rating AND TREND (rising/falling), dominant topics in negative employee reviews (micromanagement? toxic culture? work-life balance? lack of transparency?)
+   - C-level: previous roles and those companies' results, publicly known decisions, controversies, management style
+   - Layoffs: history of layoffs (when, scale, how communicated), whether the pattern repeats
+   - Media and regulations: negative press, investigations, regulatory complaints, whistleblowing
+   - If company is little known or a new startup — explicitly note lack of reputation data instead of skipping the layer
+5. VALUES — mission/model coherence, impact trap (mission as emotional currency), accessibility vs stated values
+6. FIT — candidate strengths vs requirements, gaps, what to strengthen in the application.
+   Additionally assign a score: number 1.0–5.0 (one decimal).
+   5.0 = perfect CV-to-JD fit with no gaps. 1.0 = no fit.
+   4.5+ = apply immediately. 4.0–4.4 = good fit. 3.5–3.9 = conditional. Below 3.5 = not recommended.
+   Score must be consistent with gaps and verdict — do not assign 4.5 with a list of significant gaps.
 
 ══════════════════════════════════════════════════
-ZASADA DOWODU - obowiązuje przy każdej fladze i odrzuceniu
+EVIDENCE RULE — applies to every flag and rejection
 ══════════════════════════════════════════════════
-Dla każdego pola "status": "flag" oraz dla verdict "rejected" MUSISZ podać pole "evidence"
-z konkretnym cytatem lub faktem z treści ogłoszenia który uzasadnia tę ocenę.
-Niedozwolone: ogólne stwierdzenia ("firma działa w branży X"), domysły, wiedza zewnętrzna bez zakotwiczenia w tekście.
-Dozwolone: cytat z ogłoszenia, konkretna nazwa własna z ogłoszenia, jawna informacja o inwestorze/właścicielu podana w tekście.
-Jeśli nie możesz wskazać konkretnego dowodu z ogłoszenia - obniż ocenę z "flag" do "warning" i opisz wątpliwość.
-Dla zero_list_hit: jeśli rzeczywisty pracodawca jest ukryty za pośrednikiem, podaj sygnały identyfikacyjne z treści.
+For every field "status": "flag" and for verdict "rejected" you MUST provide the "evidence" field
+with a specific quote or fact from the listing text that justifies the assessment.
+Not allowed: generic statements ("company operates in industry X"), speculation, external knowledge not anchored in the text.
+Allowed: quote from the listing, specific proper noun from the listing, explicit investor/owner information stated in the text.
+If you cannot identify specific evidence from the listing — downgrade from "flag" to "warning" and describe the concern.
+For zero_list_hit: if the actual employer is hidden behind a recruiter, provide identifying signals from the text.
 
-Wyjątek - warstwa REPUTACYJNA: korzysta z wiedzy modelu o firmie spoza treści ogłoszenia i nie wymaga cytatu z tekstu.
-Evidence dla flag w tej warstwie = konkretna wiedza (np. "Glassdoor 2.9/5, trend -1.1 pkt w 2024, dominujące tematy recenzji: micromanagement i brak work-life balance; CEO poprzednio prowadził firmę X zakończoną masowymi zwolnieniami").
-Ogólne stwierdzenia bez konkretów nadal niedozwolone.
+Exception — REPUTATION layer: uses model knowledge about the company outside the listing text and does not require a quote from it.
+Evidence for flags in this layer = specific knowledge (e.g. "Glassdoor 2.9/5, trend -1.1 pts in 2024, dominant review topics: micromanagement and poor work-life balance; CEO previously ran company X that ended in mass layoffs").
+Generic statements without specifics are still not allowed.
 
 ══════════════════════════════════════════════════
-FORMAT - WYŁĄCZNIE ten JSON, nic więcej
+FORMAT — ONLY this JSON, nothing else
 ══════════════════════════════════════════════════
 {{
-  "company_name": "Rzeczywista nazwa firmy (nie pośrednik). Jeśli firmy nie da się zidentyfikować - użyj dokładnie 'Nieznana'",
-  "role_title": "Tytuł stanowiska",
+  "company_name": "Actual company name (not recruiter). If company cannot be identified — use exactly 'Unknown'",
+  "role_title": "Job title",
   "verdict": "rejected|warning|worth_considering",
-  "verdict_summary": "2-3 zdania: dlaczego ten werdykt, która warstwa zadecydowała, jaki konkretny dowód. Jeśli company_name='Nieznana', pierwsze zdanie musi wyjaśniać dlaczego firmy nie udało się zidentyfikować",
+  "verdict_summary": "2-3 sentences: why this verdict, which layer decided it, what specific evidence. If company_name='Unknown', the first sentence must explain why the company could not be identified",
   "zero_list_hit": false,
   "zero_list_reason": null,
   "zero_list_evidence": null,
@@ -103,44 +103,44 @@ FORMAT - WYŁĄCZNIE ten JSON, nic więcej
   "yellow_list_reason": null,
   "triage": {{
     "status": "ok|warning|flag",
-    "findings": "Obserwacje - dopasowanie roli do profilu i trajektorii, pierwsze sygnały",
-    "evidence": "Cytat lub fakt z ogłoszenia - wymagany gdy status=flag, null w pozostałych przypadkach",
+    "findings": "Observations — role fit against profile and trajectory, initial signals",
+    "evidence": "Quote or fact from the listing — required when status=flag, null otherwise",
     "ghost_job_risk": "low|medium|high",
-    "ghost_job_signals": "Konkretne sygnały uzasadniające ghost_job_risk lub null jeśli low",
+    "ghost_job_signals": "Specific signals justifying ghost_job_risk, or null if low",
     "role_archetype": "engineering|pm|design|data|devrel|leadership|operations|sales|other"
   }},
   "layers": {{
     "product": {{
       "status": "ok|warning|flag",
-      "findings": "Analiza produktu i claims",
-      "evidence": "Cytat lub fakt z ogłoszenia - wymagany gdy status=flag, null w pozostałych przypadkach"
+      "findings": "Product analysis and claims",
+      "evidence": "Quote or fact from the listing — required when status=flag, null otherwise"
     }},
     "business": {{
       "status": "ok|warning|flag",
-      "findings": "Model biznesowy, finansowanie, inwestorzy",
-      "evidence": "Cytat lub fakt z ogłoszenia - wymagany gdy status=flag, null w pozostałych przypadkach",
+      "findings": "Business model, funding, investors",
+      "evidence": "Quote or fact from the listing — required when status=flag, null otherwise",
       "compensation_signal": "disclosed_above_market|disclosed_market|disclosed_below_market|undisclosed|unknown",
-      "compensation_note": "Konkretna notatka np. '15-20k PLN gross, rynkowo 18-24k dla tego poziomu' lub null
+      "compensation_note": "Specific note e.g. '15-20k PLN gross, market rate 18-24k for this level' or null
     }},
     "reputation": {{
       "status": "ok|warning|flag",
-      "findings": "C-level, Glassdoor trend, kontrowersje, layoffs",
-      "evidence": "Cytat lub fakt z ogłoszenia - wymagany gdy status=flag, null w pozostałych przypadkach"
+      "findings": "C-level, Glassdoor trend, controversies, layoffs",
+      "evidence": "Quote or fact from the listing — required when status=flag, null otherwise"
     }},
     "values": {{
       "status": "ok|warning|flag",
-      "findings": "Spójność misji, pułapki, dostępność vs deklaracje",
-      "evidence": "Cytat lub fakt z ogłoszenia - wymagany gdy status=flag, null w pozostałych przypadkach"
+      "findings": "Mission coherence, traps, accessibility vs stated values",
+      "evidence": "Quote or fact from the listing — required when status=flag, null otherwise"
     }}
   }},
   "fit": {{
     "status": "ok|warning|flag",
     "score": 3.5,
-    "strengths": "Co z profilu kandydata pasuje do tej roli",
-    "gaps": "Czego brakuje lub co jest niedopasowane",
-    "improve": "Co podkreślić/uzupełnić w aplikacji jeśli warto aplikować"
+    "strengths": "What in the candidate profile fits this role",
+    "gaps": "What is missing or misaligned",
+    "improve": "What to highlight or add to the application if worth applying"
   }},
-  "gut_feeling": "Syntetyczna obserwacja - co budzi przeczucie, czego analiza wprost nie uchwytuje"
+  "gut_feeling": "Synthetic observation — what triggers intuition that the analysis doesn't capture directly"
 }}"""
 
 
@@ -151,58 +151,58 @@ __all__ = ["analyze", "build_system", "AnalysisResult", "User"]
 
 def build_system(user: User) -> str:
     """
-    Zbuduj systemowy prompt z konfiguracji użytkownika.
+    Build the system prompt from user configuration.
 
     Args:
-        user: Słownik z polami: cv, zero_list, yellow_list, criteria
+        user: Dict with fields: cv, zero_list, yellow_list, criteria
 
     Returns:
-        Formatowany string systemowego promptu
+        Formatted system prompt string
     """
-    cv = (user["cv"] or "").strip() or "[Brak CV - dodaj w Ustawieniach]"
+    cv = (user["cv"] or "").strip() or "[No CV — add it in Settings]"
     zero_list = (user["zero_list"] or "").strip()
-    yellow_list = (user["yellow_list"] or "").strip() or "[Brak listy żółtej - wszystkie kategorie traktowane binarnie]"
+    yellow_list = (user["yellow_list"] or "").strip() or "[No yellow list — all categories treated as binary]"
     criteria = (user["criteria"] or "").strip()
     return SYSTEM_TEMPLATE.format(cv=cv, zero_list=zero_list, yellow_list=yellow_list, criteria=criteria)
 
 
 def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> AnalysisResult:
     """
-    Wywołaj API Anthropic do analizy ogłoszenia o pracę.
+    Call the Anthropic API to analyze a job listing.
 
     Args:
-        user: Konfiguracja użytkownika (CV, listy zero/żółte, kryteria)
-        input_text: Treść ogłoszenia (jeśli input_mode='text') lub URL (jeśli 'url')
-        input_mode: 'url' - pobierz z URL, 'text' - użyj podanej treści
-        api_key: Klucz API Anthropic
+        user: User configuration (CV, zero/yellow lists, criteria)
+        input_text: Listing text (if input_mode='text') or URL (if 'url')
+        input_mode: 'url' - fetch from URL, 'text' - use provided text
+        api_key: Anthropic API key
 
     Returns:
-        Parsowany wynik analizy jako słownik (JSON z odpowiedzi modelu)
+        Parsed analysis result as a dict (JSON from the model response)
 
     Raises:
-        Exception: Gdy API zwróci błąd lub JSON nie może być sparowany
+        Exception: When the API returns an error or the JSON cannot be parsed
     """
-    # Skonstruuj wiadomość użytkownika na podstawie trybu wejścia
+    # Build the user message based on input mode
     if input_mode == "url":
         if not input_text.startswith("http"):
-            # użytkownik wkleił treść, ale tryb to URL
+            # user pasted text but mode is URL
             user_msg: str = (
-                f"Przeanalizuj poniższe ogłoszenie (tryb URL, ale dostarczona treść):\n\n{input_text}\n\n"
-                f"Jeśli ogłoszenie pochodzi od pośrednika rekrutacyjnego, zidentyfikuj rzeczywistego pracodawcę."
+                f"Analyze the following listing (URL mode, but text provided):\n\n{input_text}\n\n"
+                f"If the listing comes from a recruitment agency, identify the actual employer."
             )
         else:
             user_msg: str = (
-                f"Przeanalizuj ofertę pracy dostępną pod adresem: {input_text}\n\n"
-                f"Jeśli nie możesz pobrać strony, przeanalizuj na podstawie domeny i swojej wiedzy o tej firmie. "
-                f"Zawsze zidentyfikuj rzeczywistego pracodawcę jeśli ogłoszenie pochodzi od pośrednika."
+                f"Analyze the job listing at: {input_text}\n\n"
+                f"If you cannot fetch the page, analyze based on the domain and your knowledge of this company. "
+                f"Always identify the actual employer if the listing comes from a recruiter."
             )
     else:
         user_msg: str = (
-            f"Przeanalizuj poniższe ogłoszenie o pracę:\n\n{input_text}\n\n"
-            f"Jeśli ogłoszenie pochodzi od pośrednika rekrutacyjnego, zidentyfikuj rzeczywistego pracodawcę."
+            f"Analyze the following job listing:\n\n{input_text}\n\n"
+            f"If the listing comes from a recruitment agency, identify the actual employer."
         )
 
-    # Skonstruuj payload do API
+    # Build the API payload
     payload_bytes: bytes = json.dumps({
         "model": MODEL,
         "max_tokens": 8000,
@@ -236,9 +236,9 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> Analy
             msg = body
         raise Exception(f"API error {e.code}: {msg}. Model: {MODEL}")
     except urllib.error.URLError as e:
-        raise Exception(f"Brak połączenia z API: {e.reason}")
+        raise Exception(f"No connection to API: {e.reason}")
 
-    # Wyodrębnij bloki thinking i text z odpowiedzi
+    # Extract thinking and text blocks from the response
     thinking_text: str = "".join(
         b.get("thinking", "") for b in data.get("content", [])
         if b.get("type") == "thinking"
@@ -248,11 +248,11 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> Analy
         if b.get("type") == "text"
     )
 
-    # Wyodrębnij i sparuj JSON z odpowiedzi
+    # Extract and parse JSON from the response
     start: int = text.find("{")
     end: int = text.rfind("}") + 1
     if start == -1 or end == 0 or start > end - 1:
-        raise Exception(f"Model nie zwrócił poprawnego JSON. Fragment: {text[:300]}")
+        raise Exception(f"Model did not return valid JSON. Fragment: {text[:300]}")
 
     try:
         result: AnalysisResult = json.loads(text[start:end])
@@ -260,4 +260,4 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> Analy
             result["_reasoning"] = thinking_text
         return result
     except json.JSONDecodeError as e:
-        raise Exception(f"Błąd parsowania JSON: {e}. Fragment: {text[start:start+200]}")
+        raise Exception(f"JSON parse error: {e}. Fragment: {text[start:start+200]}")
