@@ -10,12 +10,14 @@ os.close(_db_fd)
 import database
 database.DB_PATH = pathlib.Path(_db_path)
 
+import app as _app_module
 from app import app as flask_app
 
 
 @pytest.fixture(scope="session")
 def app():
     flask_app.config.update({"TESTING": True, "SECRET_KEY": "test-secret"})
+    _app_module.API_KEY = "test-api-key"
     from database import init_db
     init_db()
     # Create a test user (user_id=1)

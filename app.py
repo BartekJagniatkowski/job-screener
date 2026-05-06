@@ -17,7 +17,8 @@ from database import (
     init_db, get_user, create_user, get_user_by_id,
     update_user_profile, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
-    update_company_rejected, update_job_status, verify_password, get_analytics
+    update_company_rejected, update_job_status, verify_password, get_analytics,
+    create_analysis, update_analysis_status, get_analysis,
 )
 from analyzer import analyze
 from scraper import fetch as scrape_url, normalize_url
@@ -163,6 +164,22 @@ def dashboard() -> str:
                            has_cv=has_cv, has_api_key=has_api_key)
 
 
+def _run_analysis_bg(
+    analysis_id: str,
+    user: dict,
+    input_text: str,
+    url: str,
+    scraped: bool,
+) -> None:
+    try:
+        update_analysis_status(analysis_id, "running")
+        result = analyze(user, input_text, "text", API_KEY)
+        job_id = save_job(user["id"], result, source_url=url, source_text=input_text)
+        update_analysis_status(analysis_id, "done", result_job_id=job_id)
+    except Exception as e:
+        update_analysis_status(analysis_id, "error", error=str(e))
+
+
 @app.route("/analyze", methods=["POST"])
 @login_required
 def run_analyze():
@@ -212,15 +229,33 @@ def run_analyze():
                 }
             })
 
-    try:
-        result = analyze(user, input_text, "text", API_KEY)
-        save_job(user["id"], result, source_url=url, source_text=input_text)
-        return jsonify({"ok": True, "result": result, "scraped": scraped,
-                        "source_url": url, "source_text": input_text})
-    except sqlite3.IntegrityError as e:
-        return jsonify({"error": f"Database integrity error: {e}"}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    source_label = url or (input_text or "")[:60].replace("\n", " ")
+    analysis_id = create_analysis(user["id"], source_label)
+    t = threading.Thread(
+        target=_run_analysis_bg,
+        args=(analysis_id, {k: user[k] for k in user.keys()}, input_text, url, scraped),
+        daemon=True,
+    )
+    t.start()
+    return jsonify({"analysis_id": analysis_id})
+
+
+@app.route("/analysis_status/<analysis_id>")
+@login_required
+def analysis_status(analysis_id: str):
+    user = current_user()
+    row = get_analysis(analysis_id, user["id"])
+    if row is None:
+        return jsonify({"error": "Not found"}), 404
+    return jsonify({
+        "status": row["status"],
+        "source_label": row["source_label"],
+        "result_job_id": row["result_job_id"],
+        "company": row["company"],
+        "role": row["role"],
+        "verdict": row["verdict"],
+        "error": row["error"],
+    })
 
 
 @app.route("/check_source", methods=["POST"])
