@@ -29,6 +29,7 @@
   </div>
 </nav>
 {% endif %}
+<div id="analysis-banner" class="analysis-banner" role="status" aria-live="polite"></div>
 
 <div class="container">
   {% with messages = get_flashed_messages() %}
@@ -41,6 +42,118 @@
   {% block content %}{% endblock %}
 </div>
 
+<script>
+(function () {
+  var POLL_MS = 3000;
+  var banner = document.getElementById('analysis-banner');
+  if (!banner) return;
+  var timer = null;
+
+  function escHtml(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function vLabel(v) {
+    return v === 'worth_considering' ? 'worth considering'
+         : v === 'warning' ? 'needs review'
+         : v === 'rejected' ? 'rejected' : (v || '');
+  }
+
+  function showRunning(src) {
+    banner.className = 'analysis-banner is-running is-visible';
+    banner.onclick = null;
+    banner.innerHTML =
+      '<span class="analysis-banner-spinner"></span>' +
+      '<span class="analysis-banner-label">Analyzing — </span>' +
+      '<span class="analysis-banner-source">' + escHtml(src) + '</span>' +
+      '<span class="analysis-banner-dots">' +
+        '<span class="analysis-banner-dot" style="animation:pulse-dot 1.2s ease-in-out 0s infinite"></span>' +
+        '<span class="analysis-banner-dot" style="animation:pulse-dot 1.2s ease-in-out 0.4s infinite"></span>' +
+        '<span class="analysis-banner-dot" style="animation:pulse-dot 1.2s ease-in-out 0.8s infinite"></span>' +
+      '</span>';
+  }
+
+  function showDone(d) {
+    banner.className = 'analysis-banner is-done is-visible';
+    var bc = 'analysis-banner-badge badge-' + (d.verdict || '');
+    banner.innerHTML =
+      '<span class="analysis-banner-icon">✓</span>' +
+      '<span class="analysis-banner-label">Analysis done — </span>' +
+      '<span class="analysis-banner-source">' + escHtml(d.company) + (d.role ? ' · ' + escHtml(d.role) : '') + '</span>' +
+      '<span class="' + bc + '">' + vLabel(d.verdict) + '</span>' +
+      '<span class="analysis-banner-action">View result →</span>';
+    banner.onclick = function () {
+      localStorage.removeItem('activeAnalysis');
+      if (timer) clearInterval(timer);
+      window.location.href = '/job/' + d.result_job_id;
+    };
+  }
+
+  function showError(msg) {
+    banner.className = 'analysis-banner is-error is-visible';
+    banner.onclick = null;
+    banner.innerHTML =
+      '<span class="analysis-banner-icon">✕</span>' +
+      '<span class="analysis-banner-label">Analysis failed — </span>' +
+      '<span class="analysis-banner-source">' + escHtml(msg || 'Unknown error') + '</span>' +
+      '<span class="analysis-banner-action" id="ab-dismiss">Dismiss ×</span>';
+    var btn = document.getElementById('ab-dismiss');
+    if (btn) btn.onclick = function (e) {
+      e.stopPropagation();
+      localStorage.removeItem('activeAnalysis');
+      banner.className = 'analysis-banner';
+      banner.innerHTML = '';
+      if (timer) clearInterval(timer);
+    };
+  }
+
+  function poll(id, src) {
+    fetch('/analysis_status/' + id)
+      .then(function (r) {
+        if (r.status === 404) {
+          localStorage.removeItem('activeAnalysis');
+          banner.className = 'analysis-banner';
+          if (timer) clearInterval(timer);
+          return null;
+        }
+        return r.json();
+      })
+      .then(function (d) {
+        if (!d) return;
+        if (d.status === 'pending' || d.status === 'running') {
+          showRunning(d.source_label || src);
+        } else if (d.status === 'done') {
+          if (timer) clearInterval(timer);
+          showDone(d);
+        } else if (d.status === 'error') {
+          if (timer) clearInterval(timer);
+          localStorage.removeItem('activeAnalysis');
+          showError(d.error);
+        }
+      })
+      .catch(function () { /* silent retry */ });
+  }
+
+  function startPolling(id, src) {
+    showRunning(src);
+    poll(id, src);
+    timer = setInterval(function () { poll(id, src); }, POLL_MS);
+  }
+
+  var stored = localStorage.getItem('activeAnalysis');
+  if (stored) {
+    try {
+      var active = JSON.parse(stored);
+      if (active && active.id) startPolling(active.id, active.source_label || '');
+    } catch (e) { localStorage.removeItem('activeAnalysis'); }
+  }
+
+  window.addEventListener('analysisStarted', function (e) {
+    if (timer) clearInterval(timer);
+    startPolling(e.detail.id, e.detail.source_label || '');
+  });
+})();
+</script>
 {% block scripts %}{% endblock %}
 <script>
   (function(){
