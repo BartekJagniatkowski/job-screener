@@ -52,6 +52,75 @@ nav { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex;
 .nav-links a:hover { color: var(--text); }
 .nav-links a.active { color: var(--text); }
 
+/* ── analysis banner ─────────────────────────────────────────────── */
+.analysis-banner {
+  display: none;
+  width: 100%;
+  padding: 8px 20px;
+  font-family: var(--fm);
+  font-size: var(--fs-xs);
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
+}
+.analysis-banner.is-visible { display: flex; }
+.analysis-banner.is-running {
+  background: #161a1f;
+  border-bottom-color: #1e2428;
+  color: var(--muted);
+}
+.analysis-banner.is-done {
+  background: #0f1a12;
+  border-bottom-color: #1a2e1c;
+  color: var(--muted);
+  cursor: pointer;
+}
+.analysis-banner.is-error {
+  background: #1a0f0f;
+  border-bottom-color: #2e1a1a;
+  color: var(--muted);
+}
+.analysis-banner-spinner {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin-banner 0.8s linear infinite;
+  display: inline-block;
+}
+.analysis-banner-icon { flex-shrink: 0; font-size: 14px; }
+.analysis-banner-label { color: var(--muted); }
+.analysis-banner-source { color: var(--dim); }
+.analysis-banner-badge {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: var(--fs-2xs);
+  border: 1px solid currentColor;
+  margin-left: 4px;
+}
+.analysis-banner-badge.badge-worth_considering { color: #4a9eff; }
+.analysis-banner-badge.badge-warning { color: #f0c040; }
+.analysis-banner-badge.badge-rejected { color: #e74c3c; }
+.analysis-banner-action { margin-left: auto; color: var(--dim); font-size: var(--fs-xs); }
+.analysis-banner-dots {
+  margin-left: auto;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.analysis-banner-dot {
+  width: 22px;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  display: inline-block;
+}
+@keyframes spin-banner { to { transform: rotate(360deg); } }
+@keyframes pulse-dot { 0%,100%{opacity:0.15} 50%{opacity:1} }
+
 /* ── layout ────────────────────────────────────────────────────────────── */
 .container { max-width: 1280px; margin: 0 auto; padding: 40px 24px 80px; }
 .page-title { font-family: var(--fd); font-size: var(--fs-3xl); font-weight: 200; letter-spacing: -0.03em; margin-bottom: 6px; }
