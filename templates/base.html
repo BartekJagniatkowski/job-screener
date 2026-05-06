@@ -61,6 +61,7 @@
 
   function showRunning(src) {
     banner.className = 'analysis-banner is-running is-visible';
+    document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
     banner.onclick = null;
     banner.innerHTML =
       '<span class="analysis-banner-spinner"></span>' +
@@ -70,6 +71,7 @@
 
   function showDone(d) {
     banner.className = 'analysis-banner is-done is-visible';
+    document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
     var bc = 'analysis-banner-badge badge-' + (d.verdict || '');
     banner.innerHTML =
       '<span class="analysis-banner-icon">✓</span>' +
@@ -82,6 +84,7 @@
       if (timer) clearInterval(timer);
       banner.className = 'analysis-banner';
       banner.innerHTML = '';
+      document.documentElement.style.setProperty('--sticky-top', '0px');
       if (typeof openModal === 'function') {
         openModal(d.result_job_id);
       } else {
@@ -92,6 +95,7 @@
 
   function showError(msg) {
     banner.className = 'analysis-banner is-error is-visible';
+    document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
     banner.onclick = null;
     banner.innerHTML =
       '<span class="analysis-banner-icon">✕</span>' +
@@ -104,6 +108,7 @@
       localStorage.removeItem('activeAnalysis');
       banner.className = 'analysis-banner';
       banner.innerHTML = '';
+      document.documentElement.style.setProperty('--sticky-top', '0px');
       if (timer) clearInterval(timer);
     };
   }
@@ -114,6 +119,7 @@
         if (r.status === 404) {
           localStorage.removeItem('activeAnalysis');
           banner.className = 'analysis-banner';
+          document.documentElement.style.setProperty('--sticky-top', '0px');
           if (timer) clearInterval(timer);
           return null;
         }
