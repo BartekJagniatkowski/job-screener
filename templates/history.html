@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}History — Job Screener{% endblock %}
+{% block container_class %}container-full{% endblock %}
 {% block content %}
 <div class="page-title">Analysis history</div>
 <p class="page-sub">All analyzed listings. <a href="{{ url_for('export') }}" style="color:var(--accent);">Download CSV →</a></p>
@@ -22,14 +23,25 @@
 {% else %}
 <div class="filter-bar">
   <span class="filter-label">Show:</span>
-  <button class="filter-btn active fb-worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
-  <button class="filter-btn active fb-warning" onclick="toggleFilter('warning', this)">Needs review</button>
-  <button class="filter-btn active fb-rejected_soft" onclick="toggleFilter('rejected_soft', this)">Rejected (AI)</button>
-  <button class="filter-btn active fb-rejected" onclick="toggleFilter('rejected', this)">Rejected</button>
-  <button class="filter-btn active fb-applied" onclick="toggleFilter('applied', this)">Applied</button>
-  <button class="filter-btn active fb-company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
+  <button class="filter-btn fb-all" onclick="showAll()">Show all</button>
+  <button class="filter-btn active fb-worth_considering" data-cat="worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
+  <button class="filter-btn active fb-warning" data-cat="warning" onclick="toggleFilter('warning', this)">Needs review</button>
+  <button class="filter-btn active fb-rejected_soft" data-cat="rejected_soft" onclick="toggleFilter('rejected_soft', this)">Rejected (AI)</button>
+  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">Rejected</button>
+  <button class="filter-btn active fb-applied" data-cat="applied" onclick="toggleFilter('applied', this)">Applied</button>
+  <button class="filter-btn active fb-company_rejected" data-cat="company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
 </div>
-<table>
+<div class="table-wrap">
+<table style="table-layout:fixed">
+  <colgroup>
+    <col class="col-date">
+    <col>
+    <col>
+    <col class="col-badge">
+    <col class="col-l0">
+    <col class="col-layers">
+    <col class="col-fit">
+  </colgroup>
   <thead>
     <tr>
       <th>Date</th>
@@ -37,13 +49,8 @@
       <th>Company</th>
       <th>Verdict</th>
       <th>L0</th>
-      <th>Triage</th>
-      <th>Product</th>
-      <th>Business</th>
-      <th>Reput.</th>
-      <th>Values</th>
+      <th>Layers</th>
       <th>Fit</th>
-      <th>Status</th>
     </tr>
   </thead>
   <tbody>
@@ -59,21 +66,26 @@
       <td class="td-date">{{ j.analyzed_at }}</td>
       <td class="td-role">{{ j.role or '—' }}</td>
       <td class="fw-500">{{ j.company or 'Unknown' }}</td>
-      <td>{%- if j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
-          {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-          {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
+      <td style="white-space:nowrap">
+        {%- if j.company_rejected -%}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
+        {%- elif j.applied -%}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
+        {%- else -%}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
+        {%- endif %}
+      </td>
       <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'YES' if j.zero_list_hit else '—' }}</td>
-      <td><span class="dot dot-{{ j.triage_status or 'unknown' }}"></span></td>
-      <td><span class="dot dot-{{ j.product_status or 'unknown' }}"></span></td>
-      <td><span class="dot dot-{{ j.business_status or 'unknown' }}"></span></td>
-      <td><span class="dot dot-{{ j.reputation_status or 'unknown' }}"></span></td>
-      <td><span class="dot dot-{{ j.values_status or 'unknown' }}"></span></td>
-      <td><span class="dot dot-{{ j.fit_status or 'unknown' }}"></span></td>
-      <td class="td-mono {% if j.company_rejected %}td-orange{% elif j.applied %}td-green{% else %}td-dim{% endif %}">{{ '✕' if j.company_rejected else ('✓' if j.applied else '—') }}</td>
+      <td class="td-layers">
+        <span class="dot dot-{{ j.triage_status or 'unknown' }}"     title="Triage: {{ j.triage_status or 'unknown' }}"></span>
+        <span class="dot dot-{{ j.product_status or 'unknown' }}"    title="Product: {{ j.product_status or 'unknown' }}"></span>
+        <span class="dot dot-{{ j.business_status or 'unknown' }}"   title="Business: {{ j.business_status or 'unknown' }}"></span>
+        <span class="dot dot-{{ j.reputation_status or 'unknown' }}" title="Reputation: {{ j.reputation_status or 'unknown' }}"></span>
+        <span class="dot dot-{{ j.values_status or 'unknown' }}"     title="Values: {{ j.values_status or 'unknown' }}"></span>
+      </td>
+      <td class="td-mono {% if j.fit_score is not none %}{% if j.fit_status == 'ok' %}td-green{% elif j.fit_status == 'warning' %}td-warning{% elif j.fit_status == 'flag' %}td-red{% else %}td-dim{% endif %}{% else %}td-dim{% endif %}">{{ "%.1f"|format(j.fit_score) ~ '/5' if j.fit_score is not none else '—' }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
 {% endif %}
 {% endblock %}
 
@@ -200,12 +212,6 @@ function updateTableRow(jobId, status, verdict) {
     }
     badge.dataset.verdict = verdict;
   }
-  const statusCell = row.querySelector('td:last-child');
-  if (statusCell) {
-    if (status === 'company_rejected') { statusCell.textContent = '✕'; statusCell.className = 'td-mono td-orange'; }
-    else if (status === 'applied')     { statusCell.textContent = '✓'; statusCell.className = 'td-mono td-green'; }
-    else                               { statusCell.textContent = '—'; statusCell.className = 'td-mono td-dim'; }
-  }
 }
 
 // reads current state from the freshly loaded partial DOM
@@ -322,13 +328,22 @@ function applyFilter() {
   });
 }
 
+function showAll() {
+  hiddenCategories.clear();
+  localStorage.setItem(FILTER_STORAGE_KEY, '[]');
+  document.querySelectorAll('.filter-btn[data-cat]').forEach(b => b.classList.add('active'));
+  applyFilter();
+}
+
 // restore button states on load
 (function() {
   hiddenCategories.forEach(cat => {
-    const btn = document.querySelector(`.filter-btn.fb-${cat}`);
+    const btn = document.querySelector(`.filter-btn[data-cat="${cat}"]`);
     if (btn) btn.classList.remove('active');
   });
   applyFilter();
+  var fb = document.querySelector('.filter-bar');
+  if (fb) document.documentElement.style.setProperty('--filter-bar-h', fb.offsetHeight + 'px');
 })();
 
 async function saveUrl() {
