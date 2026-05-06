@@ -67,7 +67,8 @@ CREATE TABLE IF NOT EXISTS analyses (
     finished_at TIMESTAMP,
     result_job_id INTEGER,
     error TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (result_job_id) REFERENCES jobs(id)
 );
 """
 
@@ -366,25 +367,27 @@ def create_analysis(user_id: int, source_label: str) -> str:
 def update_analysis_status(
     analysis_id: str,
     status: str,
-    result_job_id: int = None,
-    error: str = None,
+    result_job_id: Optional[int] = None,
+    error: Optional[str] = None,
 ) -> None:
     with get_conn() as conn:
         if status == "done":
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE analyses SET status=?, result_job_id=?, finished_at=datetime('now') WHERE id=?",
                 (status, result_job_id, analysis_id),
             )
         elif status == "error":
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE analyses SET status=?, error=?, finished_at=datetime('now') WHERE id=?",
                 (status, error, analysis_id),
             )
         else:
-            conn.execute(
+            cur = conn.execute(
                 "UPDATE analyses SET status=? WHERE id=?",
                 (status, analysis_id),
             )
+        if cur.rowcount == 0:
+            raise ValueError(f"analysis_id not found: {analysis_id}")
 
 
 def get_analysis(analysis_id: str, user_id: int) -> Optional[sqlite3.Row]:
