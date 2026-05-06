@@ -72,9 +72,39 @@ def test_archetype_distribution(tmp_path):
     assert ad.get('pm', 0) == 3
     assert ad.get('engineering', 0) == 2
 
+def test_funnel_qualifying(tmp_path):
+    uid = _seed_db(tmp_path)
+    data = database.get_analytics(uid)
+    # seed: 3 worth_considering + 1 warning = 4 qualifying
+    assert data['funnel']['qualifying'] == 4
+
+def test_most_flagged_layer(tmp_path):
+    uid = _seed_db(tmp_path)
+    data = database.get_analytics(uid)
+    mfl = data['most_flagged_layer']
+    assert mfl is not None
+    assert isinstance(mfl, tuple) and len(mfl) == 2
+    assert isinstance(mfl[0], str)   # layer label e.g. 'Triage'
+    assert isinstance(mfl[1], int) and mfl[1] >= 1
+
+def test_layer_flag_counts(tmp_path):
+    uid = _seed_db(tmp_path)
+    data = database.get_analytics(uid)
+    counts = data['layer_flag_counts']
+    assert len(counts) == 6  # one entry per layer
+    for i in range(len(counts) - 1):
+        assert counts[i][1] >= counts[i + 1][1], "list must be sorted descending"
+    for label, count in counts:
+        assert isinstance(label, str)
+        assert isinstance(count, int) and count >= 0
+
 if __name__ == '__main__':
     import tempfile
-    tests = [test_verdict_distribution, test_funnel, test_layer_flags, test_fit_score_avg, test_archetype_distribution]
+    tests = [
+        test_verdict_distribution, test_funnel, test_layer_flags,
+        test_fit_score_avg, test_archetype_distribution,
+        test_funnel_qualifying, test_most_flagged_layer, test_layer_flag_counts,
+    ]
     for t in tests:
         with tempfile.TemporaryDirectory() as tmp:
             t(tmp)

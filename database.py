@@ -797,6 +797,25 @@ def get_analytics(user_id: int) -> dict:
         if arch:
             archetype_distribution[arch] = archetype_distribution.get(arch, 0) + 1
 
+    funnel['qualifying'] = verdict_distribution['worth_considering'] + verdict_distribution['warning']
+
+    layer_labels = {
+        'triage': 'Triage', 'product': 'Product', 'business': 'Business',
+        'reputation': 'Reputation', 'values': 'Values', 'fit': 'Skills fit',
+    }
+    most_flagged_layer = None
+    max_flags = 0
+    for _layer in layers:
+        fc = layer_flags[_layer]['flag']
+        if fc > max_flags:
+            max_flags = fc
+            most_flagged_layer = (layer_labels[_layer], fc)
+
+    layer_flag_counts = sorted(
+        [(layer_labels[l], layer_flags[l]['flag']) for l in layers],
+        key=lambda x: -x[1],
+    )
+
     fit_score_avg = round(sum(fit_scores) / len(fit_scores), 2) if fit_scores else None
 
     buckets = [('1.0–2.0', 0), ('2.0–3.0', 0), ('3.0–4.0', 0), ('4.0–5.0', 0)]
@@ -814,6 +833,8 @@ def get_analytics(user_id: int) -> dict:
         'verdict_distribution': verdict_distribution,
         'funnel': funnel,
         'layer_flags': layer_flags,
+        'most_flagged_layer': most_flagged_layer,
+        'layer_flag_counts': layer_flag_counts,
         'fit_score_avg': fit_score_avg,
         'fit_score_distribution': buckets,
         'archetype_distribution': dict(sorted(archetype_distribution.items(), key=lambda x: -x[1])),
