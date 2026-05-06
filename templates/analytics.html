@@ -9,117 +9,124 @@
 <div class="notice">No analyses yet. <a href="{{ url_for('dashboard') }}" class="link-accent">Analyze your first listing →</a></div>
 {% else %}
 
-{# ── Funnel summary ─────────────────────────────────────────────── #}
-<div class="analytics-grid">
-  <div class="stat-card">
-    <div class="stat-card-label">Total analyzed</div>
-    <div class="stat-card-value">{{ data.funnel.total }}</div>
+{# ── TL;DR ──────────────────────────────────────────────────────── #}
+<div class="analytics-tldr">
+  <div class="analytics-tldr-label">Summary</div>
+  <div class="analytics-tldr-text">
+    You've analyzed <strong>{{ data.funnel.total }}</strong> job{{ 's' if data.funnel.total != 1 else '' }}{% if data.funnel.applied > 0 %} and applied to <strong>{{ data.funnel.applied }}</strong>{% if data.funnel.qualifying > 0 %} — a <strong>{{ (data.funnel.applied / data.funnel.qualifying * 100)|round|int }}%</strong> follow-through rate on qualifying listings{% endif %}{% endif %}.{% if data.most_flagged_layer %} <strong>{{ data.most_flagged_layer[0] }}</strong> is your most common blocker ({{ data.most_flagged_layer[1] }} flag{{ 's' if data.most_flagged_layer[1] != 1 else '' }}).{% endif %}{% if data.fit_score_avg is not none %} Average fit score across scored analyses is <strong>{{ "%.1f"|format(data.fit_score_avg) }}/5</strong>.{% endif %}
   </div>
-  <div class="stat-card">
-    <div class="stat-card-label">Applied</div>
-    <div class="stat-card-value">{{ data.funnel.applied }}</div>
-    <div class="stat-card-sub">
-      {% if data.funnel.total > 0 %}
-        {{ "%.0f"|format(data.funnel.applied / data.funnel.total * 100) }}% of total
-      {% endif %}
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-card-label">Rejected by company</div>
-    <div class="stat-card-value">{{ data.funnel.company_rejected }}</div>
-    <div class="stat-card-sub">
-      {% if data.funnel.applied > 0 %}
-        {{ "%.0f"|format(data.funnel.company_rejected / data.funnel.applied * 100) }}% of applied
-      {% endif %}
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-card-label">Zero rule hits</div>
-    <div class="stat-card-value">{{ data.zero_list_hits }}</div>
-    <div class="stat-card-sub">auto-rejected without analysis</div>
-  </div>
-  {% if data.fit_score_avg is not none %}
-  <div class="stat-card">
-    <div class="stat-card-label">Avg. fit score</div>
-    <div class="stat-card-value">{{ "%.1f"|format(data.fit_score_avg) }}<span style="font-size:var(--fs-lg); color:var(--muted)">/5</span></div>
-    <div class="stat-card-sub">across scored analyses</div>
-  </div>
-  {% endif %}
 </div>
 
-{# ── Verdict distribution ────────────────────────────────────────── #}
-<div class="analytics-section-title">Verdict distribution</div>
-<div class="card card-mb">
-  <div class="card-body">
-    {% set vd = data.verdict_distribution %}
-    {% set vd_total = vd.worth_considering + vd.warning + vd.rejected_confirmed + vd.rejected_soft %}
-    {% if vd_total > 0 %}
-    <div class="bar-chart">
-      {% for label, count, cls in [
-        ('Worth considering', vd.worth_considering, 'bar-worth'),
-        ('Needs review',      vd.warning,           'bar-warning'),
-        ('Rejected',          vd.rejected_confirmed,'bar-flag'),
-        ('Rejected (AI)',     vd.rejected_soft,     'bar-neutral'),
-      ] %}
-      <div class="bar-row">
-        <div class="bar-label">{{ label }}</div>
-        <div class="bar-track">
-          <div class="bar-fill {{ cls }}" style="width:{{ (count / vd_total * 100)|round }}%"></div>
-        </div>
-        <div class="bar-count">{{ count }}</div>
+{# ── Application pipeline ───────────────────────────────────────── #}
+<div class="analytics-section-title">Application pipeline</div>
+<div class="analytics-funnel">
+  <div class="funnel-step">
+    <div class="funnel-block">
+      <div class="funnel-num">{{ data.funnel.total }}</div>
+      <div class="funnel-lbl">Analyzed</div>
+    </div>
+    <div class="funnel-pct"></div>
+  </div>
+  <div class="funnel-arrow">›</div>
+  <div class="funnel-step funnel-step-qualifying">
+    <div class="funnel-block">
+      <div class="funnel-num">{{ data.funnel.qualifying }}</div>
+      <div class="funnel-lbl">Qualifying</div>
+    </div>
+    <div class="funnel-pct">
+      {%- if data.funnel.total > 0 %}{{ (data.funnel.qualifying / data.funnel.total * 100)|round|int }}% of analyzed{% endif -%}
+    </div>
+  </div>
+  <div class="funnel-arrow">›</div>
+  <div class="funnel-step funnel-step-applied">
+    <div class="funnel-block">
+      <div class="funnel-num">{{ data.funnel.applied }}</div>
+      <div class="funnel-lbl">Applied</div>
+    </div>
+    <div class="funnel-pct">
+      {%- if data.funnel.qualifying > 0 %}{{ (data.funnel.applied / data.funnel.qualifying * 100)|round|int }}% of qualifying{% endif -%}
+    </div>
+  </div>
+  <div class="funnel-arrow">›</div>
+  <div class="funnel-step funnel-step-corej">
+    <div class="funnel-block">
+      <div class="funnel-num">{{ data.funnel.company_rejected }}</div>
+      <div class="funnel-lbl">Co. rejected</div>
+    </div>
+    <div class="funnel-pct">
+      {%- if data.funnel.applied > 0 %}{{ (data.funnel.company_rejected / data.funnel.applied * 100)|round|int }}% of applied{% endif -%}
+    </div>
+  </div>
+</div>
+{% if data.zero_list_hits > 0 %}
+<p class="zero-rule-note"><strong>{{ data.zero_list_hits }}</strong> auto-rejected by Zero Rule — not included above.</p>
+{% endif %}
+
+{# ── Breakdown grid ─────────────────────────────────────────────── #}
+<div class="analytics-section-title">Breakdown</div>
+<div class="grid2">
+
+  <div class="card analytics-breakdown-card">
+    <div class="card-body">
+      <div class="analytics-card-title">Verdict distribution</div>
+      {% set vd = data.verdict_distribution %}
+      {% set vd_total = vd.worth_considering + vd.warning + vd.rejected_confirmed + vd.rejected_soft %}
+      {% if vd_total > 0 %}
+      <div class="stacked-bar">
+        {% if vd.worth_considering > 0 %}<div class="stacked-bar-seg seg-worth" style="width:{{ (vd.worth_considering / vd_total * 100)|round }}%"></div>{% endif %}
+        {% if vd.warning > 0 %}<div class="stacked-bar-seg seg-warning" style="width:{{ (vd.warning / vd_total * 100)|round }}%"></div>{% endif %}
+        {% if vd.rejected_confirmed > 0 %}<div class="stacked-bar-seg seg-rejected" style="width:{{ (vd.rejected_confirmed / vd_total * 100)|round }}%"></div>{% endif %}
+        {% if vd.rejected_soft > 0 %}<div class="stacked-bar-seg seg-soft" style="width:{{ (vd.rejected_soft / vd_total * 100)|round }}%"></div>{% endif %}
       </div>
-      {% endfor %}
+      <div class="stacked-legend">
+        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-worth"></span>Worth considering — {{ vd.worth_considering }}</div>
+        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-warning"></span>Needs review — {{ vd.warning }}</div>
+        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-rejected"></span>Rejected — {{ vd.rejected_confirmed }}</div>
+        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-soft"></span>Rejected (AI) — {{ vd.rejected_soft }}</div>
+      </div>
+      {% else %}
+      <div class="td-dim">No verdict data.</div>
+      {% endif %}
     </div>
-    {% else %}
-    <div class="td-dim">No verdict data.</div>
-    {% endif %}
   </div>
-</div>
 
-{# ── Layer flag frequency ────────────────────────────────────────── #}
-<div class="analytics-section-title">Layer flag frequency</div>
-<div class="card card-mb">
-  <div class="card-body">
-    <div class="bar-chart">
-      {% for layer_key, layer_label in [
-        ('triage',     'Triage'),
-        ('product',    'Product'),
-        ('business',   'Business'),
-        ('reputation', 'Reputation'),
-        ('values',     'Values'),
-        ('fit',        'Skills fit'),
-      ] %}
-      {% set lf = data.layer_flags[layer_key] %}
-      {% set layer_total = lf.ok + lf.warning + lf.flag %}
-      {% if layer_total > 0 %}
-      <div class="bar-row">
-        <div class="bar-label">{{ layer_label }}</div>
-        <div class="bar-track" style="position:relative; overflow:visible;">
-          {# Stacked bar: ok=green, warning=yellow, flag=red #}
-          <div style="display:flex; height:8px; border-radius:3px; overflow:hidden;">
-            {% if lf.ok > 0 %}<div class="bar-fill bar-ok" style="width:{{ (lf.ok / layer_total * 100)|round }}%"></div>{% endif %}
-            {% if lf.warning > 0 %}<div class="bar-fill bar-warning" style="width:{{ (lf.warning / layer_total * 100)|round }}%"></div>{% endif %}
-            {% if lf.flag > 0 %}<div class="bar-fill bar-flag" style="width:{{ (lf.flag / layer_total * 100)|round }}%"></div>{% endif %}
+  <div class="card analytics-breakdown-card">
+    <div class="card-body">
+      <div class="analytics-card-title">Layer flags</div>
+      {% set max_flag = data.layer_flag_counts[0][1] if data.layer_flag_counts and data.layer_flag_counts[0][1] > 0 else 1 %}
+      {% if data.layer_flag_counts and data.layer_flag_counts[0][1] > 0 %}
+      <div class="bar-chart">
+        {% for label, count in data.layer_flag_counts %}
+        {% if count > 0 %}
+        <div class="bar-row">
+          <div class="bar-label">{{ label }}</div>
+          <div class="bar-track">
+            <div class="bar-fill bar-flag" style="width:{{ (count / max_flag * 100)|round }}%"></div>
           </div>
+          <div class="bar-count bar-count-flag">{{ count }}</div>
         </div>
-        <div class="bar-count td-red">{{ lf.flag }}</div>
+        {% endif %}
+        {% endfor %}
       </div>
+      {% else %}
+      <div class="td-dim">No flags recorded.</div>
       {% endif %}
-      {% endfor %}
-    </div>
-    <div style="margin-top:12px; display:flex; gap:16px; font-size:var(--fs-xs); color:var(--muted);">
-      <span><span style="display:inline-block;width:10px;height:10px;background:#3dba73;border-radius:2px;margin-right:4px;"></span>No issues</span>
-      <span><span style="display:inline-block;width:10px;height:10px;background:#c9a96e;border-radius:2px;margin-right:4px;"></span>Warning</span>
-      <span><span style="display:inline-block;width:10px;height:10px;background:#e74c3c;border-radius:2px;margin-right:4px;"></span>Flag — count shown</span>
     </div>
   </div>
+
 </div>
 
-{# ── Fit score distribution ──────────────────────────────────────── #}
+{# ── Collapsible sections ───────────────────────────────────────── #}
 {% if data.fit_score_avg is not none %}
-<div class="analytics-section-title">Fit score distribution</div>
-<div class="card card-mb">
-  <div class="card-body">
+<div class="collapsible">
+  <div class="collapsible-header" onclick="toggleCollapsible(this)">
+    <span class="collapsible-label">Fit score distribution</span>
+    <div class="collapsible-right">
+      <span class="collapsible-meta">{{ data.fit_score_distribution | sum(attribute=1) }} scored</span>
+      <span class="collapsible-arrow">▶</span>
+    </div>
+  </div>
+  <div class="collapsible-body" style="display:none">
     {% set fs_total = data.fit_score_distribution | sum(attribute=1) %}
     {% if fs_total > 0 %}
     <div class="bar-chart">
@@ -138,11 +145,16 @@
 </div>
 {% endif %}
 
-{# ── Role archetype distribution ─────────────────────────────────── #}
 {% if data.archetype_distribution %}
-<div class="analytics-section-title">Role archetypes</div>
-<div class="card card-mb">
-  <div class="card-body">
+<div class="collapsible">
+  <div class="collapsible-header" onclick="toggleCollapsible(this)">
+    <span class="collapsible-label">Role archetypes</span>
+    <div class="collapsible-right">
+      <span class="collapsible-meta">{{ data.archetype_distribution | length }} type{{ 's' if data.archetype_distribution | length != 1 else '' }}</span>
+      <span class="collapsible-arrow">▶</span>
+    </div>
+  </div>
+  <div class="collapsible-body" style="display:none">
     {% set arch_total = data.archetype_distribution.values() | sum %}
     <div class="bar-chart">
       {% for arch, count in data.archetype_distribution.items() %}
@@ -160,4 +172,16 @@
 {% endif %}
 
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCollapsible(header) {
+  var body = header.nextElementSibling;
+  var arrow = header.querySelector('.collapsible-arrow');
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  arrow.textContent = open ? '▶' : '▼';
+}
+</script>
 {% endblock %}

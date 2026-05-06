@@ -580,7 +580,7 @@ footer a:hover { color: var(--muted); }
   cursor: pointer;
   user-select: none;
 }
-.collapsible-header:hover { background: color-mix(in srgb, var(--surface) 90%, white 10%); }
+.collapsible-header:hover { box-shadow: inset 0 0 0 9999px var(--hover-overlay); }
 .collapsible-label { font-size: var(--fs-sm); color: var(--muted); }
 .collapsible-right { display: flex; align-items: center; gap: 10px; }
 .collapsible-meta { font-size: var(--fs-xs); color: var(--dim); }
