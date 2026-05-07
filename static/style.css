@@ -616,6 +616,6 @@ footer a:hover { color: var(--muted); }
   margin-bottom: 5px;
   font-size: var(--fs-sm);
 }
-.reality-check-phrase { font-style: italic; color: var(--dim); flex-shrink: 0; }
+.reality-check-phrase { font-style: italic; color: var(--dim); flex: 0 1 auto; min-width: 0; overflow-wrap: break-word; }
 .reality-check-arrow  { color: var(--green); flex-shrink: 0; }
-.reality-check-plain  { color: var(--muted); }
+.reality-check-plain  { color: var(--muted); flex: 1 1 0; min-width: 0; overflow-wrap: break-word; }
