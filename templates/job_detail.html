@@ -82,6 +82,7 @@
       <div class="reality-check-summary">{{ rc.summary }}</div>
       {% if rc.callouts %}
       <div class="reality-check-divider"></div>
+      <div class="reality-check-callouts-label">Decoded phrases</div>
       {% for item in rc.callouts %}
       <div class="reality-check-callout">
         <span class="reality-check-phrase">"{{ item.phrase }}"</span>

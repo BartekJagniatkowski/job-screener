@@ -616,12 +616,20 @@ footer a:hover { color: var(--muted); }
   color: var(--muted);
   line-height: 1.65;
 }
-.reality-check-divider { border-top: 1px solid var(--border); margin: 10px 0; }
+.reality-check-divider { border-top: 1px solid var(--border); margin: 10px 0 8px; }
+.reality-check-callouts-label {
+  font-family: var(--fm);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin-bottom: 8px;
+}
 .reality-check-callout {
   margin-bottom: 6px;
   font-size: var(--fs-md);
   line-height: 1.55;
 }
-.reality-check-phrase { font-style: italic; color: var(--dim); }
+.reality-check-phrase { font-style: italic; color: var(--muted); }
 .reality-check-arrow  { color: var(--green); margin: 0 4px; }
-.reality-check-plain  { color: var(--muted); }
+.reality-check-plain  { color: var(--text); }
