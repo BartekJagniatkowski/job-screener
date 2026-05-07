@@ -74,11 +74,13 @@
       </td>
       <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'YES' if j.zero_list_hit else '—' }}</td>
       <td class="td-layers">
-        <span class="dot dot-{{ j.triage_status or 'unknown' }}"     title="Triage: {{ j.triage_status or 'unknown' }}"></span>
-        <span class="dot dot-{{ j.product_status or 'unknown' }}"    title="Product: {{ j.product_status or 'unknown' }}"></span>
-        <span class="dot dot-{{ j.business_status or 'unknown' }}"   title="Business: {{ j.business_status or 'unknown' }}"></span>
-        <span class="dot dot-{{ j.reputation_status or 'unknown' }}" title="Reputation: {{ j.reputation_status or 'unknown' }}"></span>
-        <span class="dot dot-{{ j.values_status or 'unknown' }}"     title="Values: {{ j.values_status or 'unknown' }}"></span>
+        <span class="dot-row">
+          <span class="dot dot-{{ j.triage_status or 'unknown' }}"     title="Triage: {{ j.triage_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.product_status or 'unknown' }}"    title="Product: {{ j.product_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.business_status or 'unknown' }}"   title="Business: {{ j.business_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.reputation_status or 'unknown' }}" title="Reputation: {{ j.reputation_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.values_status or 'unknown' }}"     title="Values: {{ j.values_status or 'unknown' }}"></span>
+        </span>
       </td>
       <td class="td-mono {% if j.fit_score is not none %}{% if j.fit_status == 'ok' %}td-green{% elif j.fit_status == 'warning' %}td-warning{% elif j.fit_status == 'flag' %}td-red{% else %}td-dim{% endif %}{% else %}td-dim{% endif %}">{{ "%.1f"|format(j.fit_score) ~ '/5' if j.fit_score is not none else '—' }}</td>
     </tr>
