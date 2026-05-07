@@ -62,7 +62,7 @@ job-screener/
 │   └── fonts/
 │       └── Nohemi-VF.ttf — variable font used in headings and app name
 ├── templates/
-│   ├── base.html       — layout, <link> to style.css, navigation, footer
+│   ├── base.html       — layout, <link> to style.css, navigation (no footer)
 │   ├── login.html
 │   ├── register.html
 │   ├── dashboard.html  — analysis form + recent results + modal for recent analyses
