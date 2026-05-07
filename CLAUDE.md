@@ -126,6 +126,7 @@ update_company_rejected(job_id, user_id, rejected)
 update_job_status(job_id, user_id, status)   # handles all 6 statuses
 update_job_url(job_id, user_id, url)
 delete_job(job_id, user_id)
+get_statistics(user_id)              # aggregated data for /statistics page
 ```
 
 ---
@@ -169,6 +170,7 @@ POST     /job/<id>/url          — add/change URL
 POST     /job/<id>/applied      — application status
 POST     /job/<id>/company_rejected — company rejection
 POST     /job/<id>/delete
+GET      /statistics
 GET      /settings
 GET      /export/csv
 GET      /changelog
@@ -369,15 +371,15 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.modal-overlay`, `.modal-container`, `.modal-header`, `.modal-nav-btn`, `.modal-counter`, `.modal-close`, `.modal-body`, `.modal-actions`, `.modal-loading`
 `.filter-bar`, `.filter-label` — category filter bar in history
 `.filter-btn`, `.filter-btn.active`, `.filter-btn.fb-<category>` — filter toggle buttons; state saved in `localStorage` under key `history_hidden_categories`
-`.analytics-tldr` — gold left-border summary card (accent border-left, surface bg)
-`.analytics-tldr-label`, `.analytics-tldr-text` — label and body text inside TL;DR card
-`.analytics-funnel` — flex row wrapping all funnel steps
+`.statistics-tldr` — gold left-border summary card (accent border-left, surface bg)
+`.statistics-tldr-label`, `.statistics-tldr-text` — label and body text inside TL;DR card
+`.statistics-funnel` — flex row wrapping all funnel steps
 `.funnel-step`, `.funnel-block`, `.funnel-num`, `.funnel-lbl`, `.funnel-pct` — pipeline funnel anatomy
 `.funnel-arrow` — `›` separator between funnel steps
 `.funnel-step-qualifying`, `.funnel-step-applied`, `.funnel-step-corej` — colour modifiers (blue/green/orange) for funnel number + percentage
 `.zero-rule-note` — small note below funnel when zero-rule hits > 0
-`.analytics-card-title` — uppercase label inside breakdown cards
-`.analytics-breakdown-card` — modifier on `.card` for breakdown grid cards; scopes `.bar-label` width to 90px
+`.statistics-card-title` — uppercase label inside breakdown cards
+`.statistics-breakdown-card` — modifier on `.card` for breakdown grid cards; scopes `.bar-label` width to 90px
 `.stacked-bar`, `.stacked-bar-seg` — single proportional horizontal bar for verdict distribution
 `.seg-worth`, `.seg-warning`, `.seg-rejected`, `.seg-soft` — segment colour modifiers on `.stacked-bar-seg`
 `.stacked-legend`, `.stacked-legend-item`, `.stacked-legend-dot` — legend below stacked bar

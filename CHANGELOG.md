@@ -7,7 +7,9 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 ## v0.14.1 — Rename Analytics → Statistics
 
 - Nav link, page title, and browser tab renamed from "Analytics" to "Statistics"
-- Route (`/analytics`) and CSS class names unchanged
+- Route renamed from `/analytics` to `/statistics`; Flask endpoint and `database.py` function renamed to `statistics`/`get_statistics`
+- CSS classes renamed from `analytics-*` to `statistics-*` throughout
+- Template renamed from `analytics.html` to `statistics.html`
 
 ---
 

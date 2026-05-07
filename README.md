@@ -104,7 +104,7 @@ https://your.domain.com/register?token=YOUR_TOKEN
 - **Detail modal** — clicking a row in history or dashboard opens the details in place; ← → navigation between listings, URL reflects the currently viewed listing
 - **Verdicts and states** — worth considering / needs review / rejected (AI) / rejected (confirmed); mark submitted applications
 - **Analysis history** — table with visual category filtering, CSV export from Settings
-- **Analytics dashboard** — aggregated statistics: verdict distribution, application funnel, per-layer flag counts, fit score averages
+- **Statistics dashboard** — aggregated statistics: verdict distribution, application funnel, per-layer flag counts, fit score averages
 - **Light/dark mode** — toggle in navigation, preference saved in the browser
 - **Multi-user** — each user has a separate profile, lists, and history
 

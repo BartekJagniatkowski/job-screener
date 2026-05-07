@@ -728,9 +728,9 @@ def export_csv(user_id: int) -> str:
 
 
 
-def get_analytics(user_id: int) -> dict:
+def get_statistics(user_id: int) -> dict:
     """
-    Aggregate job analysis data for the analytics dashboard.
+    Aggregate job analysis data for the statistics dashboard.
 
     Returns a dict with:
       verdict_distribution: counts per verdict category

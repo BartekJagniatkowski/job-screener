@@ -17,7 +17,7 @@ from database import (
     init_db, get_user, create_user, get_user_by_id,
     update_user_profile, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
-    update_company_rejected, update_job_status, verify_password, get_analytics,
+    update_company_rejected, update_job_status, verify_password, get_statistics,
     create_analysis, update_analysis_status, get_analysis,
 )
 from analyzer import analyze
@@ -499,12 +499,12 @@ def export():
 
 
 
-@app.route("/analytics")
+@app.route("/statistics")
 @login_required
-def analytics():
+def statistics():
     user = current_user()
-    data = get_analytics(user["id"])
-    return render_template("analytics.html", user=user, data=data)
+    data = get_statistics(user["id"])
+    return render_template("statistics.html", user=user, data=data)
 
 # ── startup ──────────────────────────────────────────────────────────────────
 

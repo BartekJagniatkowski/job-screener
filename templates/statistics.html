@@ -10,16 +10,16 @@
 {% else %}
 
 {# ── TL;DR ──────────────────────────────────────────────────────── #}
-<div class="analytics-tldr">
-  <div class="analytics-tldr-label">Summary</div>
-  <div class="analytics-tldr-text">
+<div class="statistics-tldr">
+  <div class="statistics-tldr-label">Summary</div>
+  <div class="statistics-tldr-text">
     You've analyzed <strong>{{ data.funnel.total }}</strong> job{{ 's' if data.funnel.total != 1 else '' }}{% if data.funnel.qualifying > 0 and data.funnel.applied > 0 %} and applied to <strong>{{ data.funnel.applied }}</strong> — a <strong>{{ (data.funnel.applied / data.funnel.qualifying * 100)|round|int }}%</strong> follow-through rate on qualifying listings{% elif data.funnel.applied > 0 %} and applied to <strong>{{ data.funnel.applied }}</strong>{% endif %}.{% if data.most_flagged_layer %} <strong>{{ data.most_flagged_layer[0] }}</strong> is your most common blocker ({{ data.most_flagged_layer[1] }} flag{{ 's' if data.most_flagged_layer[1] != 1 else '' }}).{% endif %}{% if data.fit_score_avg is not none %} Average fit score across scored analyses is <strong>{{ "%.1f"|format(data.fit_score_avg) }}/5</strong>.{% endif %}
   </div>
 </div>
 
 {# ── Application pipeline ───────────────────────────────────────── #}
-<div class="analytics-section-title">Application pipeline</div>
-<div class="analytics-funnel">
+<div class="statistics-section-title">Application pipeline</div>
+<div class="statistics-funnel">
   <div class="funnel-step">
     <div class="funnel-block">
       <div class="funnel-num">{{ data.funnel.total }}</div>
@@ -63,12 +63,12 @@
 {% endif %}
 
 {# ── Breakdown grid ─────────────────────────────────────────────── #}
-<div class="analytics-section-title">Breakdown</div>
+<div class="statistics-section-title">Breakdown</div>
 <div class="grid2">
 
-  <div class="card analytics-breakdown-card">
+  <div class="card statistics-breakdown-card">
     <div class="card-body">
-      <div class="analytics-card-title">Verdict distribution</div>
+      <div class="statistics-card-title">Verdict distribution</div>
       {% set vd = data.verdict_distribution %}
       {% set vd_total = vd.worth_considering + vd.warning + vd.rejected_confirmed + vd.rejected_soft %}
       {% if vd_total > 0 %}
@@ -90,9 +90,9 @@
     </div>
   </div>
 
-  <div class="card analytics-breakdown-card">
+  <div class="card statistics-breakdown-card">
     <div class="card-body">
-      <div class="analytics-card-title">Layer flags</div>
+      <div class="statistics-card-title">Layer flags</div>
       {% set max_flag = data.layer_flag_counts[0][1] if data.layer_flag_counts and data.layer_flag_counts[0][1] > 0 %}
       {% if data.layer_flag_counts and data.layer_flag_counts[0][1] > 0 %}
       <div class="bar-chart">

@@ -421,7 +421,7 @@ footer a:hover { color: var(--muted); }
 [data-theme="light"] .btn-primary:hover     { background: #333333; }
 [data-theme="light"] .card                  { box-shadow: rgba(0,0,0,0.06) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px; }
 
-/* ── analytics ───────────────────────────────────────────────── */
+/* ── statistics ──────────────────────────────────────────────── */
 .bar-chart {
   display: flex;
   flex-direction: column;
@@ -476,7 +476,7 @@ footer a:hover { color: var(--muted); }
   flex-shrink: 0;
 }
 
-.analytics-section-title {
+.statistics-section-title {
   font-family: var(--fd);
   font-size: var(--fs-lg);
   font-weight: 200;
@@ -486,7 +486,7 @@ footer a:hover { color: var(--muted); }
 
 [data-theme="light"] .bar-track { background: var(--border-light); }
 
-.analytics-tldr {
+.statistics-tldr {
   background: var(--surface);
   border: 1px solid var(--border);
   border-left: 3px solid var(--accent);
@@ -494,7 +494,7 @@ footer a:hover { color: var(--muted); }
   padding: 14px 18px;
   margin-bottom: 28px;
 }
-.analytics-tldr-label {
+.statistics-tldr-label {
   font-family: var(--fm);
   font-size: var(--fs-2xs);
   text-transform: uppercase;
@@ -502,10 +502,10 @@ footer a:hover { color: var(--muted); }
   color: var(--accent);
   margin-bottom: 6px;
 }
-.analytics-tldr-text { font-size: var(--fs-sm); color: var(--muted); line-height: 1.65; }
-.analytics-tldr-text strong { color: var(--text); }
+.statistics-tldr-text { font-size: var(--fs-sm); color: var(--muted); line-height: 1.65; }
+.statistics-tldr-text strong { color: var(--text); }
 
-.analytics-funnel { display: flex; align-items: stretch; gap: 0; margin-bottom: 10px; }
+.statistics-funnel { display: flex; align-items: stretch; gap: 0; margin-bottom: 10px; }
 .funnel-step { flex: 1; text-align: center; }
 .funnel-block {
   background: var(--surface);
@@ -544,7 +544,7 @@ footer a:hover { color: var(--muted); }
 .zero-rule-note { font-size: var(--fs-xs); color: var(--dim); margin-bottom: 28px; padding-left: 4px; }
 .zero-rule-note strong { color: var(--muted); }
 
-.analytics-card-title {
+.statistics-card-title {
   font-family: var(--fm);
   font-size: var(--fs-xs);
   text-transform: uppercase;
@@ -568,7 +568,7 @@ footer a:hover { color: var(--muted); }
 .stacked-legend-dot.dot-rejected { background: #e74c3c; }
 .stacked-legend-dot.dot-soft     { background: var(--muted); }
 
-.analytics-breakdown-card .bar-label { width: 90px; }
+.statistics-breakdown-card .bar-label { width: 90px; }
 .bar-count-flag { color: #e74c3c; }
 
 .collapsible { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-bottom: 8px; overflow: hidden; }

@@ -45,7 +45,7 @@ def _seed_db(tmp_path):
 
 def test_verdict_distribution(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     vd = data['verdict_distribution']
     assert vd['worth_considering'] == 3
     assert vd['warning'] == 1
@@ -54,7 +54,7 @@ def test_verdict_distribution(tmp_path):
 
 def test_funnel(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     f = data['funnel']
     assert f['total'] == 6
     assert f['applied'] == 2
@@ -62,7 +62,7 @@ def test_funnel(tmp_path):
 
 def test_layer_flags(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     lf = data['layer_flags']
     assert lf['triage']['flag'] == 1
     assert lf['product']['flag'] == 1
@@ -70,26 +70,26 @@ def test_layer_flags(tmp_path):
 
 def test_fit_score_avg(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     assert data['fit_score_avg'] is not None
     assert 3.0 < data['fit_score_avg'] < 4.0
 
 def test_archetype_distribution(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     ad = data['archetype_distribution']
     assert ad.get('pm', 0) == 3
     assert ad.get('engineering', 0) == 2
 
 def test_funnel_qualifying(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     # seed: 3 worth_considering + 1 warning = 4 qualifying
     assert data['funnel']['qualifying'] == 4
 
 def test_most_flagged_layer(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     mfl = data['most_flagged_layer']
     assert mfl is not None
     assert isinstance(mfl, tuple) and len(mfl) == 2
@@ -98,7 +98,7 @@ def test_most_flagged_layer(tmp_path):
 
 def test_layer_flag_counts(tmp_path):
     uid = _seed_db(tmp_path)
-    data = database.get_analytics(uid)
+    data = database.get_statistics(uid)
     counts = data['layer_flag_counts']
     assert len(counts) == 6  # one entry per layer
     for i in range(len(counts) - 1):
@@ -118,4 +118,4 @@ if __name__ == '__main__':
         with tempfile.TemporaryDirectory() as tmp:
             t(tmp)
             print(f"  PASS: {t.__name__}")
-    print("All analytics tests passed.")
+    print("All statistics tests passed.")

@@ -22,7 +22,7 @@
   <div class="nav-links">
     <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Analyze</a>
     <a href="{{ url_for('history') }}" {% if request.endpoint in ('history','job_detail') %}class="active"{% endif %}>History</a>
-    <a href="{{ url_for('analytics') }}" {% if request.endpoint == 'analytics' %}class="active"{% endif %}>Statistics</a>
+    <a href="{{ url_for('statistics') }}" {% if request.endpoint == 'statistics' %}class="active"{% endif %}>Statistics</a>
     <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
     <a href="{{ url_for('logout') }}">Logout</a>
     <button class="btn-theme-toggle" id="theme-toggle" title="Toggle theme"></button>
