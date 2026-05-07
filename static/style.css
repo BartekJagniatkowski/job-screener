@@ -632,4 +632,5 @@ footer a:hover { color: var(--muted); }
 }
 .reality-check-phrase { font-style: italic; color: var(--muted); }
 .reality-check-arrow  { color: var(--green); margin: 0 4px; }
-.reality-check-plain  { color: var(--text); }
+.reality-check-plain  { color: #c8c8c8; }
+[data-theme="light"] .reality-check-plain { color: var(--text); }
