@@ -378,47 +378,48 @@ def set_company_rejected(job_id):
     return jsonify({"error": "Access denied or record not found."}), 400
 
 
+def _md_to_html(text: str, skip_h1: bool = False) -> str:
+    lines = text.split("\n")
+    out = []
+    in_ul = False
+    for line in lines:
+        line_esc = _html.escape(line)
+        if line_esc.startswith("## "):
+            if in_ul: out.append("</ul>"); in_ul = False
+            out.append(f"<h2>{line_esc[3:]}</h2>")
+        elif line_esc.startswith("# "):
+            if in_ul: out.append("</ul>"); in_ul = False
+            if not skip_h1:
+                out.append(f"<h1>{line_esc[2:]}</h1>")
+        elif re.match(r"^-{3,}$", line_esc.strip()):
+            if in_ul: out.append("</ul>"); in_ul = False
+            out.append("<hr>")
+        elif line_esc.startswith("- "):
+            if not in_ul: out.append("<ul>"); in_ul = True
+            out.append(f"<li>{line_esc[2:]}</li>")
+        elif line_esc.strip() == "":
+            if in_ul: out.append("</ul>"); in_ul = False
+            out.append("")
+        else:
+            if in_ul: out.append("</ul>"); in_ul = False
+            out.append(f"<p>{line_esc}</p>")
+    if in_ul:
+        out.append("</ul>")
+    return "\n".join(out)
+
+
 @app.route("/changelog")
 def changelog():
     md_path = pathlib.Path(__file__).parent / "CHANGELOG.md"
     md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else "CHANGELOG.md not found"
+    return render_template("changelog.html", content=_md_to_html(md_text))
 
-    def md_to_html(text):
-        lines = text.split("\n")
-        out = []
-        in_ul = False
-        for line in lines:
-            # escape HTML
-            line_esc = _html.escape(line)
-            # h2
-            if line_esc.startswith("## "):
-                if in_ul: out.append("</ul>"); in_ul = False
-                out.append(f"<h2>{line_esc[3:]}</h2>")
-            # h1
-            elif line_esc.startswith("# "):
-                if in_ul: out.append("</ul>"); in_ul = False
-                out.append(f"<h1>{line_esc[2:]}</h1>")
-            # hr
-            elif re.match(r"^-{3,}$", line_esc.strip()):
-                if in_ul: out.append("</ul>"); in_ul = False
-                out.append("<hr>")
-            # li
-            elif line_esc.startswith("- "):
-                if not in_ul: out.append("<ul>"); in_ul = True
-                out.append(f"<li>{line_esc[2:]}</li>")
-            # empty
-            elif line_esc.strip() == "":
-                if in_ul: out.append("</ul>"); in_ul = False
-                out.append("")
-            # p
-            else:
-                if in_ul: out.append("</ul>"); in_ul = False
-                out.append(f"<p>{line_esc}</p>")
-        if in_ul:
-            out.append("</ul>")
-        return "\n".join(out)
 
-    return render_template("changelog.html", content=md_to_html(md_text))
+@app.route("/about")
+def about():
+    md_path = pathlib.Path(__file__).parent / "CHANGELOG.md"
+    md_text = md_path.read_text(encoding="utf-8") if md_path.exists() else ""
+    return render_template("about.html", changelog_html=_md_to_html(md_text, skip_h1=True))
 
 
 @app.route("/history_latest")

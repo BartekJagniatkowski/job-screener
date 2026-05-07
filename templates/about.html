@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}About — Job Screener{% endblock %}
+{% block content %}
+<div class="page-title">About</div>
+<p class="page-sub">What this is, how it works, what each layer checks.</p>
+
+<p class="about-lead">Most job search tools optimise for more applications. This one optimises for fewer, better ones. Every listing is evaluated across six layers before the question "is it worth applying?" is even asked — surfacing what the listing language reveals about the company and the role.</p>
+
+<div class="about-section-label">Six analysis layers</div>
+<div class="grid2">
+  <div class="card card-body">
+    <div class="about-layer-name">Triage</div>
+    <div class="about-layer-desc">Role fit against your trajectory, initial signals, whether the employer is hidden behind a recruiter agency.</div>
+  </div>
+  <div class="card card-body">
+    <div class="about-layer-name">Product</div>
+    <div class="about-layer-desc">What the product actually does, marketing claims vs. reality, AI-washing, verifiability of the mission.</div>
+  </div>
+  <div class="card card-body">
+    <div class="about-layer-name">Business</div>
+    <div class="about-layer-desc">Revenue model, funding structure, investors, PE/VC involvement and what that typically signals.</div>
+  </div>
+  <div class="card card-body">
+    <div class="about-layer-name">Reputation</div>
+    <div class="about-layer-desc">Uses the model's knowledge beyond the listing: Glassdoor/Indeed/Blind ratings and trends, dominant review themes, C-level history, layoff patterns, media, regulatory issues.</div>
+  </div>
+  <div class="card card-body">
+    <div class="about-layer-name">Values</div>
+    <div class="about-layer-desc">Mission coherence, ethical traps, gap between stated values and observable behaviour.</div>
+  </div>
+  <div class="card card-body">
+    <div class="about-layer-name">Skills fit</div>
+    <div class="about-layer-desc">Your profile against the role requirements: strengths to lead with, gaps, what to address in the application.</div>
+  </div>
+</div>
+
+<div class="about-section-label">Reality check</div>
+<div class="card card-body">
+  <p class="about-layer-desc">Before the layer analysis the tool synthesises what the listing language actually signals about the role. Corpo-speak is decoded into plain English — phrases like "fast-paced environment" or "wear many hats" are translated to what they typically mean in practice. Purely informational; does not affect the verdict.</p>
+</div>
+
+<div class="about-section-label">Verdicts</div>
+<div class="card card-body">
+  <div class="about-verdict-row">
+    <span class="about-verdict-label text-green">Worth considering</span>
+    <span class="about-verdict-desc">No serious blockers. Layers are green or carry minor warnings only.</span>
+  </div>
+  <div class="about-verdict-row">
+    <span class="about-verdict-label text-yellow">Needs review</span>
+    <span class="about-verdict-desc">At least one warning layer or a yellow-list hit. Re-read before applying.</span>
+  </div>
+  <div class="about-verdict-row">
+    <span class="about-verdict-label text-red">Rejected</span>
+    <span class="about-verdict-desc">A flag, a zero-list match, or an AI-level concern. Confirm to archive.</span>
+  </div>
+</div>
+
+<div class="about-section-label">Changelog</div>
+<div class="changelog about-changelog">
+  {{ changelog_html | safe }}
+</div>
+{% endblock %}

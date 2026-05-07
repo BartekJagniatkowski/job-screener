@@ -634,3 +634,15 @@ footer a:hover { color: var(--muted); }
 .reality-check-arrow  { color: var(--green); margin: 0 4px; }
 .reality-check-plain  { color: #c8c8c8; }
 [data-theme="light"] .reality-check-plain { color: var(--text); }
+
+/* ── about ──────────────────────────────────────────────────────────────── */
+.about-lead { font-size: var(--fs-lg); color: var(--muted); line-height: 1.7; margin-bottom: 0; }
+.about-section-label { font-family: var(--fm); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 36px 0 14px; }
+.about-layer-name { font-family: var(--fm); font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text); margin-bottom: 8px; }
+.about-layer-desc { font-size: var(--fs-sm); color: var(--muted); line-height: 1.6; }
+.about-verdict-row { display: flex; gap: 12px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.about-verdict-row:first-child { padding-top: 0; }
+.about-verdict-row:last-child { border-bottom: none; padding-bottom: 0; }
+.about-verdict-label { font-family: var(--fm); font-size: var(--fs-xs); min-width: 140px; flex-shrink: 0; }
+.about-verdict-desc { font-size: var(--fs-sm); color: var(--muted); }
+.about-changelog { margin-top: 8px; }

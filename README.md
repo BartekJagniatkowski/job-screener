@@ -1,6 +1,41 @@
 # Job Screener
 
-A tool for ethical analysis of job listings. Every listing passes through six analysis layers before the question "is it worth applying?" is answered: triage, product, business, reputation, values, and skills fit against your profile.
+A tool for ethical evaluation of job listings. Every listing passes through six analysis layers before the question "is it worth applying?" is answered: triage, product, business, reputation, values, and skills fit against your profile.
+
+---
+
+## The idea
+
+Most job search tools optimise for more applications. This one optimises for fewer, better ones.
+
+Job Screener runs every listing through a structured analysis before you decide whether to apply. The goal is not to maximise throughput — it is to protect your time and attention by surfacing what the listing language reveals about the company and the role.
+
+The tool works against the logic of the recruitment market: it helps you filter by ethical and practical criteria instead of chasing volume.
+
+---
+
+## How the analysis works
+
+Each listing is evaluated across six layers:
+
+| Layer | What it checks |
+|---|---|
+| **Triage** | Role fit against your trajectory, initial signals, whether the employer is hidden behind a recruiter |
+| **Product** | What the product actually does, marketing claims vs. reality, AI-washing, verifiability of the mission |
+| **Business** | Revenue model, funding structure, investors, PE/VC involvement |
+| **Reputation** | Uses the model's knowledge: Glassdoor/Indeed/Blind ratings and trends, dominant review themes, C-level history, layoff patterns, media, regulatory issues |
+| **Values** | Mission coherence, ethical traps, gap between stated values and observable behaviour |
+| **Skills fit** | Your strengths against the role requirements, gaps, what to address in the application |
+
+Each layer returns a status: **ok**, **warning** (caution signal), or **flag** (serious concern). The final verdict:
+
+- **Worth considering** — no serious blockers
+- **Needs review** — at least one warning layer or yellow-list hit
+- **Rejected** — a flag, zero-list match, or AI assessment
+
+### Reality check
+
+Before the layer analysis, the tool synthesises what the listing language actually signals about the role. Corpo-speak is decoded into plain English — phrases like "fast-paced environment" or "wear many hats" are translated to what they typically mean in practice. Purely informational; does not affect the verdict.
 
 ---
 
@@ -101,6 +136,7 @@ https://your.domain.com/register?token=YOUR_TOKEN
 
 - **Analysis from URL or pasted text** — scrapes the listing automatically; when the site blocks (LinkedIn, Indeed, etc.) prompts to paste the content
 - **Six analysis layers** with verdict and justification; the reputation layer uses the model's knowledge about the company (Glassdoor, media, C-level history)
+- **Reality check** — plain-English decoding of listing language before the layer analysis; corpo-speak translated to what it actually means
 - **Detail modal** — clicking a row in history or dashboard opens the details in place; ← → navigation between listings, URL reflects the currently viewed listing
 - **Verdicts and states** — worth considering / needs review / rejected (AI) / rejected (confirmed); mark submitted applications
 - **Analysis history** — table with visual category filtering, CSV export from Settings
