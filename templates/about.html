@@ -39,10 +39,10 @@
   <p class="about-layer-desc">Before the layer analysis the tool synthesises what the listing language actually signals about the role. Corpo-speak is decoded into plain English — phrases like "fast-paced environment" or "wear many hats" are translated to what they typically mean in practice. Purely informational; does not affect the verdict.</p>
 </div>
 
-<div class="about-section-label">Verdicts</div>
+<div class="about-section-label">Verdicts &amp; states</div>
 <div class="card card-body">
   <div class="about-verdict-row">
-    <span class="about-verdict-label text-green">Worth considering</span>
+    <span class="about-verdict-label td-blue">Worth considering</span>
     <span class="about-verdict-desc">No serious blockers. Layers are green or carry minor warnings only.</span>
   </div>
   <div class="about-verdict-row">
@@ -50,8 +50,20 @@
     <span class="about-verdict-desc">At least one warning layer or a yellow-list hit. Re-read before applying.</span>
   </div>
   <div class="about-verdict-row">
+    <span class="about-verdict-label text-red">Rejected (AI)</span>
+    <span class="about-verdict-desc">AI assessed a flag or zero-list match. Unconfirmed — requires your manual confirmation to archive.</span>
+  </div>
+  <div class="about-verdict-row">
     <span class="about-verdict-label text-red">Rejected</span>
-    <span class="about-verdict-desc">A flag, a zero-list match, or an AI-level concern. Confirm to archive.</span>
+    <span class="about-verdict-desc">Rejection confirmed by you. Archived and struck through in history.</span>
+  </div>
+  <div class="about-verdict-row">
+    <span class="about-verdict-label text-green">Applied</span>
+    <span class="about-verdict-desc">You marked the application as submitted. Tracked in the statistics funnel.</span>
+  </div>
+  <div class="about-verdict-row">
+    <span class="about-verdict-label td-orange">Rejected by company</span>
+    <span class="about-verdict-desc">Company declined after you applied. Closes the loop in the funnel.</span>
   </div>
 </div>
 
