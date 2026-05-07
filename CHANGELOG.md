@@ -4,6 +4,13 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.14.1 — Rename Analytics → Statistics
+
+- Nav link, page title, and browser tab renamed from "Analytics" to "Statistics"
+- Route (`/analytics`) and CSS class names unchanged
+
+---
+
 ## v0.14 — Reality check
 
 - New "Reality check" section in job detail view, before the layer analysis
