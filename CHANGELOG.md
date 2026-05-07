@@ -4,6 +4,17 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.13 — Analytics redesign
+
+- Plain-English TL;DR summary card at top: total analyzed, applied + follow-through %, most-flagged layer, average fit score
+- Application pipeline funnel replaces stat cards: Analyzed → Qualifying → Applied → Co. rejected, each with percentage relative to prior step
+- Verdict distribution replaced with single proportional stacked bar (Worth considering / Needs review / Rejected / Rejected AI)
+- Layer flags simplified to flag-count-only bars sorted by severity — ok/warning segments removed
+- Fit score distribution and Role archetypes collapsed by default; click to expand
+- Average fit score moved to TL;DR text — no longer a dedicated stat card
+
+---
+
 ## v0.12 — History table redesign
 
 - Rebuilt from 12 columns to 7: Date, Role, Company, Verdict, L0, Layers, Fit
