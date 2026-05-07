@@ -15,6 +15,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.12.1 — History table fixes
+
+- Sticky table header restored — `overflow-x: auto` on the table wrapper was creating a scroll container that trapped `position: sticky`, preventing the header from sticking to the viewport
+- Layer dots now vertically centred and fill the full row height — `display: flex` on `<td>` overrides table-cell height stretching; flex layout moved to an inner `.dot-row` wrapper
+- Table width reverted to 1280px container — full-viewport width was too wide for the current column count
+
+---
+
 ## v0.12 — History table redesign
 
 - Rebuilt from 12 columns to 7: Date, Role, Company, Verdict, L0, Layers, Fit
@@ -24,7 +32,6 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - Status column removed (badge already encodes applied/company-rejected state)
 - Filter bar and table header sticky on scroll — both remain visible on long lists
 - "Show all" filter button resets all category filters at once
-- History page no longer constrained to 1280px container — table uses full viewport width
 
 ---
 

@@ -333,6 +333,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.btn-applied`, `.btn-applied.is-applied` — "Applied" button (green when active)
 `.btn-company-rejected.is-rejected` — rejection button (blue when active)
 `.dot`, `.dot-ok`, `.dot-warning`, `.dot-flag`, `.dot-unknown` — coloured layer status dots
+`.dot-row` — flex wrapper for a row of dots inside `.td-layers` (keeps `<td>` as normal table cell)
 `.spinner` — animated loading indicator
 `.source-status` — source validation result (duplicate / ok / scraper error)
 `.source-url-section` — listing URL section wrapper
@@ -362,6 +363,22 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.modal-overlay`, `.modal-container`, `.modal-header`, `.modal-nav-btn`, `.modal-counter`, `.modal-close`, `.modal-body`, `.modal-actions`, `.modal-loading`
 `.filter-bar`, `.filter-label` — category filter bar in history
 `.filter-btn`, `.filter-btn.active`, `.filter-btn.fb-<category>` — filter toggle buttons; state saved in `localStorage` under key `history_hidden_categories`
+`.analytics-tldr` — gold left-border summary card (accent border-left, surface bg)
+`.analytics-tldr-label`, `.analytics-tldr-text` — label and body text inside TL;DR card
+`.analytics-funnel` — flex row wrapping all funnel steps
+`.funnel-step`, `.funnel-block`, `.funnel-num`, `.funnel-lbl`, `.funnel-pct` — pipeline funnel anatomy
+`.funnel-arrow` — `›` separator between funnel steps
+`.funnel-step-qualifying`, `.funnel-step-applied`, `.funnel-step-corej` — colour modifiers (blue/green/orange) for funnel number + percentage
+`.zero-rule-note` — small note below funnel when zero-rule hits > 0
+`.analytics-card-title` — uppercase label inside breakdown cards
+`.analytics-breakdown-card` — modifier on `.card` for breakdown grid cards; scopes `.bar-label` width to 90px
+`.stacked-bar`, `.stacked-bar-seg` — single proportional horizontal bar for verdict distribution
+`.seg-worth`, `.seg-warning`, `.seg-rejected`, `.seg-soft` — segment colour modifiers on `.stacked-bar-seg`
+`.stacked-legend`, `.stacked-legend-item`, `.stacked-legend-dot` — legend below stacked bar
+`.dot-worth`, `.dot-warning`, `.dot-rejected`, `.dot-soft` — colour modifiers on `.stacked-legend-dot`
+`.bar-count-flag` — red colour override for flag-count numbers in layer flags card
+`.collapsible`, `.collapsible-header`, `.collapsible-body` — collapsible section (header click toggles body display:none)
+`.collapsible-label`, `.collapsible-right`, `.collapsible-meta`, `.collapsible-arrow` — collapsible header anatomy
 
 ---
 
