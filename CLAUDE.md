@@ -269,7 +269,13 @@ Generic statements without specifics are still not allowed.
     "values":     { "status", "findings", "evidence" }
   },
   "fit": { "status", "strengths", "gaps", "improve" },
-  "gut_feeling"
+  "gut_feeling",
+  "reality_check": {
+    "summary": "2-3 sentences on what the language signals about the actual role",
+    "callouts": [
+      {"phrase": "exact quote or close paraphrase", "plain": "what it actually means"}
+    ]
+  }
 }
 ```
 
@@ -379,6 +385,14 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.bar-count-flag` — red colour override for flag-count numbers in layer flags card
 `.collapsible`, `.collapsible-header`, `.collapsible-body` — collapsible section (header click toggles body display:none)
 `.collapsible-label`, `.collapsible-right`, `.collapsible-meta`, `.collapsible-arrow` — collapsible header anatomy
+`.reality-check-card` — left green border + green-bg tint; wraps the reality check section
+`.reality-check-label` — uppercase monospace label in green
+`.reality-check-summary` — plain-English summary text (muted, 1.65 line-height)
+`.reality-check-divider` — thin border separator between summary and callouts
+`.reality-check-callout` — flex row: phrase → arrow → plain
+`.reality-check-phrase` — italic dim text (the corpo-speak phrase)
+`.reality-check-arrow` — green `→` separator
+`.reality-check-plain` — muted text (the plain-English meaning)
 
 ---
 
