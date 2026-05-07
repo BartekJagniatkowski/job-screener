@@ -5,3 +5,4 @@ data/
 .vscode/
 job-screener.code*
 .worktrees/.superpowers/
+docs/

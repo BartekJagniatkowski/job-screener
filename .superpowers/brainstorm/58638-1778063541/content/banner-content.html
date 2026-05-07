@@ -1,0 +1,54 @@
+<h2>What does the banner show during analysis?</h2>
+<p class="subtitle">Three levels of information density while waiting</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Minimal</h3>
+      <p>Just a spinner and "Analyzing..."</p>
+      <div style="margin-top:12px;padding:10px 16px;background:#1a1a1a;border-radius:8px;border:1px solid #333;display:flex;align-items:center;gap:10px;font-family:monospace;font-size:13px;color:#aaa">
+        <span style="display:inline-block;width:12px;height:12px;border:2px solid #c9a96e;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>
+        Analyzing…
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>With context</h3>
+      <p>Spinner + truncated source (URL or first line of text)</p>
+      <div style="margin-top:12px;padding:10px 16px;background:#1a1a1a;border-radius:8px;border:1px solid #333;display:flex;align-items:center;gap:10px;font-family:monospace;font-size:13px;color:#aaa">
+        <span style="display:inline-block;width:12px;height:12px;border:2px solid #c9a96e;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>
+        <span>Analyzing — <span style="color:#888">Senior PM · Figma Inc.</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>With steps</h3>
+      <p>Shows current phase (scraping → analyzing → saving)</p>
+      <div style="margin-top:12px;padding:10px 16px;background:#1a1a1a;border-radius:8px;border:1px solid #333;font-family:monospace;font-size:13px;color:#aaa">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="display:inline-block;width:12px;height:12px;border:2px solid #c9a96e;border-top-color:transparent;border-radius:50%;animation:spin 0.8s linear infinite"></span>
+          <span>Analyzing… <span style="color:#c9a96e">layer 3/6</span></span>
+        </div>
+        <div style="margin-top:6px;display:flex;gap:4px">
+          <span style="width:28px;height:3px;background:#c9a96e;border-radius:2px"></span>
+          <span style="width:28px;height:3px;background:#c9a96e;border-radius:2px"></span>
+          <span style="width:28px;height:3px;background:#c9a96e;border-radius:2px"></span>
+          <span style="width:28px;height:3px;background:#333;border-radius:2px"></span>
+          <span style="width:28px;height:3px;background:#333;border-radius:2px"></span>
+          <span style="width:28px;height:3px;background:#333;border-radius:2px"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
