@@ -187,7 +187,7 @@ textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
 .layer-status-label { font-size: var(--fs-md); color: var(--dim); margin-top: 1px; }
 .chev { color: var(--dim); font-size: var(--fs-xs); transition: transform 0.18s; }
 .chev.open { transform: rotate(90deg); }
-.layer-body { padding: 20px 44px; font-size: var(--fs-body); color: var(--muted); line-height: 1.7; display: none; }
+.layer-body { padding: 20px 44px; font-size: var(--fs-md); color: var(--muted); line-height: 1.7; display: none; }
 .layer-body.open { display: block; }
 
 /* ── evidence block ─────────────────────────────────────────────────────── */
@@ -590,10 +590,9 @@ footer a:hover { color: var(--muted); }
 
 /* ── reality check ──────────────────────────────────────────────────────── */
 .reality-check-card {
-  border-left: 3px solid var(--green);
   background: var(--green-bg);
-  padding: 12px 12px 8px;
-  margin-bottom: 8px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
 }
 .reality-check-label {
   font-family: var(--fm);
@@ -604,14 +603,14 @@ footer a:hover { color: var(--muted); }
   margin-bottom: 8px;
 }
 .reality-check-summary {
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   color: var(--muted);
   line-height: 1.65;
 }
 .reality-check-divider { border-top: 1px solid var(--border); margin: 10px 0; }
 .reality-check-callout {
   margin-bottom: 6px;
-  font-size: var(--fs-sm);
+  font-size: var(--fs-md);
   line-height: 1.55;
 }
 .reality-check-phrase { font-style: italic; color: var(--dim); }
