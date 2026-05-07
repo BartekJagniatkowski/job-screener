@@ -4,6 +4,6 @@ data/
 .DS_Store
 .vscode/
 job-screener.code*
-.worktrees/.superpowers/
+.superpowers/
+.worktrees/
 docs/
-.worktrees/career-ops-expansion
