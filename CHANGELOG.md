@@ -4,6 +4,16 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.14 — Reality check
+
+- New "Reality check" section in job detail view, before the layer analysis
+- Plain-English summary of what the role actually is, synthesised from the listing language
+- Up to 6 corpo-speak phrase callouts decoded inline: `"phrase" → what it actually means`
+- Purely informational — no verdict impact
+- Absent for analyses run before this version
+
+---
+
 ## v0.13 — Analytics redesign
 
 - Plain-English TL;DR summary card at top: total analyzed, applied + follow-through %, most-flagged layer, average fit score
