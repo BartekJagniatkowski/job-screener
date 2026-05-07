@@ -8,7 +8,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 - **Backend:** Python >= 3.9, Flask >= 3.1.3
 - **Database:** SQLite (file `data/screener.db`)
-- **AI:** Anthropic Claude API (model: `claude-sonnet-4-6`)
+- **AI:** Anthropic Claude API (default model: `claude-sonnet-4-6`; override with `ANTHROPIC_MODEL` env var — model must support extended thinking)
 - **Frontend:** Jinja2 + vanilla JS + external CSS
 - **Environment manager:** uv (files `pyproject.toml` + `uv.lock`)
 - **Python dependencies:** only `flask` — zero external CSS/Markdown libraries

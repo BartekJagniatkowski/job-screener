@@ -5,7 +5,7 @@ import urllib.error
 from typing import Any, Dict
 
 API_URL: str = "https://api.anthropic.com/v1/messages"
-MODEL: str = "claude-sonnet-4-6"
+DEFAULT_MODEL: str = "claude-sonnet-4-6"
 
 SYSTEM_TEMPLATE: str = """You are a tool that analyzes job listings according to a strict ethical methodology.
 Return ONLY valid JSON — no text before or after, no markdown, no backticks.
@@ -187,7 +187,7 @@ def build_system(user: User) -> str:
     return SYSTEM_TEMPLATE.format(cv=cv, zero_list=zero_list, yellow_list=yellow_list, criteria=criteria)
 
 
-def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> AnalysisResult:
+def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: str = DEFAULT_MODEL) -> AnalysisResult:
     """
     Call the Anthropic API to analyze a job listing.
 
@@ -196,6 +196,7 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> Analy
         input_text: Listing text (if input_mode='text') or URL (if 'url')
         input_mode: 'url' - fetch from URL, 'text' - use provided text
         api_key: Anthropic API key
+        model: Anthropic model ID (must support extended thinking)
 
     Returns:
         Parsed analysis result as a dict (JSON from the model response)
@@ -225,7 +226,7 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str) -> Analy
 
     # Build the API payload
     payload_bytes: bytes = json.dumps({
-        "model": MODEL,
+        "model": model,
         "max_tokens": 8000,
         "thinking": {
             "type": "enabled",

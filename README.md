@@ -126,6 +126,7 @@ https://your.domain.com/register?token=YOUR_TOKEN
 | Variable | Description |
 |---|---|
 | `ANTHROPIC_API_KEY` | Anthropic API key (required) |
+| `ANTHROPIC_MODEL` | Model ID (default: `claude-sonnet-4-6`); must support extended thinking |
 | `SECRET_KEY` | Flask session key (change on the server) |
 | `INVITE_TOKEN` | Invitation token for new users |
 | `PORT` | Application port (default: `5001`) |

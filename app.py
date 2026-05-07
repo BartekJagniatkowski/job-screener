@@ -28,6 +28,7 @@ app.secret_key = os.environ.get("SECRET_KEY", os.urandom(32))
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
+MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 init_db()
 
@@ -172,7 +173,7 @@ def _run_analysis_bg(
 ) -> None:
     try:
         update_analysis_status(analysis_id, "running")
-        result = analyze(user, input_text, "text", API_KEY)
+        result = analyze(user, input_text, "text", API_KEY, MODEL)
         job_id = save_job(user["id"], result, source_url=url, source_text=input_text)
         update_analysis_status(analysis_id, "done", result_job_id=job_id)
     except Exception as e:
