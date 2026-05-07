@@ -89,6 +89,21 @@ Evidence for flags in this layer = specific knowledge (e.g. "Glassdoor 2.9/5, tr
 Generic statements without specifics are still not allowed.
 
 ══════════════════════════════════════════════════
+REALITY CHECK
+══════════════════════════════════════════════════
+Translate the listing's language into plain statements.
+
+summary: 2-3 sentences synthesising what the language and framing signal
+         about what this role actually is day-to-day.
+
+callouts: up to 6 specific phrases from the listing decoded into plain English.
+  - "phrase": exact quote or close paraphrase from the listing
+  - "plain": what it actually means — direct, slightly wry, accurate
+  - Only include phrases that genuinely obscure meaning
+  - If the listing uses clear language, return an empty list []
+  - Do not invent signals that are not in the text
+
+══════════════════════════════════════════════════
 FORMAT — ONLY this JSON, nothing else
 ══════════════════════════════════════════════════
 {{
@@ -140,7 +155,13 @@ FORMAT — ONLY this JSON, nothing else
     "gaps": "What is missing or misaligned",
     "improve": "What to highlight or add to the application if worth applying"
   }},
-  "gut_feeling": "Synthetic observation — what triggers intuition that the analysis doesn't capture directly"
+  "gut_feeling": "Synthetic observation — what triggers intuition that the analysis doesn't capture directly",
+  "reality_check": {{
+    "summary": "2-3 sentences on what the language signals about the actual role",
+    "callouts": [
+      {{"phrase": "exact quote or close paraphrase", "plain": "what it actually means"}}
+    ]
+  }}
 }}"""
 
 
