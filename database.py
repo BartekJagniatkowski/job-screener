@@ -241,7 +241,8 @@ def verify_password(password: str, stored: str) -> bool:
     """
     try:
         salt, h = stored.split(":", 1)
-        return hashlib.sha256(f"{salt}{password}".encode()).hexdigest() == h
+        computed = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
+        return secrets.compare_digest(computed, h)
     except Exception:
         return False
 
