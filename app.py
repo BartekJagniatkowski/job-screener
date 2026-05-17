@@ -1,4 +1,5 @@
 import os
+import secrets
 import functools
 import pathlib
 import re
@@ -37,6 +38,13 @@ API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
 
 init_db()
+
+@app.after_request
+def security_headers(response):
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 # ── auth helpers ────────────────────────────────────────────────────────────
 
@@ -114,7 +122,7 @@ def register() -> str:
     allow = user_count() == 0
     invite_token = os.environ.get("INVITE_TOKEN", "")
     token_from_url = request.args.get("token", "") or request.form.get("token", "")
-    if invite_token and token_from_url == invite_token:
+    if invite_token and secrets.compare_digest(token_from_url, invite_token):
         allow = True
 
     if not allow:
