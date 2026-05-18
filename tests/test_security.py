@@ -51,13 +51,65 @@ def test_successful_login_clears_lockout(client):
     assert "testuser" not in app_module._login_attempts
 
 
-def test_unknown_user_does_not_create_lockout_entry(client):
-    """Failed login for non-existent user does not pollute lockout dict."""
+def test_unknown_user_recorded_to_prevent_enumeration(client):
+    """Failed login for non-existent user still recorded — prevents username enumeration."""
     import app as app_module
     app_module._login_attempts.clear()
 
     client.post("/login", data={"username": "ghost_user_xyz", "password": "anything"})
-    assert "ghost_user_xyz" not in app_module._login_attempts
+    assert "ghost_user_xyz" in app_module._login_attempts
+
+
+def test_server_header_hidden(client):
+    """Server header must not reveal gunicorn or Python."""
+    resp = client.get("/about")
+    server = resp.headers.get("Server", "")
+    assert "gunicorn" not in server.lower()
+    assert "python" not in server.lower()
+
+
+def test_session_cookie_flags(app):
+    """Session cookie must be configured with Secure, HttpOnly, SameSite=Lax."""
+    assert app.config.get("SESSION_COOKIE_SECURE") is True
+    assert app.config.get("SESSION_COOKIE_HTTPONLY") is True
+    assert app.config.get("SESSION_COOKIE_SAMESITE") == "Lax"
+
+
+def test_session_expires(app):
+    """Session lifetime must be set (not infinite)."""
+    from datetime import timedelta
+    lifetime = app.config.get("PERMANENT_SESSION_LIFETIME")
+    assert lifetime is not None
+    assert isinstance(lifetime, timedelta)
+    assert lifetime.days <= 30
+
+
+def test_ssrf_internal_ip_blocked(client, logged_in_client):
+    """Scraper must reject requests to internal/private IP addresses."""
+    from scraper import _is_internal_host
+    assert _is_internal_host("http://127.0.0.1/secret") is True
+    assert _is_internal_host("http://192.168.1.1/admin") is True
+    assert _is_internal_host("http://169.254.169.254/latest/meta-data") is True
+    assert _is_internal_host("http://10.0.0.1/") is True
+
+
+def test_password_min_length(app):
+    """Registration must reject passwords shorter than 10 characters."""
+    # Use the app directly — registration is open when user_count() == 0,
+    # but in tests a user already exists, so supply an invite token.
+    import os
+    os.environ["INVITE_TOKEN"] = "test-invite"
+    try:
+        with app.test_client() as c:
+            resp = c.post("/register?token=test-invite", data={
+                "username": "newuser_test",
+                "password": "short",
+                "password2": "short",
+                "token": "test-invite",
+            })
+            assert b"10 characters" in resp.data
+    finally:
+        os.environ.pop("INVITE_TOKEN", None)
 
 
 def test_csrf_rejects_post_without_token(app, client):

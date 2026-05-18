@@ -44,6 +44,12 @@ limiter = Limiter(
     storage_uri="memory://",
 )
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
+from datetime import timedelta
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
@@ -81,6 +87,7 @@ def security_headers(response):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Server"] = "unknown"
     return response
 
 # ── auth helpers ────────────────────────────────────────────────────────────
@@ -148,11 +155,11 @@ def login() -> str:
         user = get_user(username)
         if user and verify_password(password, user["password_hash"]):
             _clear_attempts(username)
+            session.permanent = True
             session["user_id"] = user["id"]
             return redirect(url_for("dashboard"))
 
-        if user:
-            _record_failure(username)
+        _record_failure(username)
         flash("Invalid username or password.")
     return render_template("login.html")
 
@@ -185,8 +192,8 @@ def register() -> str:
             flash("Please fill in all fields.")
         elif password != password2:
             flash("Passwords do not match.")
-        elif len(password) < 6:
-            flash("Password must be at least 6 characters.")
+        elif len(password) < 10:
+            flash("Password must be at least 10 characters.")
         elif not create_user(username, password):
             flash("That username is already taken.")
         else:

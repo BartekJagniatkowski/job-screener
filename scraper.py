@@ -8,11 +8,30 @@ Returns (text, error_code, error_detail) where error_code is:
   'network'  — other network error
 """
 
+import ipaddress
+import socket
 import urllib.request
 import urllib.error
 import re
 from html.parser import HTMLParser
 from urllib.parse import urlparse, urlencode, parse_qsl, urlunparse
+
+_PRIVATE_NETWORKS = [
+    ipaddress.ip_network(n) for n in [
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16",
+        "127.0.0.0/8", "169.254.0.0/16", "0.0.0.0/8",
+        "::1/128", "fc00::/7", "fe80::/10",
+    ]
+]
+
+
+def _is_internal_host(url: str) -> bool:
+    try:
+        host = urlparse(url).hostname or ""
+        ip = ipaddress.ip_address(socket.gethostbyname(host))
+        return any(ip in net for net in _PRIVATE_NETWORKS)
+    except Exception:
+        return False
 
 
 # Query string parameters to strip from URL (all lowercase — compared via k.lower())
@@ -160,6 +179,9 @@ def fetch(url: str, timeout: int = 12) -> tuple:
     if domain in BLOCKED_DOMAINS or base_domain in BLOCKED_DOMAINS:
         msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or               'This site blocks automated access. Copy the job description manually.'
         return None, 'blocked', msg
+
+    if _is_internal_host(url):
+        return None, 'blocked', 'Access to internal network addresses is not allowed.'
 
     headers = {
         'User-Agent': (
