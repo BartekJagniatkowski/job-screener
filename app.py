@@ -54,7 +54,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
-INTERVIEW_PREP_MODEL: str = os.environ.get("INTERVIEW_PREP_MODEL", "claude-sonnet-4-6")
 
 init_db()
 
