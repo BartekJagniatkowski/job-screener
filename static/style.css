@@ -423,6 +423,7 @@ footer a:hover { color: var(--muted); }
 [data-theme="light"] .filter-btn.active.fb-company_rejected { color: #c05e20; border-color: #c05e20; }
 [data-theme="light"] .filter-btn.active.fb-worth_considering { color: #1a4a9e; border-color: #3a7bd5; }
 [data-theme="light"] .badge-interview { color: #4930cc; border-color: #4930cc; }
+[data-theme="light"] .badge-offer     { color: #1b6e3e; border-color: #2e8b57; }
 [data-theme="light"] .filter-btn.active.fb-interview { color: #4930cc; border-color: #4930cc; background: #4930cc22; }
 [data-theme="light"] .filter-btn.active.fb-offer { color: #1b6e3e; border-color: #2e8b57; background: #2e8b5722; }
 [data-theme="light"] .notice.ok             { color: #1b6e3e; }
