@@ -19,7 +19,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from database import (
     init_db, get_user, create_user, get_user_by_id,
-    update_user_profile, save_job, get_jobs, get_job,
+    update_user_profile, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, verify_password, get_statistics,
     create_analysis, update_analysis_status, get_analysis,
@@ -559,6 +559,30 @@ def settings():
         flash("Profile saved.")
         return redirect(url_for("settings"))
     return render_template("settings.html", user=current_user())
+
+
+@app.route("/settings/password", methods=["POST"])
+@login_required
+def change_password():
+    user = current_user()
+    current_pw = request.form.get("current_password", "")
+    new_pw = request.form.get("new_password", "")
+    new_pw2 = request.form.get("new_password2", "")
+
+    def _settings_error(msg):
+        flash(msg)
+        return render_template("settings.html", user=user), 200
+
+    if not verify_password(current_pw, user["password_hash"]):
+        return _settings_error("Current password is incorrect.")
+    if new_pw != new_pw2:
+        return _settings_error("New passwords do not match.")
+    if len(new_pw) < 8:
+        return _settings_error("New password must be at least 8 characters.")
+
+    update_password(user["id"], new_pw)
+    flash("Password updated.")
+    return redirect(url_for("settings"))
 
 
 @app.route("/export/csv")

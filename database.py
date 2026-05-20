@@ -319,6 +319,14 @@ def update_user_profile(user_id: int, cv: str, zero_list: str, criteria: str, ye
         )
 
 
+def update_password(user_id: int, new_password: str) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE users SET password_hash=? WHERE id=?",
+            (hash_password(new_password), user_id),
+        )
+
+
 def compute_hash(text: str) -> str:
     """
     Compute a SHA-256 hash of the given text.

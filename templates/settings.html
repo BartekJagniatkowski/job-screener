@@ -41,4 +41,24 @@
   <p class="page-sub" style="margin-bottom:16px;">Download all your analyses as a CSV file (opens in Excel and Google Sheets).</p>
   <a href="{{ url_for('export') }}" class="btn btn-secondary">Download CSV →</a>
 </div>
+
+<div class="settings-section-divider"></div>
+<div class="section-label">Change password</div>
+<form method="POST" action="{{ url_for('change_password') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="field">
+    <label>Current password</label>
+    <input type="password" name="current_password" autocomplete="current-password">
+  </div>
+  <div class="field">
+    <label>New password</label>
+    <div class="field-hint">Minimum 10 characters.</div>
+    <input type="password" name="new_password" autocomplete="new-password">
+  </div>
+  <div class="field">
+    <label>Confirm new password</label>
+    <input type="password" name="new_password2" autocomplete="new-password">
+  </div>
+  <button type="submit" class="btn btn-primary">Change password →</button>
+</form>
 {% endblock %}
