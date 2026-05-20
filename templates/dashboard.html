@@ -572,5 +572,40 @@ async function saveNotes() {
     if (status) { status.textContent = 'Connection error.'; status.className = 'notes-status notes-status-err'; }
   }
 }
+
+async function generatePrep() {
+  const jobId = currentJobId;
+  if (!jobId) return;
+  const btn = document.getElementById('prep-btn');
+  const statusEl = document.getElementById('prep-status');
+  const contentBox = document.getElementById('prep-content-box');
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 20–40 seconds…'; }
+  try {
+    const resp = await fetch(`/job/${jobId}/interview_prep`, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrfToken()},
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      if (contentBox) {
+        const div = document.createElement('div');
+        div.className = 'prep-content';
+        div.textContent = data.content;
+        contentBox.innerHTML = '';
+        contentBox.appendChild(div);
+      }
+      if (statusEl) { statusEl.style.display = 'none'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate prep'; }
+    } else {
+      if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
+      if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
+    if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
+  }
+}
+
 </script>
 {% endblock %}
