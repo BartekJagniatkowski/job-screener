@@ -589,7 +589,8 @@ def job_partial(job_id):
         raw = _json.loads(job["raw_json"] or "{}")
     except Exception:
         pass
-    return render_template("job_partial.html", job=job, raw=raw)
+    prep_content = get_interview_prep(job_id, user["id"])
+    return render_template("job_partial.html", job=job, raw=raw, prep_content=prep_content)
 
 
 @app.route("/settings", methods=["GET", "POST"])

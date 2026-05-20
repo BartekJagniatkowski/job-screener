@@ -691,3 +691,6 @@ footer a:hover { color: var(--muted); }
 .th-sortable        { cursor: pointer; user-select: none; }
 .th-sortable:hover  { color: var(--accent); }
 .sort-arrow         { font-size: var(--fs-xs); color: var(--accent); }
+
+/* ── interview prep ── */
+.prep-content { white-space: pre-wrap; font-family: var(--fb); font-size: var(--fs-sm); line-height: 1.65; color: var(--muted); }
