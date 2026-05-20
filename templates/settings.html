@@ -62,3 +62,50 @@
   <button type="submit" class="btn btn-primary">Change password →</button>
 </form>
 {% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var FIELDS = ['cv', 'zero_list', 'yellow_list', 'criteria'];
+  var DRAFT_KEY = 'settings_draft';
+  var form = Array.from(document.querySelectorAll('form[method="POST"]')).find(function(f) { return f.querySelector('[name="cv"]'); });
+  if (!form) return;
+
+  // restore draft only if server-rendered value is empty
+  try {
+    var saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
+    if (saved) {
+      FIELDS.forEach(function(name) {
+        if (saved[name] !== undefined) {
+          var el = form.querySelector('[name="' + name + '"]');
+          if (el && !el.value.trim()) el.value = saved[name];
+        }
+      });
+    }
+  } catch(e) {}
+
+  // save draft on input
+  form.addEventListener('input', function () {
+    var draft = {};
+    FIELDS.forEach(function(name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (el) draft[name] = el.value;
+    });
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  });
+
+  // clear draft on submit
+  form.addEventListener('submit', function () {
+    localStorage.removeItem(DRAFT_KEY);
+  });
+
+  // warn before leaving with unsaved changes
+  var dirty = false;
+  form.addEventListener('input', function () { dirty = true; });
+  form.addEventListener('submit', function () { dirty = false; });
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>
+{% endblock %}
