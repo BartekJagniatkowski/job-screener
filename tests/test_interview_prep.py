@@ -76,3 +76,89 @@ def test_interview_prep_analyzer_truncates_inputs():
     assert captured['payload']['max_tokens'] == 2000
     assert 'thinking' not in captured['payload']
     assert result.strip().startswith("#")
+
+
+def test_prep_endpoint_requires_login(client, sample_job_id):
+    resp = client.post(f"/job/{sample_job_id}/interview_prep")
+    assert resp.status_code in (302, 401)
+
+
+def test_prep_endpoint_404_for_wrong_user(logged_in_client, app):
+    resp = logged_in_client.post("/job/99999/interview_prep")
+    assert resp.status_code == 404
+
+
+def test_prep_endpoint_400_for_ineligible_verdict(logged_in_client, app):
+    from database import get_conn, get_user
+    user = get_user("testuser")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO jobs (user_id, company, role, verdict, verdict_confirmed,
+               analyzed_at, source_full)
+               VALUES (?, 'Corp', 'Role', 'rejected', 1, date('now'), 'some text')""",
+            (user["id"],),
+        )
+        job_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    resp = logged_in_client.post(f"/job/{job_id}/interview_prep")
+    assert resp.status_code == 400
+    assert b"not available" in resp.data.lower()
+
+
+def test_prep_endpoint_400_when_no_source_text(logged_in_client, app):
+    from database import get_conn, get_user
+    user = get_user("testuser")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO jobs (user_id, company, role, verdict, verdict_confirmed,
+               analyzed_at, source_full)
+               VALUES (?, 'Corp', 'Role', 'worth_considering', 1, date('now'), NULL)""",
+            (user["id"],),
+        )
+        job_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    resp = logged_in_client.post(f"/job/{job_id}/interview_prep")
+    assert resp.status_code == 400
+    assert b"no job description" in resp.data.lower()
+
+
+def test_prep_endpoint_success(logged_in_client, app):
+    import unittest.mock as mock
+    from database import get_conn, get_user
+    user = get_user("testuser")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO jobs (user_id, company, role, verdict, verdict_confirmed,
+               analyzed_at, source_full)
+               VALUES (?, 'Acme', 'PM', 'worth_considering', 1, date('now'), 'Full job description text here.')""",
+            (user["id"],),
+        )
+        job_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    with mock.patch('app.interview_prep', return_value="# Interview Prep\n\nContent.") as mock_prep:
+        resp = logged_in_client.post(f"/job/{job_id}/interview_prep")
+
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data["ok"] is True
+    assert "Interview Prep" in data["content"]
+    mock_prep.assert_called_once()
+
+
+def test_prep_stored_after_success(logged_in_client, app):
+    import unittest.mock as mock
+    from database import get_conn, get_user, get_interview_prep
+    user = get_user("testuser")
+    with get_conn() as conn:
+        conn.execute(
+            """INSERT INTO jobs (user_id, company, role, verdict, verdict_confirmed,
+               analyzed_at, source_full)
+               VALUES (?, 'Acme', 'PM', 'worth_considering', 1, date('now'), 'Full text.')""",
+            (user["id"],),
+        )
+        job_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+    with mock.patch('app.interview_prep', return_value="# Interview Prep\n\nStored."):
+        logged_in_client.post(f"/job/{job_id}/interview_prep")
+
+    stored = get_interview_prep(job_id, user["id"])
+    assert stored is not None
+    assert "Stored." in stored

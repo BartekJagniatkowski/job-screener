@@ -23,8 +23,9 @@ from database import (
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
     create_analysis, update_analysis_status, get_analysis,
+    save_interview_prep, get_interview_prep,
 )
-from analyzer import analyze
+from analyzer import analyze, interview_prep
 from scraper import fetch as scrape_url, normalize_url
 
 app: Flask = Flask(__name__)
@@ -53,6 +54,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL: str = os.environ.get("ANTHROPIC_MODEL", "claude-sonnet-4-6")
+INTERVIEW_PREP_MODEL: str = os.environ.get("INTERVIEW_PREP_MODEL", "claude-sonnet-4-6")
 
 init_db()
 
@@ -385,6 +387,41 @@ def reanalyze(job_id):
     )
     t.start()
     return jsonify({"analysis_id": analysis_id})
+
+
+@app.route("/job/<int:job_id>/interview_prep", methods=["POST"])
+@limiter.limit("5 per hour")
+@login_required
+def generate_interview_prep(job_id):
+    user = current_user()
+    if not API_KEY:
+        return jsonify({"error": "No API key configured."}), 400
+    job = get_job(job_id, user["id"])
+    if not job:
+        return "", 404
+    eligible = (
+        job["verdict"] == "worth_considering"
+        or job["applied"]
+        or job["interview_scheduled"]
+        or job["offer_received"]
+    )
+    if not eligible:
+        return jsonify({"error": "Interview prep not available for this job status."}), 400
+    source = (job["source_full"] or "").strip()
+    if not source or source.startswith("http"):
+        return jsonify({"error": "No job description text saved — cannot generate interview prep."}), 400
+    try:
+        content = interview_prep(
+            dict(user),
+            source,
+            job["company"] or "Unknown",
+            job["role"] or "Unknown",
+            API_KEY,
+        )
+        save_interview_prep(job_id, user["id"], content)
+        return jsonify({"ok": True, "content": content})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/job/<int:job_id>/verdict", methods=["POST"])
