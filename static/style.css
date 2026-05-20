@@ -674,3 +674,8 @@ footer a:hover { color: var(--muted); }
                         border-radius: var(--radius-sm); padding: 8px 12px;
                         font-family: var(--fb); font-size: var(--fs-sm); box-sizing: border-box; }
 .history-search:focus { border-color: var(--accent); outline: none; }
+
+/* ── Sortable table headers ──────────────────────────────────── */
+.th-sortable        { cursor: pointer; user-select: none; }
+.th-sortable:hover  { color: var(--accent); }
+.sort-arrow         { font-size: var(--fs-xs); color: var(--accent); }
