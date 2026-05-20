@@ -708,13 +708,16 @@ def update_job_status(job_id: int, user_id: int, status: str) -> bool:
         params = (job_id, user_id)
     elif status == "interview":
         sql = (
-            "UPDATE jobs SET interview_scheduled=1, interview_at=date('now')"
+            "UPDATE jobs SET interview_scheduled=1, interview_at=date('now'),"
+            " applied=1, company_rejected=0, company_rejected_at=NULL"
             " WHERE id=? AND user_id=?"
         )
         params = (job_id, user_id)
     elif status == "offer":
         sql = (
-            "UPDATE jobs SET offer_received=1, offer_at=date('now')"
+            "UPDATE jobs SET offer_received=1, offer_at=date('now'),"
+            " interview_scheduled=1, applied=1,"
+            " company_rejected=0, company_rejected_at=NULL"
             " WHERE id=? AND user_id=?"
         )
         params = (job_id, user_id)
