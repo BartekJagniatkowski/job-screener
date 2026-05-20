@@ -347,6 +347,7 @@ def check_source():
 
 
 @app.route("/reanalyze/<int:job_id>", methods=["POST"])
+@limiter.limit("20 per hour")
 @login_required
 def reanalyze(job_id):
     user = current_user()

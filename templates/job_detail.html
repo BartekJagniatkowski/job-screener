@@ -251,7 +251,7 @@ async function setStatus(status) {
   try {
     const fd = new FormData();
     fd.append('status', status);
-    const resp = await fetch('/job/{{ job.id }}/status', { method: 'POST', body: fd });
+    const resp = await fetch('/job/{{ job.id }}/status', { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
     const data = await resp.json();
     if (data.ok) {
       statusEl.className = 'notice';
@@ -294,7 +294,7 @@ async function setStatus(status) {
 async function confirmDelete() {
   if (!confirm('Delete this analysis? This action cannot be undone.')) return;
   try {
-    const resp = await fetch('/job/{{ job.id }}/delete', { method: 'POST' });
+    const resp = await fetch('/job/{{ job.id }}/delete', { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
     const data = await resp.json();
     if (data.ok) {
       window.location.href = '/history';
@@ -322,7 +322,7 @@ async function saveUrl() {
   try {
     const fd = new FormData();
     fd.append('url', url);
-    const resp = await fetch('/job/{{ job.id }}/url', { method: 'POST', body: fd });
+    const resp = await fetch('/job/{{ job.id }}/url', { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
     const data = await resp.json();
     if (data.ok) {
       statusEl.style.color = '#3dba73';
@@ -370,7 +370,7 @@ async function reanalyze() {
   statusEl.className = 'notice';
 
   try {
-    const resp = await fetch('/reanalyze/{{ job.id }}', { method: 'POST' });
+    const resp = await fetch('/reanalyze/{{ job.id }}', { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
     const data = await resp.json();
     if (data.ok) {
       statusEl.style.display = 'block';
