@@ -193,7 +193,7 @@
 
   <div class="notes-section">
     <div class="notes-label">Notes</div>
-    <textarea id="notes-textarea" class="notes-textarea" placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
+    <textarea id="notes-textarea" class="notes-textarea" maxlength="10000" placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
     <button class="btn btn-secondary btn-sm notes-save-btn" onclick="saveNotes()">Save notes</button>
     <span id="notes-status" class="notes-status"></span>
   </div>

@@ -453,7 +453,7 @@ def set_company_rejected(job_id):
 @login_required
 def set_job_notes(job_id):
     user = current_user()
-    notes = request.form.get("notes", "")
+    notes = request.form.get("notes", "")[:10000]
     ok = update_job_notes(job_id, user["id"], notes)
     return jsonify({"ok": ok})
 
@@ -582,7 +582,7 @@ def change_password():
         flash(msg)
         return render_template("settings.html", user=user), 200
 
-    if not verify_password(current_pw, user["password_hash"]):
+    if not current_pw or not verify_password(current_pw, user["password_hash"]):
         return _settings_error("Current password is incorrect.")
     if new_pw != new_pw2:
         return _settings_error("New passwords do not match.")

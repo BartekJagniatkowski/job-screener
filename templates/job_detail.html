@@ -207,7 +207,7 @@ class="source-url-link">{{ job.job_url }}</a>
 
   <div class="notes-section">
     <div class="notes-label">Notes</div>
-    <textarea id="notes-textarea" class="notes-textarea"
+    <textarea id="notes-textarea" class="notes-textarea" maxlength="10000"
       placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
     <button class="btn btn-secondary btn-sm notes-save-btn"
       onclick="saveNotesDetail({{ job.id }})">Save notes</button>

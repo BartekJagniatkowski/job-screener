@@ -13,11 +13,12 @@ def test_password_change_success(logged_in_client):
     r = c2.post("/login", data={"username": "testuser", "password": "newpassword123"})
     assert r.status_code == 302
     # restore for other tests
-    logged_in_client.post("/settings/password", data={
+    restore = logged_in_client.post("/settings/password", data={
         "current_password": "newpassword123",
         "new_password": "testpassword",
         "new_password2": "testpassword",
     })
+    assert restore.status_code == 302
 
 
 def test_password_change_wrong_current(logged_in_client):
