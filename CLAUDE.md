@@ -109,6 +109,7 @@ interview_at,           — interview date
 offer_received,         — 0/1 offer stage
 offer_at,               — offer date
 notes,                  — freeform user notes (max 10 000 chars)
+interview_prep,         — AI-generated interview prep markdown (may be NULL)
 reasoning,              — model's internal reasoning
 raw_json                — full JSON response from the model
 ```
@@ -132,6 +133,8 @@ update_company_rejected(job_id, user_id, rejected)
 update_job_status(job_id, user_id, status)   # handles all 8 statuses
 update_job_url(job_id, user_id, url)
 update_job_notes(job_id, user_id, notes)     # freeform notes, max 10 000 chars
+save_interview_prep(job_id, user_id, content)  # stores markdown prep brief
+get_interview_prep(job_id, user_id)             # returns prep brief or None
 update_password(user_id, new_password)       # hashes and stores new password
 delete_job(job_id, user_id)
 get_statistics(user_id)              # aggregated data for /statistics page
@@ -178,6 +181,7 @@ POST     /job/<id>/url          — add/change URL
 POST     /job/<id>/applied      — application status
 POST     /job/<id>/company_rejected — company rejection
 POST     /job/<id>/notes
+POST     /job/<id>/interview_prep — generate AI interview prep brief (5/hr rate limit)
 POST     /job/<id>/delete
 GET      /statistics
 GET      /settings

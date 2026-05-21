@@ -4,6 +4,15 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.19 — Interview prep + security fixes
+
+- **Interview prep** — AI-generated prep brief on any worth-considering, applied, interview, or offer job; sections: company context, likely rounds, JD→CV story mapping, checklist, questions to ask, red flags to probe; stored in DB and regeneratable; rate-limited to 5 calls/hour
+- Cost-optimised: no extended thinking, CV capped at 3 000 chars, JD at 4 000, `max_tokens=2000`; configurable model via `INTERVIEW_PREP_MODEL` env var (use `claude-haiku-4-5-20251001` for testing at ~$0.007/call)
+- **Security fix:** CSRF tokens added to four `fetch` POST calls in `job_detail.html` that were missing them (`setStatus`, `confirmDelete`, `saveUrl`, `reanalyze`)
+- **Security fix:** Rate limit added to `/reanalyze` endpoint (20/hour, matching `/analyze`)
+
+---
+
 ## v0.18 — UX improvements
 
 - **Password change** — new form in Settings; requires current password, enforces 10-character minimum

@@ -128,6 +128,7 @@ https://your.domain.com/register?token=YOUR_TOKEN
 |---|---|
 | `ANTHROPIC_API_KEY` | Anthropic API key (required) |
 | `ANTHROPIC_MODEL` | Model ID (default: `claude-sonnet-4-6`); must support extended thinking |
+| `INTERVIEW_PREP_MODEL` | Model for interview prep (default: same as `ANTHROPIC_MODEL`). Use `claude-haiku-4-5-20251001` to reduce cost. |
 | `SECRET_KEY` | Flask session key — **required**, app won't start without it. Generate: `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `INVITE_TOKEN` | Invitation token for new users |
 | `PORT` | Application port (default: `5001`) |
