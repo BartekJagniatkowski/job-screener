@@ -574,7 +574,7 @@ async function saveNotes() {
 }
 
 async function generatePrep() {
-  const jobId = currentJobId;
+  const jobId = getCurrentJobId();
   if (!jobId) return;
   const btn = document.getElementById('prep-btn');
   const statusEl = document.getElementById('prep-status');
