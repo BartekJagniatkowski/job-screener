@@ -24,8 +24,9 @@
 </head>
 <body>
 {% if session.user_id %}
-<nav>
+<nav id="main-nav">
   <a href="{{ url_for('dashboard') }}" class="nav-brand">Job Screener</a>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">☰</button>
   <div class="nav-links">
     <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Analyze</a>
     <a href="{{ url_for('history') }}" {% if request.endpoint in ('history','job_detail') %}class="active"{% endif %}>History</a>
@@ -174,6 +175,25 @@
 })();
 </script>
 {% block scripts %}{% endblock %}
+<script>
+(function () {
+  var toggle = document.getElementById('nav-toggle');
+  var nav = document.getElementById('main-nav');
+  if (!toggle || !nav) return;
+  toggle.addEventListener('click', function () {
+    var open = nav.classList.toggle('nav-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.textContent = open ? '✕' : '☰';
+  });
+  document.querySelectorAll('.nav-links a').forEach(function (a) {
+    a.addEventListener('click', function () {
+      nav.classList.remove('nav-open');
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.textContent = '☰';
+    });
+  });
+})();
+</script>
 <script>
   (function(){
     var _fetch = window.fetch;

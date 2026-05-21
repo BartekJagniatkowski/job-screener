@@ -366,10 +366,29 @@ footer a:hover { color: var(--muted); }
 .filter-btn.active.fb-offer     { color: #3dba73; border-color: #3dba73; background: #3dba7322; }
 
 /* ── responsive ─────────────────────────────────────────────────────────── */
+.nav-toggle { display: none; }
+
 @media (max-width: 768px) {
   .grid2 { grid-template-columns: 1fr; }
-  nav { flex-wrap: wrap; gap: 10px; }
   .detail-nav { flex-direction: column; align-items: flex-start; }
+
+  /* hamburger */
+  nav { flex-wrap: nowrap; position: relative; }
+  .nav-toggle {
+    display: flex; align-items: center; justify-content: center;
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    cursor: pointer; font-size: var(--fs-base); padding: 4px 10px;
+    border-radius: var(--radius-sm); line-height: 1; flex-shrink: 0;
+  }
+  .nav-links {
+    display: none; flex-direction: column; gap: 0;
+    position: absolute; top: 100%; left: 0; right: 0;
+    background: var(--bg); border-bottom: 1px solid var(--border);
+    z-index: 50; padding: 8px 0;
+  }
+  nav.nav-open .nav-links { display: flex; }
+  .nav-links a { padding: 12px 24px; border-radius: 0; }
+  .btn-theme-toggle { margin-left: 16px; }
 }
 
 /* ── theme toggle button ─────────────────────────────────────────────────── */
