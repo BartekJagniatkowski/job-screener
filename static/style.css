@@ -417,7 +417,7 @@ footer a:hover { color: var(--muted); }
     margin-top: 10px; font-size: var(--fs-xs);
     color: var(--dim); font-family: var(--fm); letter-spacing: 0.04em;
   }
-  .job-card .badge { flex-shrink: 0; font-size: 10px; }
+  .job-card .badge { flex-shrink: 0; font-size: var(--fs-2xs); }
 
   /* touch targets */
   .btn-primary, .btn-secondary, .btn-sm, .btn-danger { min-height: 44px; }

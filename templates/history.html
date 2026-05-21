@@ -109,7 +109,7 @@
   {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat = 'worth_considering' %}
   {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{% set cat = 'warning' %}
   {% else %}{% set row_cls = '' %}{% set cat = j.verdict or 'unknown' %}{% endif %}
-  <div class="job-card {{ row_cls }}" data-job-id="{{ j.id }}" data-category="{{ cat }}" onclick="openModal({{ j.id }})">
+  <div class="job-card {{ row_cls }}" data-job-id="{{ j.id }}" data-category="{{ cat }}" tabindex="0" onclick="openModal({{ j.id }})">
     <div class="job-card-header">
       <div class="job-card-title">
         <div class="job-card-company">{{ j.company or 'Unknown' }}</div>
