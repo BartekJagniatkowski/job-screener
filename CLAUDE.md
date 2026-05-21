@@ -185,6 +185,7 @@ POST     /job/<id>/interview_prep — generate AI interview prep brief (5/hr rat
 POST     /job/<id>/delete
 GET      /statistics
 GET      /settings
+POST     /settings             — saves CV, zero list, yellow list, criteria; blocks save if any entry appears in both zero and yellow list (case-insensitive, strips `- ` prefix)
 POST     /settings/password
 GET      /export/csv
 GET      /changelog
@@ -415,7 +416,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 ### Key utility classes
 `.page-title`, `.page-sub` — page heading and subtitle (Nohemi font-weight 200)
 `.field`, `.field-hint` — form field wrapper and its label
-`.flash`, `.flash.info`, `.flash.error` — flash messages from the server
+`.flash`, `.flash.info`, `.flash.error` — flash messages from the server; `base.html` uses `get_flashed_messages(with_categories=true)` — pass `"error"` as second arg to `flash()` for red styling, omit category (defaults to `"message"`) for neutral blue
 `.nav-brand`, `.nav-links` — logo and navigation links
 `.btn-primary`, `.btn-secondary`, `.btn-sm`, `.btn-danger`
 `.btn-theme-toggle` — ☀/☾ button that toggles light/dark mode

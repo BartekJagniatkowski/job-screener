@@ -4,6 +4,13 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.20 — Zero/Yellow List conflict detection
+
+- **Conflict check in Settings** — saving the profile is blocked if any entry appears in both Zero List and Yellow List; the error flash names the conflicting entries; entries are matched case-insensitively with `- ` prefix stripped
+- **Flash message categories** — `base.html` now renders flash messages with their category (`info` / `error`), enabling red error styling via the existing `.flash.error` CSS class
+
+---
+
 ## v0.19 — Interview prep + security fixes
 
 - **Interview prep** — AI-generated prep brief on any worth-considering, applied, interview, or offer job; sections: company context, likely rounds, JD→CV story mapping, checklist, questions to ask, red flags to probe; stored in DB and regeneratable; rate-limited to 5 calls/hour

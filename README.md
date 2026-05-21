@@ -81,6 +81,8 @@ After logging in go to **Settings** and fill in:
 | **Yellow List** | Signals that force a "needs review" verdict even when all other layers are green |
 | **Additional criteria** | Preferred sectors, cultural red flags, priorities in evaluating listings |
 
+> **Conflict check:** saving is blocked if any entry appears in both Zero Rule and Yellow List. Entries are matched case-insensitively with list prefixes (`- `) stripped.
+
 ---
 
 ## Managing the server
