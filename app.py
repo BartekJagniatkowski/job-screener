@@ -496,6 +496,12 @@ def set_job_notes(job_id):
     return jsonify({"ok": ok})
 
 
+def _inline_md(s: str) -> str:
+    s = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', s)
+    s = re.sub(r'`([^`]+)`', r'<code>\1</code>', s)
+    return s
+
+
 def _md_to_html(text: str, skip_h1: bool = False) -> str:
     lines = text.split("\n")
     out = []
@@ -509,22 +515,22 @@ def _md_to_html(text: str, skip_h1: bool = False) -> str:
             continue
         if line_esc.startswith("## "):
             if in_ul: out.append("</ul>"); in_ul = False
-            out.append(f"<h2>{line_esc[3:]}</h2>")
+            out.append(f"<h2>{_inline_md(line_esc[3:])}</h2>")
         elif line_esc.startswith("# "):
             if in_ul: out.append("</ul>"); in_ul = False
-            out.append(f"<h1>{line_esc[2:]}</h1>")
+            out.append(f"<h1>{_inline_md(line_esc[2:])}</h1>")
         elif re.match(r"^-{3,}$", line_esc.strip()):
             if in_ul: out.append("</ul>"); in_ul = False
             out.append("<hr>")
         elif line_esc.startswith("- "):
             if not in_ul: out.append("<ul>"); in_ul = True
-            out.append(f"<li>{line_esc[2:]}</li>")
+            out.append(f"<li>{_inline_md(line_esc[2:])}</li>")
         elif line_esc.strip() == "":
             if in_ul: out.append("</ul>"); in_ul = False
             out.append("")
         else:
             if in_ul: out.append("</ul>"); in_ul = False
-            out.append(f"<p>{line_esc}</p>")
+            out.append(f"<p>{_inline_md(line_esc)}</p>")
     if in_ul:
         out.append("</ul>")
     return "\n".join(out)
