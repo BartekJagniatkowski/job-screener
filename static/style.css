@@ -307,6 +307,7 @@ footer a:hover { color: var(--muted); }
 .changelog ul { margin: 0 0 16px 0; padding-left: 20px; }
 .changelog li { font-size: var(--fs-base); color: var(--muted); line-height: 1.7; margin-bottom: 4px; }
 .changelog hr { border: none; border-top: 1px solid var(--border); margin: 8px 0 24px; }
+.changelog code { font-family: var(--fm); font-size: calc(1em - 1px); background: #161616; border-radius: 4px; padding: 1px 5px; }
 
 /* ── applied button states ──────────────────────────────────────────────── */
 .btn-applied { padding: 6px 16px; }
@@ -415,6 +416,7 @@ footer a:hover { color: var(--muted); }
 [data-theme="light"] .badge-worth_considering { color: #1a4a9e; border-color: #3a7bd5; }
 [data-theme="light"] .badge-applied { color: #1b6e3e; border-color: #2e8b57; }
 [data-theme="light"] .badge-company_rejected { color: #c05e20; border-color: #c05e20; }
+[data-theme="light"] .changelog code { background: #d7d6d5; }
 [data-theme="light"] .filter-btn.active.fb-warning { color: #7a5800; border-color: #b88000; }
 [data-theme="light"] .td-warning { color: #7a5800; }
 [data-theme="light"] .filter-btn.active.fb-rejected_soft { color: #a02020; border-color: #c0392b; }
