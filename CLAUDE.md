@@ -494,6 +494,15 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.badge-offer` — green border/text badge for offer stage
 `.row-interview`, `.row-offer` — table row classes for interview/offer (no background highlight)
 `.filter-btn.fb-interview`, `.filter-btn.fb-offer` — filter button colour modifiers for new stages
+`.nav-toggle` — hamburger button (hidden by default; `display: flex` at ≤768 px); `margin-left: auto` pushes it right
+`nav.nav-open .nav-links` — vertical dropdown state when hamburger is open
+`.job-cards` — card list container (hidden by default; `display: flex / flex-direction: column` at ≤480 px)
+`.job-card` — single card in mobile history list; `data-job-id`, `data-category`, `tabindex="0"`, `onclick`
+`.job-card-header` — flex row: `.job-card-title` (company + role) and badge
+`.job-card-title` — company + role wrapper inside card header
+`.job-card-company` — company name inside card (font-weight 500, ellipsis overflow)
+`.job-card-role` — role title inside card (fs-sm, muted, ellipsis overflow)
+`.job-card-meta` — bottom row of card: date + status text; `data-status-text` on the status `<span>`
 
 ---
 

@@ -149,6 +149,7 @@ https://your.domain.com/register?token=YOUR_TOKEN
 - **Per-listing notes** — freeform notes on every job detail; saved via AJAX
 - **Analysis history** — table with live search, sortable columns, visual category filtering, CSV export
 - **Statistics dashboard** — aggregated statistics: verdict distribution, application funnel, per-layer flag counts, fit score averages
+- **Mobile UX** — hamburger navigation at ≤768 px; card-based history list and full-screen detail modal at ≤480 px; 44 px touch targets
 - **Light/dark mode** — toggle in navigation, preference saved in the browser
 - **Multi-user** — each user has a separate profile, lists, and history; password change in Settings
 
