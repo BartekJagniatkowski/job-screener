@@ -378,7 +378,7 @@ footer a:hover { color: var(--muted); }
     display: flex; align-items: center; justify-content: center;
     background: none; border: 1px solid var(--border); color: var(--muted);
     cursor: pointer; font-size: var(--fs-base); padding: 4px 10px;
-    border-radius: var(--radius-sm); line-height: 1; flex-shrink: 0;
+    border-radius: var(--radius-sm); line-height: 1; flex-shrink: 0; margin-left: auto;
   }
   .nav-links {
     display: none; flex-direction: column; gap: 0;

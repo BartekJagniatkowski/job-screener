@@ -27,7 +27,7 @@
 <nav id="main-nav">
   <a href="{{ url_for('dashboard') }}" class="nav-brand">Job Screener</a>
   <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">☰</button>
-  <button class="btn-theme-toggle" id="theme-toggle" title="Toggle theme"></button>
+  <button type="button" class="btn-theme-toggle" id="theme-toggle" title="Toggle theme"></button>
   <div class="nav-links">
     <a href="{{ url_for('dashboard') }}" {% if request.endpoint == 'dashboard' %}class="active"{% endif %}>Analyze</a>
     <a href="{{ url_for('history') }}" {% if request.endpoint in ('history','job_detail') %}class="active"{% endif %}>History</a>
