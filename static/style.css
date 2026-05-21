@@ -388,7 +388,6 @@ footer a:hover { color: var(--muted); }
   }
   nav.nav-open .nav-links { display: flex; }
   .nav-links a { padding: 12px 24px; border-radius: 0; }
-  .btn-theme-toggle { margin-left: 16px; }
 }
 
 /* ── theme toggle button ─────────────────────────────────────────────────── */
