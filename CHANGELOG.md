@@ -4,6 +4,13 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.22 — Analysis banner improvements
+
+- **Queue indicator** — when multiple analyses are running or pending, the banner shows `+N more` so it is clear that more than one analysis is in flight; count comes from a live DB query on each poll
+- **Dismiss done banner** — the "analysis done" banner now has a `×` button to dismiss it without opening the result; "View result →" still navigates as before
+
+---
+
 ## v0.21 — Mobile UX
 
 - **Hamburger navigation** — nav collapses to a ☰ button on screens ≤768 px; tap opens a vertical dropdown with all links; closes on link click, outside click, or second tap; ✕ icon when open; theme toggle stays accessible at all screen sizes
