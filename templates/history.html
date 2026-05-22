@@ -31,7 +31,7 @@
   <button class="filter-btn active fb-worth_considering" data-cat="worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
   <button class="filter-btn active fb-warning" data-cat="warning" onclick="toggleFilter('warning', this)">Needs review</button>
   <button class="filter-btn active fb-rejected_soft" data-cat="rejected_soft" onclick="toggleFilter('rejected_soft', this)">Rejected (AI)</button>
-  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">Rejected</button>
+  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">Rejected (user)</button>
   <button class="filter-btn active fb-applied" data-cat="applied" onclick="toggleFilter('applied', this)">Applied</button>
   <button class="filter-btn active fb-company_rejected" data-cat="company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
   <button class="filter-btn active fb-interview" data-cat="interview" onclick="toggleFilter('interview', this)">Interview</button>
@@ -79,7 +79,7 @@
         {%- elif j.interview_scheduled -%}<span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
         {%- elif j.company_rejected -%}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
         {%- elif j.applied -%}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-        {%- else -%}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
+        {%- else -%}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected (user)','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
         {%- endif %}
       </td>
       <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'YES' if j.zero_list_hit else '—' }}</td>
@@ -124,7 +124,7 @@
       {%- elif j.applied -%}
         <span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
       {%- else -%}
-        <span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
+        <span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'rejected':'Rejected (user)','warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
       {%- endif %}
     </div>
     <div class="job-card-meta">
