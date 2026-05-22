@@ -405,6 +405,15 @@ def update_analysis_status(
             raise ValueError(f"analysis_id not found: {analysis_id}")
 
 
+def count_active_analyses(user_id: int) -> int:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM analyses WHERE user_id=? AND status IN ('pending', 'running')",
+            (user_id,),
+        ).fetchone()
+        return row[0] if row else 0
+
+
 def get_analysis(analysis_id: str, user_id: int) -> Optional[sqlite3.Row]:
     with get_conn() as conn:
         return conn.execute(

@@ -22,7 +22,7 @@ from database import (
     update_user_profile, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
-    create_analysis, update_analysis_status, get_analysis,
+    create_analysis, update_analysis_status, get_analysis, count_active_analyses,
     save_interview_prep, get_interview_prep,
 )
 from analyzer import analyze, interview_prep
@@ -330,6 +330,7 @@ def analysis_status(analysis_id: str):
         "role": row["role"],
         "verdict": row["verdict"],
         "error": row["error"],
+        "queue_count": count_active_analyses(user["id"]),
     })
 
 

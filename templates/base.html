@@ -68,15 +68,28 @@
          : v === 'rejected' ? 'rejected' : (v || '');
   }
 
-  function showRunning(src) {
+  function showRunning(src, queueCount) {
     document.title = '⏳ Analyzing… — Job Screener';
     banner.className = 'analysis-banner is-running is-visible';
     document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
     banner.onclick = null;
+    var more = (queueCount > 1)
+      ? '<span class="analysis-banner-queue">+' + (queueCount - 1) + ' more</span>'
+      : '';
     banner.innerHTML =
       '<span class="analysis-banner-spinner"></span>' +
       '<span class="analysis-banner-label">Analyzing — </span>' +
-      '<span class="analysis-banner-source">' + escHtml(src) + '</span>';
+      '<span class="analysis-banner-source">' + escHtml(src) + '</span>' +
+      more;
+  }
+
+  function dismissBanner() {
+    document.title = 'Job Screener';
+    localStorage.removeItem('activeAnalysis');
+    if (timer) clearInterval(timer);
+    banner.className = 'analysis-banner';
+    banner.innerHTML = '';
+    document.documentElement.style.setProperty('--sticky-top', '0px');
   }
 
   function showDone(d) {
@@ -89,19 +102,23 @@
       '<span class="analysis-banner-label">Analysis done — </span>' +
       '<span class="analysis-banner-source">' + escHtml(d.company) + (d.role ? ' · ' + escHtml(d.role) : '') + '</span>' +
       '<span class="' + bc + '">' + vLabel(d.verdict) + '</span>' +
-      '<span class="analysis-banner-action">View result →</span>';
-    banner.onclick = function () {
-      document.title = 'Job Screener';
-      localStorage.removeItem('activeAnalysis');
-      if (timer) clearInterval(timer);
-      banner.className = 'analysis-banner';
-      banner.innerHTML = '';
-      document.documentElement.style.setProperty('--sticky-top', '0px');
+      '<span class="analysis-banner-action" id="ab-view">View result →</span>' +
+      '<span class="analysis-banner-dismiss" id="ab-dismiss-done">×</span>';
+    banner.onclick = null;
+    var viewBtn = document.getElementById('ab-view');
+    if (viewBtn) viewBtn.onclick = function (e) {
+      e.stopPropagation();
+      dismissBanner();
       if (typeof openModal === 'function') {
         openModal(d.result_job_id);
       } else {
         window.location.href = '/history?job=' + d.result_job_id;
       }
+    };
+    var dismissBtn = document.getElementById('ab-dismiss-done');
+    if (dismissBtn) dismissBtn.onclick = function (e) {
+      e.stopPropagation();
+      dismissBanner();
     };
   }
 
@@ -115,15 +132,7 @@
       '<span class="analysis-banner-source">' + escHtml(msg || 'Unknown error') + '</span>' +
       '<span class="analysis-banner-action" id="ab-dismiss">Dismiss ×</span>';
     var btn = document.getElementById('ab-dismiss');
-    if (btn) btn.onclick = function (e) {
-      e.stopPropagation();
-      document.title = 'Job Screener';
-      localStorage.removeItem('activeAnalysis');
-      banner.className = 'analysis-banner';
-      banner.innerHTML = '';
-      document.documentElement.style.setProperty('--sticky-top', '0px');
-      if (timer) clearInterval(timer);
-    };
+    if (btn) btn.onclick = function (e) { e.stopPropagation(); dismissBanner(); };
   }
 
   function poll(id, src) {
@@ -141,7 +150,7 @@
       .then(function (d) {
         if (!d) return;
         if (d.status === 'pending' || d.status === 'running') {
-          showRunning(d.source_label || src);
+          showRunning(d.source_label || src, d.queue_count || 1);
         } else if (d.status === 'done') {
           if (timer) clearInterval(timer);
           showDone(d);

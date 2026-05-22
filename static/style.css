@@ -107,7 +107,11 @@ nav { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex;
 .analysis-banner-badge.badge-worth_considering { color: #4a9eff; }
 .analysis-banner-badge.badge-warning { color: #f0c040; }
 .analysis-banner-badge.badge-rejected { color: #e74c3c; }
-.analysis-banner-action { margin-left: auto; color: var(--dim); font-size: var(--fs-xs); }
+.analysis-banner-queue { margin-left: 8px; color: var(--muted); font-size: var(--fs-xs); opacity: 0.7; }
+.analysis-banner-action { margin-left: auto; color: var(--dim); font-size: var(--fs-xs); cursor: pointer; }
+.analysis-banner-action:hover { color: var(--text); }
+.analysis-banner-dismiss { margin-left: 10px; color: var(--muted); font-size: var(--fs-sm); cursor: pointer; line-height: 1; padding: 0 2px; }
+.analysis-banner-dismiss:hover { color: var(--text); }
 @keyframes spin-banner { to { transform: rotate(360deg); } }
 
 /* ── layout ────────────────────────────────────────────────────────────── */
