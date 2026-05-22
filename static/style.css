@@ -47,7 +47,7 @@ body { background: var(--bg); color: var(--text); font-family: var(--fb); font-s
 /* ── navigation ────────────────────────────────────────────────────────── */
 nav { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
 .nav-brand { font-family: var(--fd); font-size: var(--fs-2xl); font-weight: 200; color: var(--accent); text-decoration: none; }
-.nav-links { display: flex; gap: 6px; align-items: center; }
+.nav-links { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 .nav-links a { font-family: var(--fm); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 5px 12px; transition: color 0.15s; }
 .nav-links a:hover { color: var(--text); }
 .nav-links a.active { color: var(--text); }
