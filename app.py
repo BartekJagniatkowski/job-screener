@@ -22,7 +22,7 @@ from database import (
     update_user_profile, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
-    create_analysis, update_analysis_status, get_analysis, cancel_analysis,
+    create_analysis, update_analysis_status, get_analysis,
     save_interview_prep, get_interview_prep,
 )
 from analyzer import analyze, interview_prep
@@ -245,10 +245,6 @@ def _run_analysis_bg(
     try:
         update_analysis_status(analysis_id, "running")
         result = analyze(user, input_text, "text", API_KEY, MODEL)
-        # Check for cancellation — user may have cancelled while API was running
-        row = get_analysis(analysis_id, user["id"])
-        if row and row["status"] == "cancelled":
-            return
         job_id = save_job(user["id"], result, source_url=url, source_text=input_text)
         update_analysis_status(analysis_id, "done", result_job_id=job_id)
     except Exception as e:
@@ -335,19 +331,6 @@ def analysis_status(analysis_id: str):
         "verdict": row["verdict"],
         "error": row["error"],
     })
-
-
-@app.route("/cancel_analysis/<analysis_id>", methods=["POST"])
-@login_required
-def cancel_analysis_route(analysis_id: str):
-    user = current_user()
-    cancelled = cancel_analysis(analysis_id, user["id"])
-    if not cancelled:
-        row = get_analysis(analysis_id, user["id"])
-        if row is None:
-            return jsonify({"error": "Not found"}), 404
-        return jsonify({"error": "Analysis already finished", "status": row["status"]}), 409
-    return jsonify({"ok": True})
 
 
 @app.route("/check_source", methods=["POST"])

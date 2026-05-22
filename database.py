@@ -405,17 +405,6 @@ def update_analysis_status(
             raise ValueError(f"analysis_id not found: {analysis_id}")
 
 
-def cancel_analysis(analysis_id: str, user_id: int) -> bool:
-    """Set status to 'cancelled' if still pending/running. Returns True if cancelled."""
-    with get_conn() as conn:
-        cur = conn.execute(
-            "UPDATE analyses SET status='cancelled', finished_at=datetime('now') "
-            "WHERE id=? AND user_id=? AND status IN ('pending', 'running')",
-            (analysis_id, user_id),
-        )
-        return cur.rowcount > 0
-
-
 def get_analysis(analysis_id: str, user_id: int) -> Optional[sqlite3.Row]:
     with get_conn() as conn:
         return conn.execute(
