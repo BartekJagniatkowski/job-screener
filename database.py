@@ -135,6 +135,7 @@ def init_db() -> None:
             ("offer_received INTEGER DEFAULT 0", "jobs"),
             ("offer_at DATE", "jobs"),
             ("interview_prep TEXT", "jobs"),
+            ("cv_tailoring TEXT", "jobs"),
             # kept for migration chain: old DBs may not have this yet before rename
             ("lista_zolta TEXT DEFAULT ''", "users"),
         ]:
@@ -684,6 +685,24 @@ def get_interview_prep(job_id: int, user_id: int) -> Optional[str]:
             (job_id, user_id),
         ).fetchone()
     return row["interview_prep"] if row and row["interview_prep"] else None
+
+
+def save_cv_tailoring(job_id: int, user_id: int, content: str) -> bool:
+    with get_conn() as conn:
+        cur = conn.execute(
+            "UPDATE jobs SET cv_tailoring=? WHERE id=? AND user_id=?",
+            (content.strip(), job_id, user_id),
+        )
+        return cur.rowcount > 0
+
+
+def get_cv_tailoring(job_id: int, user_id: int) -> Optional[str]:
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT cv_tailoring FROM jobs WHERE id=? AND user_id=?",
+            (job_id, user_id),
+        ).fetchone()
+    return row["cv_tailoring"] if row and row["cv_tailoring"] else None
 
 
 def update_job_status(job_id: int, user_id: int, status: str) -> bool:
