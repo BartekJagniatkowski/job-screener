@@ -159,39 +159,6 @@
 
   {{ layer('gut','Gut feeling', 'unknown', job.gut_feeling) }}
 
-  {% set show_prep_btn = job.verdict == 'worth_considering' or job.applied or job.interview_scheduled or job.offer_received %}
-  {% if show_prep_btn or prep_content %}
-  <div class="layer">
-    <div class="layer-hdr" onclick="tog('iprep')">
-      <div class="layer-left">
-        <div class="dot dot-unknown"></div>
-        <div>
-          <div class="layer-name">Interview prep</div>
-          <div class="layer-status-label">{% if prep_content %}Generated{% else %}Not generated{% endif %}</div>
-        </div>
-      </div>
-      <span class="chev" id="lc-iprep">▶</span>
-    </div>
-    <div class="layer-body" id="lb-iprep">
-      {% if show_prep_btn %}
-      <div>
-        <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">
-          {% if prep_content %}Regenerate prep{% else %}Generate interview prep{% endif %}
-        </button>
-        <span id="prep-status" class="notice" style="display:none;"></span>
-      </div>
-      {% endif %}
-      <div id="prep-content-box">
-        {% if prep_content %}
-        <div class="prep-content">{{ prep_content }}</div>
-        {% else %}
-        <div class="td-dim">No prep generated yet.</div>
-        {% endif %}
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
   {% set show_tailor_btn = job.verdict == 'worth_considering' or job.applied or job.interview_scheduled or job.offer_received %}
   {% if show_tailor_btn or tailoring_content %}
   <div class="layer">
@@ -219,6 +186,39 @@
         <div class="prep-content">{{ tailoring_content }}</div>
         {% else %}
         <div class="td-dim">No CV tailoring generated yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {% set show_prep_btn = job.verdict == 'worth_considering' or job.applied or job.interview_scheduled or job.offer_received %}
+  {% if show_prep_btn or prep_content %}
+  <div class="layer">
+    <div class="layer-hdr" onclick="tog('iprep')">
+      <div class="layer-left">
+        <div class="dot dot-unknown"></div>
+        <div>
+          <div class="layer-name">Interview prep</div>
+          <div class="layer-status-label">{% if prep_content %}Generated{% else %}Not generated{% endif %}</div>
+        </div>
+      </div>
+      <span class="chev" id="lc-iprep">▶</span>
+    </div>
+    <div class="layer-body" id="lb-iprep">
+      {% if show_prep_btn %}
+      <div>
+        <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">
+          {% if prep_content %}Regenerate prep{% else %}Generate interview prep{% endif %}
+        </button>
+        <span id="prep-status" class="notice" style="display:none;"></span>
+      </div>
+      {% endif %}
+      <div id="prep-content-box">
+        {% if prep_content %}
+        <div class="prep-content">{{ prep_content }}</div>
+        {% else %}
+        <div class="td-dim">No prep generated yet.</div>
         {% endif %}
       </div>
     </div>
