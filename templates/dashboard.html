@@ -614,5 +614,40 @@ async function generatePrep() {
   }
 }
 
+async function generateCvTailoring() {
+  const btn = document.getElementById('tailor-btn');
+  const statusEl = document.getElementById('tailor-status');
+  const contentBox = document.getElementById('tailor-content-box');
+  const jobId = getCurrentJobId();
+  if (!jobId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+  if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 15–30 seconds…'; }
+  try {
+    const resp = await fetch(`/job/${jobId}/cv_tailoring`, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrfToken()},
+    });
+    if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
+    const data = await resp.json();
+    if (data.ok) {
+      if (contentBox) {
+        const div = document.createElement('div');
+        div.className = 'prep-content';
+        div.textContent = data.content;
+        contentBox.innerHTML = '';
+        contentBox.appendChild(div);
+      }
+      if (statusEl) { statusEl.style.display = 'none'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate CV tailoring'; }
+    } else {
+      if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
+      if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate CV tailoring' : 'Tailor CV for this role'; }
+    }
+  } catch(e) {
+    if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
+    if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate CV tailoring' : 'Tailor CV for this role'; }
+  }
+}
+
 </script>
 {% endblock %}
