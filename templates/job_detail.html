@@ -19,7 +19,7 @@
           <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
           <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
 
-          <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Rejected (user)</option>
+          <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>User rejected</option>
         </optgroup>
         <optgroup label="Application">
           <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Applied</option>
@@ -307,8 +307,8 @@ async function setStatus(status) {
   const verdictLabels = {
     worth_considering: 'Worth considering',
     warning: 'Needs review',
-    rejected_soft: 'Rejected (AI)',
-    rejected: 'Rejected (user)',
+    rejected_soft: 'AI rejected',
+    rejected: 'User rejected',
     applied: 'Applied',
     company_rejected: 'Rejected by company',
     interview: 'Interview',

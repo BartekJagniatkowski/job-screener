@@ -30,8 +30,8 @@
   <button class="filter-btn fb-all" onclick="showAll()">Show all</button>
   <button class="filter-btn active fb-worth_considering" data-cat="worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
   <button class="filter-btn active fb-warning" data-cat="warning" onclick="toggleFilter('warning', this)">Needs review</button>
-  <button class="filter-btn active fb-rejected_soft" data-cat="rejected_soft" onclick="toggleFilter('rejected_soft', this)">Rejected (AI)</button>
-  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">Rejected (user)</button>
+  <button class="filter-btn active fb-rejected_soft" data-cat="rejected_soft" onclick="toggleFilter('rejected_soft', this)">AI rejected</button>
+  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">User rejected</button>
   <button class="filter-btn active fb-applied" data-cat="applied" onclick="toggleFilter('applied', this)">Applied</button>
   <button class="filter-btn active fb-company_rejected" data-cat="company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
   <button class="filter-btn active fb-interview" data-cat="interview" onclick="toggleFilter('interview', this)">Interview</button>
@@ -79,8 +79,8 @@
         {%- elif j.interview_scheduled -%}<span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
         {%- elif j.company_rejected -%}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
         {%- elif j.applied -%}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-        {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">Rejected (user)</span>
-        {%- elif j.verdict == 'rejected' -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">Rejected (AI)</span>
+        {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
+        {%- elif j.verdict == 'rejected' -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
         {%- else -%}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
         {%- endif %}
       </td>
@@ -126,9 +126,9 @@
       {%- elif j.applied -%}
         <span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
       {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}
-        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">Rejected (user)</span>
+        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
       {%- elif j.verdict == 'rejected' -%}
-        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">Rejected (AI)</span>
+        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
       {%- else -%}
         <span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
       {%- endif %}
@@ -294,9 +294,9 @@ function updateTableRow(jobId, status, verdict) {
     } else if (status === 'company_rejected') {
       badge.className = 'badge badge-company_rejected'; badge.textContent = 'Rejected by company';
     } else if (status === 'rejected_soft') {
-      badge.className = 'badge badge-rejected'; badge.textContent = 'Rejected (AI)';
+      badge.className = 'badge badge-rejected'; badge.textContent = 'AI rejected';
     } else if (status === 'rejected') {
-      badge.className = 'badge badge-rejected'; badge.textContent = 'Rejected (user)';
+      badge.className = 'badge badge-rejected'; badge.textContent = 'User rejected';
     } else {
       badge.className = `badge badge-${verdict}`;
       badge.textContent = {warning:'Needs review', worth_considering:'Worth considering'}[verdict] || verdict;

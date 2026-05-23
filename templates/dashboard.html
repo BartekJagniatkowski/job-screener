@@ -79,8 +79,8 @@
             {%- elif j.interview_scheduled %}<span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
             {%- elif j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
             {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-            {%- elif j.verdict == 'rejected' and j.verdict_confirmed %}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">Rejected (user)</span>
-            {%- elif j.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">Rejected (AI)</span>
+            {%- elif j.verdict == 'rejected' and j.verdict_confirmed %}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
+            {%- elif j.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
             {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
       </tr>
       {% endfor %}
@@ -97,7 +97,7 @@
 
 {% block scripts %}
 <script>
-const vLabel = v => ({rejected:'Rejected (user)', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
+const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
 const sClass = s => ({ok:'ok', warning:'warning', flag:'flag'}[s]||'unknown');
 const sLabel = s => ({ok:'No issues', warning:'Needs review', flag:'Red flag'}[s]||'—');
 
@@ -137,8 +137,8 @@ function renderResult(r, jobId, sourceUrl, sourceText) {
     <optgroup label="Job analysis">
       <option value="worth_considering" ${r.verdict==='worth_considering'?'selected':''}>Worth considering</option>
       <option value="warning" ${r.verdict==='warning'?'selected':''}>Needs review</option>
-      <option value="rejected_soft" ${isSoftRejected?'selected':''}>Rejected (AI)</option>
-      <option value="rejected" ${r.verdict==='rejected'&&!isSoftRejected?'selected':''}>Rejected (user)</option>
+      <option value="rejected_soft" ${isSoftRejected?'selected':''}>AI rejected</option>
+      <option value="rejected" ${r.verdict==='rejected'&&!isSoftRejected?'selected':''}>User rejected</option>
     </optgroup>
     <optgroup label="Application">
       <option value="applied">Applied</option>
@@ -193,7 +193,7 @@ let currentJobId = null;
 async function setVerdictInline(value) {
   if (!currentJobId) return;
   const badge = document.getElementById('result-badge');
-  const labels = {rejected:'Rejected (user)', rejected_soft:'Rejected (AI)', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
+  const labels = {rejected:'User rejected', rejected_soft:'AI rejected', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
   const badgeClass = {applied:'applied'};
   try {
     const fd = new FormData();
@@ -436,9 +436,9 @@ function updateTableRow(jobId, status, verdict) {
     } else if (status === 'company_rejected') {
       badge.className = 'badge badge-company_rejected'; badge.textContent = 'Rejected by company';
     } else if (status === 'rejected_soft') {
-      badge.className = 'badge badge-rejected'; badge.textContent = 'Rejected (AI)';
+      badge.className = 'badge badge-rejected'; badge.textContent = 'AI rejected';
     } else if (status === 'rejected') {
-      badge.className = 'badge badge-rejected'; badge.textContent = 'Rejected (user)';
+      badge.className = 'badge badge-rejected'; badge.textContent = 'User rejected';
     } else {
       badge.className = `badge badge-${verdict}`;
       badge.textContent = {warning:'Needs review', worth_considering:'Worth considering'}[verdict] || verdict;

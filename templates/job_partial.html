@@ -18,7 +18,7 @@
         <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
         <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
 
-        <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Rejected (user)</option>
+        <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>User rejected</option>
       </optgroup>
       <optgroup label="Application">
         <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Applied</option>
@@ -41,8 +41,8 @@
     {%- elif job.interview_scheduled %}<span class="badge badge-interview" data-verdict="{{ job.verdict }}">Interview</span>
     {%- elif job.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ job.verdict }}">Rejected by company</span>
     {%- elif job.applied %}<span class="badge badge-applied" data-verdict="{{ job.verdict }}">Applied</span>
-    {%- elif job.verdict == 'rejected' and job.verdict_confirmed %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">Rejected (user)</span>
-    {%- elif job.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">Rejected (AI)</span>
+    {%- elif job.verdict == 'rejected' and job.verdict_confirmed %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">User rejected</span>
+    {%- elif job.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">AI rejected</span>
     {%- else %}<span class="badge badge-{{ job.verdict }}" data-verdict="{{ job.verdict }}">{{ vl.get(job.verdict, job.verdict) }}</span>{% endif %}
     {% if job.role_archetype %}<span class="badge badge-archetype">{{ job.role_archetype }}</span>{% endif %}
     <div class="card-title">{{ job.role or '—' }}</div>
