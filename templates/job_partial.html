@@ -185,6 +185,39 @@
   </div>
   {% endif %}
 
+  {% set show_tailor_btn = job.verdict == 'worth_considering' or job.applied or job.interview_scheduled or job.offer_received %}
+  {% if show_tailor_btn or tailoring_content %}
+  <div class="layer">
+    <div class="layer-hdr" onclick="tog('cvtailor')">
+      <div class="layer-left">
+        <div class="dot dot-unknown"></div>
+        <div>
+          <div class="layer-name">CV tailoring</div>
+          <div class="layer-status-label">{% if tailoring_content %}Generated{% else %}Not generated{% endif %}</div>
+        </div>
+      </div>
+      <span class="chev" id="lc-cvtailor">▶</span>
+    </div>
+    <div class="layer-body" id="lb-cvtailor">
+      {% if show_tailor_btn %}
+      <div>
+        <button id="tailor-btn" class="btn btn-secondary btn-sm" onclick="generateCvTailoring()">
+          {% if tailoring_content %}Regenerate CV tailoring{% else %}Tailor CV for this role{% endif %}
+        </button>
+        <span id="tailor-status" class="notice" style="display:none;"></span>
+      </div>
+      {% endif %}
+      <div id="tailor-content-box">
+        {% if tailoring_content %}
+        <div class="prep-content">{{ tailoring_content }}</div>
+        {% else %}
+        <div class="td-dim">No CV tailoring generated yet.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
   <div class="layer">
     <div class="layer-hdr" onclick="tog('src')">
       <div class="layer-left">
