@@ -206,7 +206,7 @@ Dropdown `#status-select` with `<optgroup>` groups:
 |---|---|---|
 | `worth_considering` | Worth considering | verdict, confirmed=1 |
 | `warning` | Needs review | verdict, confirmed=1 |
-| `rejected_soft` | Rejected (AI) | verdict=rejected, confirmed=0 |
+| `rejected_soft` | AI rejected | verdict=rejected, confirmed=0 — not shown in dropdown (AI-only state) |
 | `rejected` | Rejected | verdict=rejected, confirmed=1 |
 | `applied` | Applied | applied=1 |
 | `company_rejected` | Rejected by company | company_rejected=1, applied=1 |
@@ -409,7 +409,7 @@ Row highlight is the only colour signal at category level.
 |---|---|---|---|
 | Worth considering | `row-worth-considering` | `badge-worth_considering` | blue |
 | Needs review | `row-warning` | `badge-warning` | yellow |
-| Rejected (AI) | `row-rejected-soft` | `badge-rejected` | red, faint row background |
+| AI rejected | `row-rejected-soft` | `badge-rejected` | red, faint row background |
 | Rejected | `row-rejected` | `badge-rejected` | red, full row background |
 | Applied | `row-applied` | `badge-applied` | green |
 | Rejected by company | `row-company-rejected` | `badge-company_rejected` | orange, no row background |
