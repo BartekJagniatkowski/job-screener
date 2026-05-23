@@ -9,6 +9,7 @@ from typing import Any, Dict
 API_URL: str = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL: str = "claude-sonnet-4-6"
 INTERVIEW_PREP_MODEL: str = os.environ.get("INTERVIEW_PREP_MODEL", "claude-sonnet-4-6")
+CV_TAILORING_MODEL: str = os.environ.get("CV_TAILORING_MODEL", "claude-haiku-4-5-20251001")
 
 SYSTEM_TEMPLATE: str = """You are a tool that analyzes job listings according to a strict ethical methodology.
 Return ONLY valid JSON — no text before or after, no markdown, no backticks.
@@ -203,6 +204,27 @@ Be specific ("Review JTBD for product discovery", not "study product management"
 2–3 things from the JD that warrant a direct question from the candidate.
 """
 
+CV_TAILORING_SYSTEM: str = """You are a CV tailoring assistant.
+Given a job description and a candidate CV, produce targeted tailoring guidance in English.
+Return ONLY the following Markdown — no preamble, no code fences, no extra text.
+
+# CV Tailoring: {company} — {role}
+
+## What to emphasise
+3–5 bullet points on experience, skills, or achievements from the CV that directly match the JD's priorities. Be specific — name the project, metric, or skill.
+
+## What to cut or deprioritise
+2–3 bullet points on CV content that is irrelevant or weakens focus for this role.
+
+## Bullet rewrites
+For each of the 3–5 most impactful CV bullets, show a rewrite:
+**Original:** [exact or paraphrased original bullet]
+**Rewrite:** [stronger version aligned with JD language and priorities]
+
+## Suggested CV summary
+2–3 sentence professional summary tailored to this role and company. Should open with the candidate's strongest match for the JD, not a generic statement.
+"""
+
 
 def interview_prep(user: User, job_source: str, company: str, role: str, api_key: str) -> str:
     """Generate interview preparation brief for a specific job.
@@ -259,7 +281,62 @@ def interview_prep(user: User, job_source: str, company: str, role: str, api_key
     return text.strip()
 
 
-__all__ = ["analyze", "interview_prep", "build_system", "AnalysisResult", "User"]
+def cv_tailoring(user: User, job_source: str, company: str, role: str, api_key: str) -> str:
+    """Generate CV tailoring guidance for a specific job.
+
+    Returns:
+        Markdown string with tailoring guidance.
+
+    Raises:
+        Exception: On API error or empty response.
+    """
+    cv = (user.get("cv") or "")[:3000].strip() or "[No CV — add it in Settings]"
+    job_source = job_source[:4000]
+    _vals = {"company": company or "Unknown", "role": role or "Unknown"}
+    system = re.sub(r'\{(company|role)\}', lambda m: _vals[m.group(1)], CV_TAILORING_SYSTEM)
+    user_msg = f"Candidate CV:\n{cv}\n\nJob description:\n{job_source}"
+
+    payload_bytes = json.dumps({
+        "model": CV_TAILORING_MODEL,
+        "max_tokens": 1500,
+        "system": system,
+        "messages": [{"role": "user", "content": user_msg}],
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        API_URL,
+        data=payload_bytes,
+        headers={
+            "Content-Type": "application/json",
+            "x-api-key": api_key,
+            "anthropic-version": "2023-06-01",
+        },
+        method="POST",
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8")
+        try:
+            msg = json.loads(body).get("error", {}).get("message", body)
+        except Exception:
+            msg = body
+        raise Exception(f"API error {e.code}: {msg}")
+    except urllib.error.URLError as e:
+        raise Exception(f"No API connection: {e.reason}")
+
+    text = "".join(
+        b.get("text", "") for b in data.get("content", [])
+        if b.get("type") == "text"
+    )
+    if not text.strip():
+        raise Exception("Model returned empty response for CV tailoring.")
+    return text.strip()
+
+
+__all__ = ["analyze", "interview_prep", "cv_tailoring", "build_system", "AnalysisResult", "User"]
 
 
 def build_system(user: User) -> str:
