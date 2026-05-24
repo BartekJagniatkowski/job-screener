@@ -531,7 +531,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 
 ## Git
 
-Repo: `https://github.com/BartekBroda/job-screener` (private)
+Repo: `https://github.com/BartekJagniatkowski/job-screener` (private)
 
 ### Never commit
 - `config.env` (API keys)

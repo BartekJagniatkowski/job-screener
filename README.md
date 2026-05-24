@@ -51,7 +51,7 @@ Before the layer analysis, the tool synthesises what the listing language actual
 
 ```bash
 # 1. Clone the repo and enter the directory
-git clone https://github.com/BartekBroda/job-screener
+git clone https://github.com/BartekJagniatkowski/job-screener
 cd job-screener
 
 # 2. Copy and fill in the configuration
