@@ -16,8 +16,10 @@ BLOB=$(git hash-object -w CHANGELOG.public.md)
 # Rebuild the tree with CHANGELOG.md replaced by that blob
 TREE=$(git ls-tree HEAD | sed "s/[^ ]* blob [^ ]*\tCHANGELOG.md/100644 blob $BLOB\tCHANGELOG.md/" | git mktree)
 
-# Create a synthetic commit on top of HEAD with the substituted tree
-COMMIT=$(git commit-tree "$TREE" -p HEAD -m "chore: sync public changelog")
+# Parent off the public remote's current HEAD so the push is always a fast-forward
+git fetch "$REMOTE" "$BRANCH" --quiet
+PARENT=$(git rev-parse "$REMOTE/$BRANCH")
+COMMIT=$(git commit-tree "$TREE" -p "$PARENT" -m "chore: sync public changelog")
 
 echo "Pushing $COMMIT to $REMOTE/$BRANCH..."
 git push "$REMOTE" "$COMMIT:refs/heads/$BRANCH"
