@@ -171,7 +171,7 @@ https://your.domain.com/register?token=YOUR_TOKEN
 - **Statistics dashboard** — aggregated statistics: verdict distribution, application funnel, per-layer flag counts, fit score averages
 - **Mobile UX** — hamburger navigation at ≤768 px; card-based history list and full-screen detail modal at ≤480 px; 44 px touch targets
 - **CV tailoring** — targeted rewrite guidance for each job: what to emphasise, what to cut, bullet rewrites, and a suggested CV summary; generated on demand from the job detail view
-- **Analysis banner** — persistent progress banner shows `+N more` when multiple analyses are queued; done banner can be dismissed without opening the result
+- **Analysis banner** — persistent progress banner cycles through each queued analysis label with a slide animation and an "X of Y" counter when multiple analyses run simultaneously; done banner can be dismissed without opening the result
 - **Light/dark mode** — toggle in navigation, preference saved in the browser
 - **Multi-user** — each user has a separate profile, lists, and history; password change in Settings
 
