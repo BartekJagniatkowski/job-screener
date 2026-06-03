@@ -4,6 +4,15 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.27 — Command bar + detail tabs
+
+- **Command bar** — analyze form replaced with a clean URL input + "Analyze →" button; ⌘/Ctrl+Enter submits from anywhere; ⌘/Ctrl+K focuses the input
+- **Paste job text** — collapsible textarea for pasting listing content; auto-opens on scrape error
+- **Detail tabs** — job modal now has five tabs: Overview, Layers, Skills, CV, Interview
+- **Banner resilience** — analysis banner stops and shows an error if the server is unreachable, instead of spinning forever
+
+---
+
 ## v0.26 — Statistics page rebuild + settings overhaul
 
 - **Summary stat cards** — top of statistics page shows three at-a-glance cards: Total analyzed, Applications sent, Interviews
