@@ -418,7 +418,7 @@ def count_active_analyses(user_id: int) -> int:
 def get_active_analyses_labels(user_id: int) -> list:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT source_label FROM analyses WHERE user_id=? AND status IN ('pending', 'running') ORDER BY created_at",
+            "SELECT source_label FROM analyses WHERE user_id=? AND status IN ('pending', 'running') ORDER BY started_at",
             (user_id,),
         ).fetchall()
         return [r["source_label"] or "" for r in rows]

@@ -2,9 +2,6 @@
 {% block title %}Analyze — Job Screener{% endblock %}
 
 {% block content %}
-<div class="page-title">Analyze a listing</div>
-<p class="page-sub">Provide a URL and/or job description text. Both are saved to the database.</p>
-
 <!-- Job detail modal -->
 <div id="job-modal" class="modal-overlay" style="display:none;">
   <div class="modal-container">
@@ -25,19 +22,18 @@
 <div class="notice">No CV in your profile yet. <a href="{{ url_for('settings') }}" class="link-accent">Add it in Settings →</a></div>
 {% endif %}
 
-<div class="card card-mb">
-  <div class="card-body">
-    <div class="field">
-      <label>Job listing URL</label>
-      <input type="url" id="input-url" placeholder="https://www.linkedin.com/jobs/view/...">
-    </div>
-    <div class="field">
-      <label>Job description text</label>
-      <textarea id="input-text" rows="8" placeholder="Paste the job description — required when the link is inaccessible (LinkedIn, Indeed, etc.)"></textarea>
-    </div>
-    <button class="btn btn-primary" id="analyze-btn" onclick="runAnalysis()" {% if not has_api_key %}disabled{% endif %}>
-      Analyze listing →
-    </button>
+<div class="cmd-zone">
+  <div class="cmd-bar">
+    <input type="url" id="cmd-input" class="cmd-input" placeholder="Job listing URL…" autocomplete="off">
+    <button class="cmd-btn" id="analyze-btn" onclick="runAnalysis()" {% if not has_api_key %}disabled{% endif %}>Analyze →</button>
+  </div>
+  <div class="cmd-hint">
+    <span><kbd class="cmd-key" id="hint-submit"></kbd> submit</span>
+    <span><kbd class="cmd-key" id="hint-paste"></kbd> focus input</span>
+    <button class="cmd-text-toggle" id="cmd-text-toggle" onclick="toggleCmdText()" type="button">+ paste job text</button>
+  </div>
+  <div class="cmd-text-zone" id="cmd-text-zone" style="display:none;">
+    <textarea id="cmd-text" class="cmd-text-area" rows="6" placeholder="Paste job description here — used when the URL is inaccessible (LinkedIn, Indeed, etc.)"></textarea>
   </div>
 </div>
 
@@ -221,10 +217,34 @@ const SCRAPE_ERRORS = {
   network:  { title: 'Network error', fallback: true },
 };
 
+const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const modKey = isMac ? '⌘' : 'Ctrl';
+document.getElementById('hint-submit').textContent = modKey + ' Enter';
+document.getElementById('hint-paste').textContent = modKey + ' K';
+
+function toggleCmdText(forceOpen) {
+  const zone = document.getElementById('cmd-text-zone');
+  const btn = document.getElementById('cmd-text-toggle');
+  const open = forceOpen !== undefined ? forceOpen : zone.style.display === 'none';
+  zone.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '− hide job text' : '+ paste job text';
+  if (open) document.getElementById('cmd-text').focus();
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
+  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    var el = document.getElementById('cmd-input');
+    el.focus();
+    el.select();
+  }
+});
+
 async function runAnalysis(force = false) {
-  const url = document.getElementById('input-url').value.trim();
-  const text = document.getElementById('input-text').value.trim();
-  if (!url && !text) { alert('Provide a URL or job description text.'); return; }
+  const url = document.getElementById('cmd-input').value.trim();
+  const text = document.getElementById('cmd-text').value.trim();
+  if (!url && !text) { document.getElementById('cmd-input').focus(); return; }
 
   const statusEl = document.getElementById('source-status');
 
@@ -266,9 +286,9 @@ async function runAnalysis(force = false) {
       const info = SCRAPE_ERRORS[data.error_code] || {title:'Error', fallback:true};
       document.getElementById('error-box').innerHTML =
         `<strong>${info.title}</strong><br>${data.error_detail || ''}` +
-        (info.fallback ? '<br><br>Paste the job description in the text field above and try again.' : '');
+        (info.fallback ? '<br><br>Paste the job description in the text field below and submit again.' : '');
       document.getElementById('error-box').style.display = 'block';
-      if (info.fallback) document.getElementById('input-text').focus();
+      if (info.fallback) toggleCmdText(true);
       document.getElementById('analyze-btn').disabled = false;
       return;
     }
@@ -283,7 +303,7 @@ async function runAnalysis(force = false) {
             Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
           </div>
           <div class="duplicate-actions">
-            <a href="/job/${p.id}" class="btn btn-secondary btn-sm">View previous analysis →</a>
+            <button class="btn btn-secondary btn-sm" onclick="openModal(${p.id})">View previous analysis →</button>
             <button class="btn btn-secondary btn-sm" onclick="runAnalysis(true)">Analyze again</button>
           </div>
         </div>`;
@@ -296,10 +316,14 @@ async function runAnalysis(force = false) {
         'The banner above will update when done.</div>';
       var active = {
         id: data.analysis_id,
-        source_label: url || (text || '').slice(0, 60).replace(/\n/g, ' ')
+        source_label: (url || text).slice(0, 60).replace(/\n/g, ' ')
       };
       localStorage.setItem('activeAnalysis', JSON.stringify(active));
       window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
+      document.getElementById('cmd-input').value = '';
+      document.getElementById('cmd-text').value = '';
+      toggleCmdText(false);
+      document.getElementById('cmd-input').focus();
     } else if (data.error) {
       document.getElementById('error-box').textContent = 'Error: ' + data.error;
       document.getElementById('error-box').style.display = 'block';
@@ -312,9 +336,6 @@ async function runAnalysis(force = false) {
   document.getElementById('analyze-btn').disabled = false;
 }
 
-document.addEventListener('keydown', e => {
-  if ((e.ctrlKey||e.metaKey) && e.key==='Enter') runAnalysis();
-});
 
 const style = document.createElement('style');
 style.textContent = '@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }';
@@ -465,6 +486,14 @@ function tog(id) {
   if (!lb || !ch) return;
   const open = lb.classList.toggle('open');
   ch.classList.toggle('open', open);
+}
+
+function switchJobTab(btn, tabId) {
+  var card = btn.closest('.card');
+  card.querySelectorAll('.job-tab').forEach(function(t) { t.classList.remove('active'); });
+  card.querySelectorAll('.job-tab-content').forEach(function(c) { c.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
 }
 
 // ── Job actions (called from job_partial.html) ────────────────────────────

@@ -327,6 +327,14 @@ function tog(id) {
   ch.classList.toggle('open', open);
 }
 
+function switchJobTab(btn, tabId) {
+  var card = btn.closest('.card');
+  card.querySelectorAll('.job-tab').forEach(function(t) { t.classList.remove('active'); });
+  card.querySelectorAll('.job-tab-content').forEach(function(c) { c.classList.remove('active'); });
+  btn.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
 // ── Job actions (called from job_partial.html) ────────────────────────────
 
 function getCurrentJobId() { return JOB_IDS[modalIdx]; }

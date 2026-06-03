@@ -71,8 +71,7 @@ job-screener/
 │   ├── register.html
 │   ├── dashboard.html  — analysis form + recent results + modal for recent analyses
 │   ├── history.html    — all analyses table + detail modal with navigation
-│   ├── job_partial.html — clean HTML (no extends) loaded via AJAX into modal
-│   ├── job_detail.html — full-page analysis detail view
+│   ├── job_partial.html — clean HTML (no extends) loaded via AJAX into modal; has five tabs: Overview / Layers / Skills / CV / Interview
 │   ├── settings.html   — CV, Zero Rule, Yellow List, criteria
 │   ├── about.html      — project overview, six layers, reality check, verdicts, inline changelog
 │   └── changelog.html  — renders CHANGELOG.md via a custom parser (`_md_to_html` + `_inline_md` in app.py; supports `**bold**` and `` `code` ``)
@@ -181,7 +180,7 @@ POST     /reanalyze/<id>
 GET      /analysis_status/<id>    — background analysis status poll (pending/running/done/error); also returns `active_labels` (ordered list of source labels for all pending/running analyses for the user)
 GET      /history_latest        — returns {id} of the most recent entry
 GET      /history
-GET      /job/<id>
+GET      /job/<id>              — redirects to /history?job=<id> (modal auto-opens)
 GET      /job/<id>/partial      — HTML without layout, loaded via AJAX into modal
 POST     /job/<id>/verdict      — change verdict
 POST     /job/<id>/status       — change status (all 6 values)
@@ -235,7 +234,7 @@ The `data-verdict` attribute on the badge element stores the underlying verdict
 - ← → navigation between listings (keyboard and on-screen buttons)
 - URL management: `pushState` on open (`?job=<id>`), `replaceState` on navigate, `replaceState` on close
 - Browser back closes the modal; direct link `?job=<id>` auto-opens modal
-- JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`) are globals defined in the parent template (history/dashboard), not in the partial
+- JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in the parent template (history/dashboard), not in the partial — `<script>` tags in AJAX-loaded partials do not execute
 
 ### /analyze logic
 1. `normalize_url(url)` — always before use
@@ -454,6 +453,9 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.source-url-input-row`, `.source-url-input`, `.source-inline-link`
 `.btn-inline`, `.source-old-text`, `.source-old-hint`, `.source-none`
 `.detail-nav`, `.detail-nav-back`, `.detail-nav-actions`
+`.cmd-zone`, `.cmd-bar`, `.cmd-input`, `.cmd-btn`, `.cmd-hint`, `.cmd-key`, `.cmd-text-toggle`, `.cmd-text-zone`, `.cmd-text-area` — command bar on dashboard
+`.job-tabs`, `.job-tab`, `.job-tab.active`, `.job-tab-content`, `.job-tab-content.active`, `.job-tab-empty`, `.job-tab-empty-hint` — five-tab nav in job modal
+`.tab-section`, `.tab-section-label`, `.tab-section-status`, `.tab-section-body` — always-visible section within a tab
 `.verdict-select-wrap`, `.verdict-select`, `.verdict-select-label`
 `.changelog`, `.auth-wrap`, `.auth-brand`, `.auth-sub`
 `.recent-more`, `.dashboard-recent`, `.export-section`
@@ -495,7 +497,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.about-verdict-label` — fixed-width verdict name (uses colour utilities: `td-blue`, `text-yellow`, `text-red`, `text-green`, `td-orange`)
 `.about-verdict-desc` — small muted verdict description
 `.about-changelog` — wrapper around inline changelog on About page
-`.settings-section-divider` — horizontal rule between profile form and password change form in Settings
+`.section-label` — uppercase monospace section heading (color `--muted`); used in settings (Data export, Change password) and dashboard (Recent analyses)
 `.notes-section`, `.notes-label`, `.notes-textarea`, `.notes-save-btn`, `.notes-status` — per-listing notes anatomy
 `.notes-status-ok`, `.notes-status-err` — save confirmation states on notes status span
 `.history-search-wrap`, `.history-search`, `.history-search:focus` — live search input above history table

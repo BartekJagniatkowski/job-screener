@@ -608,19 +608,7 @@ def history():
 @app.route("/job/<int:job_id>")
 @login_required
 def job_detail(job_id):
-    user = current_user()
-    job = get_job(job_id, user["id"])
-    if not job:
-        flash("Analysis not found.")
-        return redirect(url_for("history"))
-    raw = {}
-    try:
-        raw = _json.loads(job["raw_json"] or "{}")
-    except Exception:
-        pass
-    prep_content = get_interview_prep(job_id, user["id"])
-    tailoring_content = get_cv_tailoring(job_id, user["id"])
-    return render_template("job_detail.html", user=user, job=job, raw=raw, prep_content=prep_content, tailoring_content=tailoring_content)
+    return redirect(url_for("history") + f"?job={job_id}")
 
 
 @app.route("/job/<int:job_id>/partial")

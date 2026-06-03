@@ -17,7 +17,6 @@
       <optgroup label="Job analysis">
         <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
         <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
-
         <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Reject</option>
       </optgroup>
       <optgroup label="Application">
@@ -76,43 +75,92 @@
     </div>
   </div>
 
-  {% set rc = raw.get('reality_check') %}
-  {% if rc %}
-  <div class="reality-check-card">
-    <div class="reality-check-hdr" onclick="tog('rc')">
+  {# ── Tab strip ── #}
+  <div class="job-tabs">
+    <button class="job-tab active" onclick="switchJobTab(this,'jt-overview')">Overview</button>
+    <button class="job-tab" onclick="switchJobTab(this,'jt-layers')">Layers</button>
+    <button class="job-tab" onclick="switchJobTab(this,'jt-skills')">Skills</button>
+    <button class="job-tab" onclick="switchJobTab(this,'jt-cv')">CV</button>
+    <button class="job-tab" onclick="switchJobTab(this,'jt-interview')">Interview</button>
+  </div>
+
+  {# ── Tab: Overview ── #}
+  <div id="jt-overview" class="job-tab-content active">
+    {% set rc = raw.get('reality_check') %}
+    {% if rc %}
+    <div class="reality-check-card">
       <div class="reality-check-label">Reality check</div>
-      <span class="chev" id="lc-rc">▶</span>
-    </div>
-    <div class="layer-body reality-check-body" id="lb-rc">
-      <div class="reality-check-summary">{{ rc.summary }}</div>
-      {% if rc.callouts %}
-      <div class="reality-check-divider"></div>
-      <div class="reality-check-callouts-label">Decoded phrases</div>
-      {% for item in rc.callouts %}
-      <div class="reality-check-callout">
-        <span class="reality-check-phrase">"{{ item.phrase }}"</span>
-        <span class="reality-check-arrow">→</span>
-        <span class="reality-check-plain">{{ item.plain }}</span>
+      <div class="reality-check-body">
+        <div class="reality-check-summary">{{ rc.summary }}</div>
+        {% if rc.callouts %}
+        <div class="reality-check-divider"></div>
+        <div class="reality-check-callouts-label">Decoded phrases</div>
+        {% for item in rc.callouts %}
+        <div class="reality-check-callout">
+          <span class="reality-check-phrase">"{{ item.phrase }}"</span>
+          <span class="reality-check-arrow">→</span>
+          <span class="reality-check-plain">{{ item.plain }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
       </div>
-      {% endfor %}
-      {% endif %}
+    </div>
+    {% endif %}
+
+    {% if job.gut_feeling %}
+    <div class="tab-section">
+      <div class="tab-section-label">Gut feeling</div>
+      <div class="tab-section-body">{{ job.gut_feeling }}</div>
+    </div>
+    {% endif %}
+
+    <div class="tab-section">
+      <div class="tab-section-label">Listing source</div>
+      <div class="tab-section-body">
+        {% if job.source_full %}
+          {% if job.source_full.startswith('http') %}
+            <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
+            <div class="source-url-hint">URL may be inactive if the listing was removed.</div>
+          {% else %}
+            <div class="source-text">{{ job.source_full }}</div>
+            <div class="source-url-section">
+              {% if job.job_url %}
+                <div class="source-url-label">Listing URL</div>
+                <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="source-url-link">{{ job.job_url }}</a>
+                <button onclick="showUrlEdit()" class="btn-inline">change</button>
+              {% else %}
+                <div class="source-url-label">Add listing URL</div>
+              {% endif %}
+              <div id="url-edit" {% if job.job_url %}style="display:none"{% endif %}>
+                <div class="source-url-input-row">
+                  <input id="url-input" type="url" class="source-url-input"
+                    value="{{ job.job_url or '' }}"
+                    placeholder="https://..."
+                    onkeydown="if(event.key==='Enter') saveUrl()">
+                  <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Save URL</button>
+                </div>
+                <div id="url-status" class="notice" style="display:none; margin-top:6px;"></div>
+              </div>
+            </div>
+          {% endif %}
+        {% elif job.source %}
+          <div class="source-old-text">{{ job.source }}</div>
+          <div class="source-old-hint">Full text unavailable — listing was analyzed before this feature was introduced.</div>
+        {% else %}
+          <div class="source-none">No source saved.</div>
+        {% endif %}
+      </div>
     </div>
   </div>
-  {% endif %}
 
-  {% macro layer(id, name, status, findings, evidence=None) %}
-  <div class="layer">
-    <div class="layer-hdr" onclick="tog('{{ id }}')">
-      <div class="layer-left">
-        <div class="dot dot-{{ sc.get(status,'unknown') }}"></div>
-        <div>
-          <div class="layer-name">{{ name }}</div>
-          <div class="layer-status-label">{{ sl.get(status,'—') }}</div>
-        </div>
-      </div>
-      <span class="chev" id="lc-{{ id }}">▶</span>
+  {# ── Tab: Layers ── #}
+  {% macro layer_section(name, status, findings, evidence=None) %}
+  <div class="tab-section">
+    <div class="tab-section-label">
+      <span class="dot dot-{{ sc.get(status,'unknown') }}"></span>
+      {{ name }} <span class="tab-section-status">{{ sl.get(status,'—') }}</span>
     </div>
-    <div class="layer-body" id="lb-{{ id }}">
+    <div class="tab-section-body">
       {{ findings or '—' }}
       {% if evidence %}
       <div class="evidence"><span class="evidence-label">Evidence from listing</span>{{ evidence }}</div>
@@ -121,158 +169,103 @@
   </div>
   {% endmacro %}
 
-  {{ layer('triage','Triage', job.triage_status, job.triage_findings,
-    raw.get('triage',{}).get('evidence')) }}
-  {{ layer('prod','Product layer', job.product_status, job.product_findings,
-    raw.get('layers',{}).get('product',{}).get('evidence')) }}
-  {{ layer('biz','Business layer', job.business_status, job.business_findings,
-    raw.get('layers',{}).get('business',{}).get('evidence')) }}
-  {{ layer('rep','Reputation layer', job.reputation_status, job.reputation_findings,
-    raw.get('layers',{}).get('reputation',{}).get('evidence')) }}
-  {{ layer('val','Values layer', job.values_status, job.values_findings,
-    raw.get('layers',{}).get('values',{}).get('evidence')) }}
-
-  <div class="layer">
-    <div class="layer-hdr" onclick="tog('fit')">
-      <div class="layer-left">
-        <div class="dot dot-{{ sc.get(job.fit_status,'unknown') }}"></div>
-        <div>
-          <div class="layer-name">Skills fit</div>
-          <div class="layer-status-label">{{ sl.get(job.fit_status,'—') }}{% if job.fit_score %} · <strong>{{ "%.1f"|format(job.fit_score) }}/5</strong>{% endif %}</div>
-        </div>
-      </div>
-      <span class="chev" id="lc-fit">▶</span>
-    </div>
-    <div class="layer-body" id="lb-fit">
-      {% if job.fit_strengths %}<strong>Strengths:</strong> {{ job.fit_strengths }}<br><br>{% endif %}
-      {% if job.fit_gaps %}<strong>Gaps:</strong> {{ job.fit_gaps }}<br><br>{% endif %}
-      {% if job.fit_improve %}<strong>To strengthen:</strong> {{ job.fit_improve }}{% endif %}
-    </div>
+  <div id="jt-layers" class="job-tab-content">
+    {{ layer_section('Triage', job.triage_status, job.triage_findings,
+      raw.get('triage',{}).get('evidence')) }}
+    {{ layer_section('Product', job.product_status, job.product_findings,
+      raw.get('layers',{}).get('product',{}).get('evidence')) }}
+    {{ layer_section('Business', job.business_status, job.business_findings,
+      raw.get('layers',{}).get('business',{}).get('evidence')) }}
+    {{ layer_section('Reputation', job.reputation_status, job.reputation_findings,
+      raw.get('layers',{}).get('reputation',{}).get('evidence')) }}
+    {{ layer_section('Values', job.values_status, job.values_findings,
+      raw.get('layers',{}).get('values',{}).get('evidence')) }}
   </div>
 
-  {{ layer('gut','Gut feeling', 'unknown', job.gut_feeling) }}
+  {# ── Tab: Skills ── #}
+  <div id="jt-skills" class="job-tab-content">
+    {% if job.fit_strengths or job.fit_gaps or job.fit_improve %}
+    <div class="tab-section">
+      <div class="tab-section-label">
+        <span class="dot dot-{{ sc.get(job.fit_status,'unknown') }}"></span>
+        Skills fit <span class="tab-section-status">{{ sl.get(job.fit_status,'—') }}{% if job.fit_score %} · <strong>{{ "%.1f"|format(job.fit_score) }}/5</strong>{% endif %}</span>
+      </div>
+      <div class="tab-section-body">
+        {% if job.fit_strengths %}<strong>Strengths:</strong> {{ job.fit_strengths }}<br><br>{% endif %}
+        {% if job.fit_gaps %}<strong>Gaps:</strong> {{ job.fit_gaps }}<br><br>{% endif %}
+        {% if job.fit_improve %}<strong>To strengthen:</strong> {{ job.fit_improve }}{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="job-tab-empty">
+      <div class="job-tab-empty-hint">No skills fit data for this analysis.</div>
+    </div>
+    {% endif %}
+  </div>
 
+  {# ── Tab: CV ── #}
   {% set show_tailor_btn = job.verdict == 'worth_considering' or job.applied or job.interview_scheduled or job.offer_received %}
-  {% if show_tailor_btn or tailoring_content %}
-  <div class="layer">
-    <div class="layer-hdr" onclick="tog('cvtailor')">
-      <div class="layer-left">
-        <div class="dot dot-unknown"></div>
-        <div>
-          <div class="layer-name">CV tailoring</div>
-          <div class="layer-status-label">{% if tailoring_content %}Generated{% else %}Not generated{% endif %}</div>
+  <div id="jt-cv" class="job-tab-content">
+    {% if tailoring_content %}
+    <div class="tab-section">
+      <div class="tab-section-label">CV tailoring</div>
+      <div class="tab-section-body">
+        <div id="tailor-content-box"><div class="prep-content">{{ tailoring_content }}</div></div>
+        {% if show_tailor_btn %}
+        <div style="margin-top:14px;">
+          <button id="tailor-btn" class="btn btn-secondary btn-sm" onclick="generateCvTailoring()">Regenerate CV tailoring</button>
+          <span id="tailor-status" class="notice" style="display:none;"></span>
         </div>
-      </div>
-      <span class="chev" id="lc-cvtailor">▶</span>
-    </div>
-    <div class="layer-body" id="lb-cvtailor">
-      {% if show_tailor_btn %}
-      <div>
-        <button id="tailor-btn" class="btn btn-secondary btn-sm" onclick="generateCvTailoring()">
-          {% if tailoring_content %}Regenerate CV tailoring{% else %}Tailor CV for this role{% endif %}
-        </button>
-        <span id="tailor-status" class="notice" style="display:none;"></span>
-      </div>
-      {% endif %}
-      <div id="tailor-content-box">
-        {% if tailoring_content %}
-        <div class="prep-content">{{ tailoring_content }}</div>
-        {% else %}
-        <div class="td-dim">No CV tailoring generated yet.</div>
         {% endif %}
       </div>
     </div>
+    {% elif show_tailor_btn %}
+    <div class="job-tab-empty">
+      <button id="tailor-btn" class="btn btn-secondary btn-sm" onclick="generateCvTailoring()">Generate CV tailoring →</button>
+      <span id="tailor-status" class="notice" style="display:none;"></span>
+      <div id="tailor-content-box"></div>
+    </div>
+    {% else %}
+    <div class="job-tab-empty">
+      <div class="job-tab-empty-hint">CV tailoring is available for listings marked as worth considering, applied, or further.</div>
+    </div>
+    {% endif %}
   </div>
-  {% endif %}
 
+  {# ── Tab: Interview ── #}
   {% set show_prep_btn = job.verdict == 'worth_considering' or job.applied or job.interview_scheduled or job.offer_received %}
-  {% if show_prep_btn or prep_content %}
-  <div class="layer">
-    <div class="layer-hdr" onclick="tog('iprep')">
-      <div class="layer-left">
-        <div class="dot dot-unknown"></div>
-        <div>
-          <div class="layer-name">Interview prep</div>
-          <div class="layer-status-label">{% if prep_content %}Generated{% else %}Not generated{% endif %}</div>
+  <div id="jt-interview" class="job-tab-content">
+    {% if prep_content %}
+    <div class="tab-section">
+      <div class="tab-section-label">Interview prep</div>
+      <div class="tab-section-body">
+        <div id="prep-content-box"><div class="prep-content">{{ prep_content }}</div></div>
+        {% if show_prep_btn %}
+        <div style="margin-top:14px;">
+          <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">Regenerate prep</button>
+          <span id="prep-status" class="notice" style="display:none;"></span>
         </div>
-      </div>
-      <span class="chev" id="lc-iprep">▶</span>
-    </div>
-    <div class="layer-body" id="lb-iprep">
-      {% if show_prep_btn %}
-      <div>
-        <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">
-          {% if prep_content %}Regenerate prep{% else %}Generate interview prep{% endif %}
-        </button>
-        <span id="prep-status" class="notice" style="display:none;"></span>
-      </div>
-      {% endif %}
-      <div id="prep-content-box">
-        {% if prep_content %}
-        <div class="prep-content">{{ prep_content }}</div>
-        {% else %}
-        <div class="td-dim">No prep generated yet.</div>
         {% endif %}
       </div>
     </div>
-  </div>
-  {% endif %}
-
-  <div class="layer">
-    <div class="layer-hdr" onclick="tog('src')">
-      <div class="layer-left">
-        <div class="dot dot-unknown"></div>
-        <div>
-          <div class="layer-name">Listing source</div>
-          <div class="layer-status-label">
-            {%- if job.source_full and job.source_full.startswith('http') -%}Link
-            {%- elif job.source_full -%}Listing text
-            {%- else -%}No data{%- endif -%}
-          </div>
-        </div>
-      </div>
-      <span class="chev" id="lc-src">▶</span>
+    {% elif show_prep_btn %}
+    <div class="job-tab-empty">
+      <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">Generate interview prep →</button>
+      <span id="prep-status" class="notice" style="display:none;"></span>
+      <div id="prep-content-box"></div>
     </div>
-    <div class="layer-body" id="lb-src">
-      {% if job.source_full %}
-        {% if job.source_full.startswith('http') %}
-          <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
-          <div class="source-url-hint">URL may be inactive if the listing was removed.</div>
-        {% else %}
-          <div class="source-text">{{ job.source_full }}</div>
-          <div class="source-url-section">
-            {% if job.job_url %}
-              <div class="source-url-label">Listing URL</div>
-              <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="source-url-link">{{ job.job_url }}</a>
-              <button onclick="showUrlEdit()" class="btn-inline">change</button>
-            {% else %}
-              <div class="source-url-label">Add listing URL</div>
-            {% endif %}
-            <div id="url-edit" {% if job.job_url %}style="display:none"{% endif %}>
-              <div class="source-url-input-row">
-                <input id="url-input" type="url" class="source-url-input"
-                  value="{{ job.job_url or '' }}"
-                  placeholder="https://..."
-                  onkeydown="if(event.key==='Enter') saveUrl()">
-                <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Save URL</button>
-              </div>
-              <div id="url-status" class="notice" style="display:none; margin-top:6px;"></div>
-            </div>
-          </div>
-        {% endif %}
-      {% elif job.source %}
-        <div class="source-old-text">{{ job.source }}</div>
-        <div class="source-old-hint">Full text unavailable — listing was analyzed before this feature was introduced.</div>
-      {% else %}
-        <div class="source-none">No source saved.</div>
-      {% endif %}
+    {% else %}
+    <div class="job-tab-empty">
+      <div class="job-tab-empty-hint">Interview prep is available for listings marked as worth considering, applied, or further.</div>
     </div>
+    {% endif %}
   </div>
 
-  <div class="notes-section">
-    <div class="notes-label">Notes</div>
-    <textarea id="notes-textarea" class="notes-textarea" maxlength="10000" placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
-    <button class="btn btn-secondary btn-sm notes-save-btn" onclick="saveNotes()">Save notes</button>
-    <span id="notes-status" class="notes-status"></span>
-  </div>
+</div>
+
+<div class="notes-section">
+  <div class="notes-label">Notes</div>
+  <textarea id="notes-textarea" class="notes-textarea" maxlength="10000" placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
+  <button class="btn btn-secondary btn-sm notes-save-btn" onclick="saveNotes()">Save notes</button>
+  <span id="notes-status" class="notes-status"></span>
 </div>
