@@ -544,6 +544,11 @@ Push workflow:
 - `bash push-public.sh` — pushes to public remote with clean `CHANGELOG.md`; run after every dev push that should go public
 - When updating CHANGELOG.md, also update `CHANGELOG.public.md` (strip dev-only bullets)
 
+Rsync iCloud → local dev (run as single unbroken line — line-wrapping splits `--exclude` args and breaks rsync):
+```bash
+SRC="/Users/bartekjagniatkowski/Library/Mobile Documents/com~apple~CloudDocs/Work/Development/job-screener"; rsync -a --delete --exclude='.git/' --exclude='.venv/' --exclude='__pycache__/' --exclude='*.pyc' --exclude='.DS_Store' --exclude='data/' --exclude='.claude/' "$SRC/" "$HOME/Development/job-screener/"
+```
+
 ### Never commit
 - `config.env` (API keys)
 - `data/` and `*.db` (database with user data)
@@ -557,6 +562,9 @@ refactor: structural change without new feature
 style: CSS/formatting changes
 docs: documentation update
 ```
+
+### Version convention
+`x.xx` only (e.g. `v0.26`, `v0.27`). No patch segment (`v0.26.1` is wrong). Fixes and tweaks fold into the current minor version entry in CHANGELOG.md.
 
 ---
 
