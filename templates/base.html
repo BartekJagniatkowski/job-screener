@@ -177,16 +177,27 @@
     if (btn) btn.onclick = function (e) { e.stopPropagation(); dismissBanner(); };
   }
 
+  var pollErrors = 0;
   function poll(id, src) {
     fetch('/analysis_status/' + id)
       .then(function (r) {
         if (r.status === 404) {
           localStorage.removeItem('activeAnalysis');
+          if (timer) clearInterval(timer);
           banner.className = 'analysis-banner';
           document.documentElement.style.setProperty('--sticky-top', '0px');
-          if (timer) clearInterval(timer);
           return null;
         }
+        if (!r.ok) {
+          pollErrors++;
+          if (pollErrors >= 3) {
+            if (timer) clearInterval(timer);
+            localStorage.removeItem('activeAnalysis');
+            showError('Server error (' + r.status + ') — analysis status unavailable');
+          }
+          return null;
+        }
+        pollErrors = 0;
         return r.json();
       })
       .then(function (d) {
@@ -204,7 +215,7 @@
           showError(d.error);
         }
       })
-      .catch(function () { /* silent retry */ });
+      .catch(function () { /* network error — silent retry */ });
   }
 
   function startPolling(id, src) {
