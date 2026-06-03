@@ -7,7 +7,6 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 ## v0.26.1 — Settings and button fixes
 
 - **Per-section settings saves** — each profile field (CV, Zero Rule, Yellow List, Criteria) now saves independently with inline status feedback
-- **Button height fix** — `<a>` elements styled as buttons were rendering taller than `<button>` elements; normalised
 
 ---
 
