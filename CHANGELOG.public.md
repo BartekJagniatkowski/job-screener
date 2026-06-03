@@ -4,6 +4,21 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.26.1 — Settings and button fixes
+
+- **Per-section settings saves** — each profile field (CV, Zero Rule, Yellow List, Criteria) now saves independently with inline status feedback
+- **Button height fix** — `<a>` elements styled as buttons were rendering taller than `<button>` elements; normalised
+
+---
+
+## v0.26 — Statistics page rebuild
+
+- **Summary stat cards** — top of statistics page shows three at-a-glance cards: Total analyzed, Applications sent, Interviews
+- **Horizontal application funnel** — proportional horizontal bar rows for all pipeline stages: Qualifying, Applied, Interview, Offer, Company rejected, Rejected by Zero Rule
+- **Verdict distribution rebuild** — stacked bar replaced with labelled horizontal bar rows using the same visual language as the funnel
+
+---
+
 ## v0.25 — Cycling analysis banner
 
 - **Multi-analysis cycling** — when 2+ analyses are running simultaneously, the banner cycles through each source label every 2.5 s with a top-down slide animation (text slides up and out, next slides in from below)
