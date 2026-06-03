@@ -9,58 +9,73 @@
 <div class="notice">No analyses yet. <a href="{{ url_for('dashboard') }}" class="link-accent">Analyze your first listing →</a></div>
 {% else %}
 
-{# ── TL;DR ──────────────────────────────────────────────────────── #}
-<div class="statistics-tldr">
-  <div class="statistics-tldr-label">Summary</div>
-  <div class="statistics-tldr-text">
-    You've analyzed <strong>{{ data.funnel.total }}</strong> job{{ 's' if data.funnel.total != 1 else '' }}{% if data.funnel.qualifying > 0 and data.funnel.applied > 0 %} and applied to <strong>{{ data.funnel.applied }}</strong> — a <strong>{{ (data.funnel.applied / data.funnel.qualifying * 100)|round|int }}%</strong> follow-through rate on qualifying listings{% elif data.funnel.applied > 0 %} and applied to <strong>{{ data.funnel.applied }}</strong>{% endif %}.{% if data.most_flagged_layer %} <strong>{{ data.most_flagged_layer[0] }}</strong> is your most common blocker ({{ data.most_flagged_layer[1] }} flag{{ 's' if data.most_flagged_layer[1] != 1 else '' }}).{% endif %}{% if data.fit_score_avg is not none %} Average fit score across scored analyses is <strong>{{ "%.1f"|format(data.fit_score_avg) }}/5</strong>.{% endif %}
+{# ── Summary cards ──────────────────────────────────────────────── #}
+<div class="stat-cards">
+  <div class="stat-card">
+    <div class="stat-card-label">Total analyzed</div>
+    <div class="stat-card-value">{{ data.funnel.total }}</div>
+    <div class="stat-card-meta">All time</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Applications sent</div>
+    <div class="stat-card-value">{{ data.funnel.applied }}</div>
+    <div class="stat-card-meta">{% if data.funnel.total > 0 %}{{ (data.funnel.applied / data.funnel.total * 100)|round|int }}% of analyzed{% endif %}</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-card-label">Interviews</div>
+    <div class="stat-card-value">{{ data.funnel.interview_scheduled }}</div>
+    <div class="stat-card-meta">{% if data.funnel.applied > 0 %}{{ (data.funnel.interview_scheduled / data.funnel.applied * 100)|round|int }}% of applications{% endif %}</div>
   </div>
 </div>
 
-{# ── Application pipeline ───────────────────────────────────────── #}
-<div class="statistics-section-title">Application pipeline</div>
-<div class="statistics-funnel">
-  <div class="funnel-step">
-    <div class="funnel-block">
-      <div class="funnel-num">{{ data.funnel.total }}</div>
-      <div class="funnel-lbl">Analyzed</div>
+{# ── Application funnel ─────────────────────────────────────────── #}
+<div class="statistics-section-title">Application funnel</div>
+<div class="stats-hfunnel">
+  <div class="stats-hfunnel-row">
+    <div class="stats-hfunnel-label">Qualifying</div>
+    <div class="stats-hfunnel-track">
+      {% if data.funnel.total > 0 %}<div class="stats-hfunnel-fill hf-qualifying" style="width:{{ (data.funnel.qualifying / data.funnel.total * 100)|round }}%"></div>{% endif %}
     </div>
-    <div class="funnel-pct"></div>
+    <div class="stats-hfunnel-count">{{ data.funnel.qualifying }}</div>
   </div>
-  <div class="funnel-arrow">›</div>
-  <div class="funnel-step funnel-step-qualifying">
-    <div class="funnel-block">
-      <div class="funnel-num">{{ data.funnel.qualifying }}</div>
-      <div class="funnel-lbl">Qualifying</div>
+  <div class="stats-hfunnel-row">
+    <div class="stats-hfunnel-label">Applied</div>
+    <div class="stats-hfunnel-track">
+      {% if data.funnel.total > 0 %}<div class="stats-hfunnel-fill hf-applied" style="width:{{ (data.funnel.applied / data.funnel.total * 100)|round }}%"></div>{% endif %}
     </div>
-    <div class="funnel-pct">
-      {%- if data.funnel.total > 0 %}{{ (data.funnel.qualifying / data.funnel.total * 100)|round|int }}% of analyzed{% endif -%}
-    </div>
+    <div class="stats-hfunnel-count">{{ data.funnel.applied }}</div>
   </div>
-  <div class="funnel-arrow">›</div>
-  <div class="funnel-step funnel-step-applied">
-    <div class="funnel-block">
-      <div class="funnel-num">{{ data.funnel.applied }}</div>
-      <div class="funnel-lbl">Applied</div>
+  <div class="stats-hfunnel-row">
+    <div class="stats-hfunnel-label">Interview</div>
+    <div class="stats-hfunnel-track">
+      {% if data.funnel.total > 0 %}<div class="stats-hfunnel-fill hf-interview" style="width:{{ (data.funnel.interview_scheduled / data.funnel.total * 100)|round }}%"></div>{% endif %}
     </div>
-    <div class="funnel-pct">
-      {%- if data.funnel.qualifying > 0 %}{{ (data.funnel.applied / data.funnel.qualifying * 100)|round|int }}% of qualifying{% endif -%}
-    </div>
+    <div class="stats-hfunnel-count">{{ data.funnel.interview_scheduled }}</div>
   </div>
-  <div class="funnel-arrow">›</div>
-  <div class="funnel-step funnel-step-corej">
-    <div class="funnel-block">
-      <div class="funnel-num">{{ data.funnel.company_rejected }}</div>
-      <div class="funnel-lbl">Co. rejected</div>
+  <div class="stats-hfunnel-row">
+    <div class="stats-hfunnel-label">Offer</div>
+    <div class="stats-hfunnel-track">
+      {% if data.funnel.total > 0 %}<div class="stats-hfunnel-fill hf-offer" style="width:{{ (data.funnel.offer_received / data.funnel.total * 100)|round }}%"></div>{% endif %}
     </div>
-    <div class="funnel-pct">
-      {%- if data.funnel.applied > 0 %}{{ (data.funnel.company_rejected / data.funnel.applied * 100)|round|int }}% of applied{% endif -%}
-    </div>
+    <div class="stats-hfunnel-count">{{ data.funnel.offer_received }}</div>
   </div>
+  <div class="stats-hfunnel-row">
+    <div class="stats-hfunnel-label">Company rejected</div>
+    <div class="stats-hfunnel-track">
+      {% if data.funnel.total > 0 %}<div class="stats-hfunnel-fill hf-corej" style="width:{{ (data.funnel.company_rejected / data.funnel.total * 100)|round }}%"></div>{% endif %}
+    </div>
+    <div class="stats-hfunnel-count">{{ data.funnel.company_rejected }}</div>
+  </div>
+  {% if data.zero_list_hits > 0 %}
+  <div class="stats-hfunnel-row">
+    <div class="stats-hfunnel-label">Rejected by Zero Rule</div>
+    <div class="stats-hfunnel-track">
+      {% if data.funnel.total > 0 %}<div class="stats-hfunnel-fill hf-zero" style="width:{{ (data.zero_list_hits / data.funnel.total * 100)|round }}%"></div>{% endif %}
+    </div>
+    <div class="stats-hfunnel-count">{{ data.zero_list_hits }}</div>
+  </div>
+  {% endif %}
 </div>
-{% if data.zero_list_hits > 0 %}
-<p class="zero-rule-note"><strong>{{ data.zero_list_hits }}</strong> auto-rejected by Zero Rule — not included above.</p>
-{% endif %}
 
 {# ── Breakdown grid ─────────────────────────────────────────────── #}
 <div class="statistics-section-title">Breakdown</div>
@@ -72,17 +87,35 @@
       {% set vd = data.verdict_distribution %}
       {% set vd_total = vd.worth_considering + vd.warning + vd.rejected_confirmed + vd.rejected_soft %}
       {% if vd_total > 0 %}
-      <div class="stacked-bar">
-        {% if vd.worth_considering > 0 %}<div class="stacked-bar-seg seg-worth" style="width:{{ (vd.worth_considering / vd_total * 100)|round }}%"></div>{% endif %}
-        {% if vd.warning > 0 %}<div class="stacked-bar-seg seg-warning" style="width:{{ (vd.warning / vd_total * 100)|round }}%"></div>{% endif %}
-        {% if vd.rejected_confirmed > 0 %}<div class="stacked-bar-seg seg-rejected" style="width:{{ (vd.rejected_confirmed / vd_total * 100)|round }}%"></div>{% endif %}
-        {% if vd.rejected_soft > 0 %}<div class="stacked-bar-seg seg-soft" style="width:{{ (vd.rejected_soft / vd_total * 100)|round }}%"></div>{% endif %}
-      </div>
-      <div class="stacked-legend">
-        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-worth"></span>Worth considering — {{ vd.worth_considering }}</div>
-        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-warning"></span>Needs review — {{ vd.warning }}</div>
-        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-rejected"></span>User rejected — {{ vd.rejected_confirmed }}</div>
-        <div class="stacked-legend-item"><span class="stacked-legend-dot dot-soft"></span>AI rejected — {{ vd.rejected_soft }}</div>
+      <div class="stats-hfunnel">
+        <div class="stats-hfunnel-row">
+          <div class="stats-hfunnel-label">Worth considering</div>
+          <div class="stats-hfunnel-track">
+            <div class="stats-hfunnel-fill hf-v-worth" style="width:{{ (vd.worth_considering / vd_total * 100)|round }}%"></div>
+          </div>
+          <div class="stats-hfunnel-count">{{ vd.worth_considering }}</div>
+        </div>
+        <div class="stats-hfunnel-row">
+          <div class="stats-hfunnel-label">Needs review</div>
+          <div class="stats-hfunnel-track">
+            <div class="stats-hfunnel-fill hf-v-warning" style="width:{{ (vd.warning / vd_total * 100)|round }}%"></div>
+          </div>
+          <div class="stats-hfunnel-count">{{ vd.warning }}</div>
+        </div>
+        <div class="stats-hfunnel-row">
+          <div class="stats-hfunnel-label">User rejected</div>
+          <div class="stats-hfunnel-track">
+            <div class="stats-hfunnel-fill hf-v-rejected" style="width:{{ (vd.rejected_confirmed / vd_total * 100)|round }}%"></div>
+          </div>
+          <div class="stats-hfunnel-count">{{ vd.rejected_confirmed }}</div>
+        </div>
+        <div class="stats-hfunnel-row">
+          <div class="stats-hfunnel-label">AI rejected</div>
+          <div class="stats-hfunnel-track">
+            <div class="stats-hfunnel-fill hf-v-soft" style="width:{{ (vd.rejected_soft / vd_total * 100)|round }}%"></div>
+          </div>
+          <div class="stats-hfunnel-count">{{ vd.rejected_soft }}</div>
+        </div>
       </div>
       {% else %}
       <div class="td-dim">No verdict data.</div>
@@ -116,72 +149,40 @@
 
 </div>
 
-{# ── Collapsible sections ───────────────────────────────────────── #}
+{# ── Additional breakdowns ──────────────────────────────────────── #}
 {% if data.fit_score_avg is not none %}
-<div class="collapsible">
-  <div class="collapsible-header" onclick="toggleCollapsible(this)">
-    <span class="collapsible-label">Fit score distribution</span>
-    <div class="collapsible-right">
-      <span class="collapsible-meta">{{ data.fit_score_distribution | sum(attribute=1) }} scored</span>
-      <span class="collapsible-arrow">▶</span>
+<div class="statistics-section-title">Fit score distribution</div>
+{% set fs_total = data.fit_score_distribution | sum(attribute=1) %}
+{% if fs_total > 0 %}
+<div class="bar-chart">
+  {% for label, count in data.fit_score_distribution %}
+  <div class="bar-row">
+    <div class="bar-label">{{ label }}</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-worth" style="width:{{ (count / fs_total * 100)|round }}%"></div>
     </div>
+    <div class="bar-count">{{ count }}</div>
   </div>
-  <div class="collapsible-body" style="display:none">
-    {% set fs_total = data.fit_score_distribution | sum(attribute=1) %}
-    {% if fs_total > 0 %}
-    <div class="bar-chart">
-      {% for label, count in data.fit_score_distribution %}
-      <div class="bar-row">
-        <div class="bar-label">{{ label }}</div>
-        <div class="bar-track">
-          <div class="bar-fill bar-worth" style="width:{{ (count / fs_total * 100)|round }}%"></div>
-        </div>
-        <div class="bar-count">{{ count }}</div>
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </div>
+  {% endfor %}
 </div>
+{% endif %}
 {% endif %}
 
 {% if data.archetype_distribution %}
-<div class="collapsible">
-  <div class="collapsible-header" onclick="toggleCollapsible(this)">
-    <span class="collapsible-label">Role archetypes</span>
-    <div class="collapsible-right">
-      <span class="collapsible-meta">{{ data.archetype_distribution | length }} type{{ 's' if data.archetype_distribution | length != 1 else '' }}</span>
-      <span class="collapsible-arrow">▶</span>
+<div class="statistics-section-title">Role archetypes</div>
+{% set arch_total = data.archetype_distribution.values() | sum %}
+<div class="bar-chart">
+  {% for arch, count in data.archetype_distribution.items() %}
+  <div class="bar-row">
+    <div class="bar-label">{{ arch }}</div>
+    <div class="bar-track">
+      <div class="bar-fill bar-neutral" style="width:{{ (count / arch_total * 100)|round }}%"></div>
     </div>
+    <div class="bar-count">{{ count }}</div>
   </div>
-  <div class="collapsible-body" style="display:none">
-    {% set arch_total = data.archetype_distribution.values() | sum %}
-    <div class="bar-chart">
-      {% for arch, count in data.archetype_distribution.items() %}
-      <div class="bar-row">
-        <div class="bar-label">{{ arch }}</div>
-        <div class="bar-track">
-          <div class="bar-fill bar-neutral" style="width:{{ (count / arch_total * 100)|round }}%"></div>
-        </div>
-        <div class="bar-count">{{ count }}</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
+  {% endfor %}
 </div>
 {% endif %}
 
 {% endif %}
-{% endblock %}
-
-{% block scripts %}
-<script>
-function toggleCollapsible(header) {
-  const body = header.nextElementSibling;
-  const arrow = header.querySelector('.collapsible-arrow');
-  const open = body.style.display !== 'none';
-  body.style.display = open ? 'none' : 'block';
-  arrow.textContent = open ? '▶' : '▼';
-}
-</script>
 {% endblock %}

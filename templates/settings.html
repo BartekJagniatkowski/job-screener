@@ -4,42 +4,59 @@
 <div class="page-title">Profile settings</div>
 <p class="page-sub">Your CV and criteria are used in every analysis. The more detail, the better the results.</p>
 
-<form method="POST">
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="settings-section">
   <div class="field">
     <label>CV — experience and skills</label>
     <div class="field-hint">Write as continuous text or bullet points. More context = better job matching.</div>
-    <textarea name="cv" rows="14" placeholder="e.g.:&#10;Specialisation: product discovery, facilitation, advisory&#10;&#10;Experience:&#10;- Senior Product Manager @ CompanyX (2022–2025): discovery workshops, AI product strategy...&#10;- Product Designer @ CompanyY (2019–2022): e-commerce, supply chain...&#10;&#10;Skills: user research, journey mapping, stakeholder alignment...&#10;Languages: English (fluent), Polish (native)">{{ user.cv or '' }}</textarea>
+    <textarea id="s-cv" rows="14" placeholder="e.g.:&#10;Specialisation: product discovery, facilitation, advisory&#10;&#10;Experience:&#10;- Senior Product Manager @ CompanyX (2022–2025): discovery workshops, AI product strategy...&#10;- Product Designer @ CompanyY (2019–2022): e-commerce, supply chain...&#10;&#10;Skills: user research, journey mapping, stakeholder alignment...&#10;Languages: English (fluent), Polish (native)">{{ user.cv or '' }}</textarea>
   </div>
+  <div class="settings-save-row">
+    <button class="btn btn-primary btn-sm" onclick="saveSection('cv','s-cv',this,'st-cv')">Save CV →</button>
+    <span id="st-cv" class="settings-save-status"></span>
+  </div>
+</div>
 
+<div class="settings-section">
   <div class="field">
     <label>Zero Rule — auto-reject without analysis</label>
     <div class="field-hint">Industries, company categories, or criteria that disqualify a listing immediately.</div>
-    <textarea name="zero_list" rows="8" placeholder="e.g.:&#10;- Alcohol, tobacco, gambling&#10;- Weapons and defense&#10;- Finance (banks, fintechs, trading)">{{ user.zero_list or '' }}</textarea>
+    <textarea id="s-zero_list" rows="8" placeholder="e.g.:&#10;- Alcohol, tobacco, gambling&#10;- Weapons and defense&#10;- Finance (banks, fintechs, trading)">{{ user.zero_list or '' }}</textarea>
   </div>
+  <div class="settings-save-row">
+    <button class="btn btn-primary btn-sm" onclick="saveSection('zero_list','s-zero_list',this,'st-zero_list')">Save Zero Rule →</button>
+    <span id="st-zero_list" class="settings-save-status"></span>
+  </div>
+</div>
 
+<div class="settings-section">
   <div class="field">
     <label>Yellow list — needs attention, but not auto-rejected</label>
     <div class="field-hint">Industries that automatically set verdict to "needs review" — analysis continues.</div>
-    <textarea name="yellow_list" rows="5" placeholder="e.g.:&#10;- Insurance (when not core business)&#10;- Fintech (verify revenue model)&#10;- Public / government sector">{{ user.yellow_list or '' }}</textarea>
+    <textarea id="s-yellow_list" rows="5" placeholder="e.g.:&#10;- Insurance (when not core business)&#10;- Fintech (verify revenue model)&#10;- Public / government sector">{{ user.yellow_list or '' }}</textarea>
   </div>
+  <div class="settings-save-row">
+    <button class="btn btn-primary btn-sm" onclick="saveSection('yellow_list','s-yellow_list',this,'st-yellow_list')">Save Yellow List →</button>
+    <span id="st-yellow_list" class="settings-save-status"></span>
+  </div>
+</div>
 
+<div class="settings-section">
   <div class="field">
     <label>Additional criteria and priorities</label>
     <div class="field-hint">Preferred sectors, role types, cultural red flags, etc.</div>
-    <textarea name="criteria" rows="6" placeholder="e.g.:&#10;Prefer: healthcare, social impact, AI ethics&#10;Avoid: execution PM without discovery, growth PM (A/B testing as core)&#10;Red flag: Glassdoor below 3.5 with a clear downward trend">{{ user.criteria or '' }}</textarea>
+    <textarea id="s-criteria" rows="6" placeholder="e.g.:&#10;Prefer: healthcare, social impact, AI ethics&#10;Avoid: execution PM without discovery, growth PM (A/B testing as core)&#10;Red flag: Glassdoor below 3.5 with a clear downward trend">{{ user.criteria or '' }}</textarea>
   </div>
-
-  <div style="display:flex; gap:12px; align-items:center;">
-    <button type="submit" class="btn btn-primary">Save profile →</button>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+  <div class="settings-save-row">
+    <button class="btn btn-primary btn-sm" onclick="saveSection('criteria','s-criteria',this,'st-criteria')">Save Criteria →</button>
+    <span id="st-criteria" class="settings-save-status"></span>
   </div>
-</form>
+</div>
 
-<div class="export-section">
-  <div class="section-label">Data export</div>
-  <p class="page-sub" style="margin-bottom:16px;">Download all your analyses as a CSV file (opens in Excel and Google Sheets).</p>
-  <a href="{{ url_for('export') }}" class="btn btn-secondary">Download CSV →</a>
+<div class="settings-section">
+  <div class="field-hint">Data export — all analyses as CSV (opens in Excel and Google Sheets).</div>
+  <div class="settings-save-row">
+    <a href="{{ url_for('export') }}" class="btn btn-secondary btn-sm">Download CSV →</a>
+  </div>
 </div>
 
 <div class="settings-section-divider"></div>
@@ -59,53 +76,41 @@
     <label>Confirm new password</label>
     <input type="password" name="new_password2" autocomplete="new-password">
   </div>
-  <button type="submit" class="btn btn-primary">Change password →</button>
+  <button type="submit" class="btn btn-primary btn-sm">Change password →</button>
 </form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-(function () {
-  var FIELDS = ['cv', 'zero_list', 'yellow_list', 'criteria'];
-  var DRAFT_KEY = 'settings_draft';
-  var form = Array.from(document.querySelectorAll('form[method="POST"]')).find(function(f) { return f.querySelector('[name="cv"]'); });
-  if (!form) return;
-
-  // restore draft only if server-rendered value is empty
+async function saveSection(section, textareaId, btn, statusId) {
+  var ta = document.getElementById(textareaId);
+  var st = document.getElementById(statusId);
+  var fd = new FormData();
+  fd.append('section', section);
+  fd.append(section, ta.value);
+  btn.disabled = true;
+  st.textContent = '';
+  st.className = 'settings-save-status';
   try {
-    var saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null');
-    if (saved) {
-      FIELDS.forEach(function(name) {
-        if (saved[name] !== undefined) {
-          var el = form.querySelector('[name="' + name + '"]');
-          if (el && !el.value.trim()) el.value = saved[name];
-        }
-      });
-    }
-  } catch(e) {}
-
-  // save draft on input
-  form.addEventListener('input', function () {
-    var draft = {};
-    FIELDS.forEach(function(name) {
-      var el = form.querySelector('[name="' + name + '"]');
-      if (el) draft[name] = el.value;
+    var r = await fetch('/settings', {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrfToken()},
+      body: fd
     });
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  });
-
-  // clear draft on submit
-  form.addEventListener('submit', function () {
-    localStorage.removeItem(DRAFT_KEY);
-  });
-
-  // warn before leaving with unsaved changes
-  var dirty = false;
-  form.addEventListener('input', function () { dirty = true; });
-  form.addEventListener('submit', function () { dirty = false; });
-  window.addEventListener('beforeunload', function (e) {
-    if (dirty) { e.preventDefault(); e.returnValue = ''; }
-  });
-})();
+    var d = await r.json();
+    if (d.ok) {
+      st.textContent = 'Saved';
+      st.className = 'settings-save-status ok';
+    } else {
+      st.textContent = d.error || 'Error saving';
+      st.className = 'settings-save-status err';
+    }
+  } catch(e) {
+    st.textContent = 'Error saving';
+    st.className = 'settings-save-status err';
+  }
+  btn.disabled = false;
+  setTimeout(function() { if (st.className.indexOf('err') === -1) { st.textContent = ''; } }, 3000);
+}
 </script>
 {% endblock %}

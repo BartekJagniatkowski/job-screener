@@ -43,6 +43,38 @@ def _seed_db(tmp_path):
     conn.close()
     return uid
 
+def _seed_pipeline_db(tmp_path):
+    database.DB_PATH = Path(tmp_path) / "test.db"
+    database.init_db()
+    conn = database.get_conn()
+    conn.execute(
+        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+        ("u", "s:h")
+    )
+    conn.commit()
+    uid = conn.execute("SELECT id FROM users WHERE username='u'").fetchone()['id']
+    # Row 1: applied + interviewed
+    conn.execute(
+        "INSERT INTO jobs (user_id, verdict, verdict_confirmed, applied, interview_scheduled, offer_received, company, role) "
+        "VALUES (?, 'worth_considering', 1, 1, 1, 0, 'Co', 'Role')",
+        (uid,)
+    )
+    # Row 2: applied + interviewed + offer
+    conn.execute(
+        "INSERT INTO jobs (user_id, verdict, verdict_confirmed, applied, interview_scheduled, offer_received, company, role) "
+        "VALUES (?, 'worth_considering', 1, 1, 1, 1, 'Co', 'Role')",
+        (uid,)
+    )
+    # Row 3: rejected, no further stages
+    conn.execute(
+        "INSERT INTO jobs (user_id, verdict, verdict_confirmed, applied, interview_scheduled, offer_received, company, role) "
+        "VALUES (?, 'rejected', 1, 0, 0, 0, 'Co', 'Role')",
+        (uid,)
+    )
+    conn.commit()
+    conn.close()
+    return uid
+
 def test_verdict_distribution(tmp_path):
     uid = _seed_db(tmp_path)
     data = database.get_statistics(uid)
@@ -107,12 +139,20 @@ def test_layer_flag_counts(tmp_path):
         assert isinstance(label, str)
         assert isinstance(count, int) and count >= 0
 
+def test_funnel_interview_offer(tmp_path):
+    uid = _seed_pipeline_db(tmp_path)
+    data = database.get_statistics(uid)
+    assert data['funnel']['interview_scheduled'] == 2
+    assert data['funnel']['offer_received'] == 1
+    assert data['funnel']['total'] == 3
+
 if __name__ == '__main__':
     import tempfile
     tests = [
         test_verdict_distribution, test_funnel, test_layer_flags,
         test_fit_score_avg, test_archetype_distribution,
         test_funnel_qualifying, test_most_flagged_layer, test_layer_flag_counts,
+        test_funnel_interview_offer,
     ]
     for t in tests:
         with tempfile.TemporaryDirectory() as tmp:

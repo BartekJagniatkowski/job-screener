@@ -828,7 +828,7 @@ def get_statistics(user_id: int) -> dict:
 
     Returns a dict with:
       verdict_distribution: counts per verdict category
-      funnel: total / applied / company_rejected
+      funnel: total / applied / company_rejected / interview_scheduled / offer_received
       layer_flags: per-layer counts of ok / warning / flag
       fit_score_avg: average fit score (None if no scored records)
       fit_score_distribution: list of (range_label, count) tuples
@@ -846,7 +846,7 @@ def get_statistics(user_id: int) -> dict:
         'rejected_confirmed': 0,
         'rejected_soft': 0,
     }
-    funnel = {'total': 0, 'applied': 0, 'company_rejected': 0}
+    funnel = {'total': 0, 'applied': 0, 'company_rejected': 0, 'interview_scheduled': 0, 'offer_received': 0}
     layers = ['triage', 'product', 'business', 'reputation', 'values', 'fit']
     layer_flags = {l: {'ok': 0, 'warning': 0, 'flag': 0, 'unknown': 0} for l in layers}
     fit_scores = []
@@ -859,6 +859,10 @@ def get_statistics(user_id: int) -> dict:
             funnel['applied'] += 1
         if row['company_rejected']:
             funnel['company_rejected'] += 1
+        if row['interview_scheduled']:
+            funnel['interview_scheduled'] += 1
+        if row['offer_received']:
+            funnel['offer_received'] += 1
         if row['zero_list_hit']:
             zero_list_hits += 1
 

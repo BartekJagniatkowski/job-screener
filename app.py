@@ -640,36 +640,64 @@ def job_partial(job_id):
     return render_template("job_partial.html", job=job, raw=raw, prep_content=prep_content, tailoring_content=tailoring_content)
 
 
+def _parse_settings_list(text):
+    entries = set()
+    for line in text.splitlines():
+        entry = line.strip().lstrip("-").strip().lower()
+        if entry:
+            entries.add(entry)
+    return entries
+
+
 @app.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
     user = current_user()
     if request.method == "POST":
+        section = request.form.get("section", "")
+
+        if section:
+            if section == "cv":
+                cv = request.form.get("cv", "").strip()
+                update_user_profile(user["id"], cv, user["zero_list"] or "", user["criteria"] or "", user["yellow_list"] or "")
+                return jsonify({"ok": True})
+
+            if section == "zero_list":
+                zero_list = request.form.get("zero_list", "")
+                conflicts = _parse_settings_list(zero_list) & _parse_settings_list(user["yellow_list"] or "")
+                if conflicts:
+                    return jsonify({"ok": False, "error": f"Conflict with Yellow List: {', '.join(sorted(conflicts))}"})
+                update_user_profile(user["id"], user["cv"] or "", zero_list, user["criteria"] or "", user["yellow_list"] or "")
+                return jsonify({"ok": True})
+
+            if section == "yellow_list":
+                yellow_list = request.form.get("yellow_list", "")
+                conflicts = _parse_settings_list(user["zero_list"] or "") & _parse_settings_list(yellow_list)
+                if conflicts:
+                    return jsonify({"ok": False, "error": f"Conflict with Zero List: {', '.join(sorted(conflicts))}"})
+                update_user_profile(user["id"], user["cv"] or "", user["zero_list"] or "", user["criteria"] or "", yellow_list)
+                return jsonify({"ok": True})
+
+            if section == "criteria":
+                criteria = request.form.get("criteria", "").strip()
+                update_user_profile(user["id"], user["cv"] or "", user["zero_list"] or "", criteria, user["yellow_list"] or "")
+                return jsonify({"ok": True})
+
+            return jsonify({"ok": False, "error": "Unknown section"}), 400
+
+        # Full save (non-JS fallback)
         cv = request.form.get("cv", "")
         zero_list = request.form.get("zero_list", "")
         yellow_list = request.form.get("yellow_list", "")
         criteria = request.form.get("criteria", "")
-
-        def _parse_list(text):
-            entries = set()
-            for line in text.splitlines():
-                entry = line.strip().lstrip("-").strip().lower()
-                if entry:
-                    entries.add(entry)
-            return entries
-
-        zero_entries = _parse_list(zero_list)
-        yellow_entries = _parse_list(yellow_list)
-        conflicts = zero_entries & yellow_entries
+        conflicts = _parse_settings_list(zero_list) & _parse_settings_list(yellow_list)
         if conflicts:
-            conflict_list = ", ".join(sorted(conflicts))
             flash(
-                f"Conflict: the following entries appear in both Zero List and Yellow List — {conflict_list}. "
+                f"Conflict: the following entries appear in both Zero List and Yellow List — {', '.join(sorted(conflicts))}. "
                 f"Remove them from one list before saving.",
                 "error",
             )
             return render_template("settings.html", user=user)
-
         update_user_profile(user["id"], cv, zero_list, criteria, yellow_list)
         flash("Profile saved.")
         return redirect(url_for("settings"))
