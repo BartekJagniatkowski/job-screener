@@ -163,8 +163,7 @@ def _get_domain(url: str) -> str:
     """Extract the domain from a URL."""
     try:
         return urlparse(url).netloc.lower()
-    except Exception as e:
-        print(f"Warning: Could not parse URL '{url}': {e}")
+    except Exception:
         return ''
 
 

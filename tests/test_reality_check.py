@@ -96,7 +96,11 @@ def test_detail_renders_reality_check_when_present(logged_in_client, app):
         ],
     }
     job_id = _insert_job({"reality_check": rc, "triage": {}, "layers": {}, "fit": {}})
+    # /job/<id> now redirects to /dashboard?job=<id>
     resp = logged_in_client.get(f"/job/{job_id}")
+    assert resp.status_code in (301, 302)
+    # Verify the partial endpoint (used by dashboard modal) shows reality check
+    resp = logged_in_client.get(f"/job/{job_id}/partial")
     assert resp.status_code == 200
     html = resp.data.decode()
     assert "Reality check" in html

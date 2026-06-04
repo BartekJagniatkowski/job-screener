@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Analyze — Job Screener{% endblock %}
-
+{% block title %}Job Screener{% endblock %}
+{% block container_class %}container{% endblock %}
 {% block content %}
 <!-- Job detail modal -->
 <div id="job-modal" class="modal-overlay" style="display:none;">
@@ -45,170 +45,146 @@
 <div id="result-box"></div>
 
 {% if jobs %}
-<div class="dashboard-recent">
-  <div class="section-label">Recent analyses</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Date</th>
-        <th>Role</th>
-        <th>Company</th>
-        <th>Verdict</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for j in jobs[:10] %}
-      {% if j.offer_received %}{% set row_cls = 'row-offer' %}
-      {% elif j.interview_scheduled %}{% set row_cls = 'row-interview' %}
-      {% elif j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}
-      {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}
-      {% elif j.applied %}{% set row_cls = 'row-applied' %}
-      {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}
-      {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}
-      {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}
-      {% else %}{% set row_cls = '' %}{% endif %}
-      <tr class="clickable{% if row_cls %} {{ row_cls }}{% endif %}" data-job-id="{{ j.id }}" onclick="openModal({{ j.id }})">
-        <td class="td-date">{{ j.analyzed_at }}</td>
-        <td class="td-role">{{ j.role or '—' }}</td>
-        <td class="fw-500">{{ j.company or 'Unknown' }}</td>
-        <td>{%- if j.offer_received %}<span class="badge badge-offer" data-verdict="{{ j.verdict }}">Offer received</span>
-            {%- elif j.interview_scheduled %}<span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
-            {%- elif j.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
-            {%- elif j.applied %}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-            {%- elif j.verdict == 'rejected' and j.verdict_confirmed %}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
-            {%- elif j.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
-            {%- else %}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>{% endif %}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% if jobs|length > 10 %}
-  <div class="recent-more">
-    <a href="{{ url_for('history') }}" class="td-mono td-dim">View all ({{ jobs|length }}) →</a>
-  </div>
-  {% endif %}
+<div class="export-section">
+  <a href="{{ url_for('export') }}" class="td-mono link-accent">Download CSV →</a>
 </div>
+<div class="history-search-wrap">
+  <input type="search" id="history-search" class="history-search"
+    placeholder="Search by role or company…" oninput="applyFilters()">
+</div>
+<div class="filter-bar">
+  <span class="filter-label">Show:</span>
+  <button class="filter-btn fb-all" onclick="showAll()">Show all</button>
+  <button class="filter-btn active fb-worth_considering" data-cat="worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
+  <button class="filter-btn active fb-warning" data-cat="warning" onclick="toggleFilter('warning', this)">Needs review</button>
+  <button class="filter-btn active fb-rejected_soft" data-cat="rejected_soft" onclick="toggleFilter('rejected_soft', this)">AI rejected</button>
+  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">User rejected</button>
+  <button class="filter-btn active fb-applied" data-cat="applied" onclick="toggleFilter('applied', this)">Applied</button>
+  <button class="filter-btn active fb-company_rejected" data-cat="company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
+  <button class="filter-btn active fb-interview" data-cat="interview" onclick="toggleFilter('interview', this)">Interview</button>
+  <button class="filter-btn active fb-offer" data-cat="offer" onclick="toggleFilter('offer', this)">Offer</button>
+</div>
+<div class="table-wrap">
+<table>
+  <colgroup>
+    <col class="col-date">
+    <col>
+    <col>
+    <col class="col-badge">
+    <col class="col-l0">
+    <col class="col-layers">
+    <col class="col-fit">
+  </colgroup>
+  <thead>
+    <tr>
+      <th class="th-sortable" data-col="0" onclick="sortTable(0)">Date <span class="sort-arrow" id="sa-0"></span></th>
+      <th class="th-sortable" data-col="1" onclick="sortTable(1)">Role <span class="sort-arrow" id="sa-1"></span></th>
+      <th class="th-sortable" data-col="2" onclick="sortTable(2)">Company <span class="sort-arrow" id="sa-2"></span></th>
+      <th>Verdict</th>
+      <th>L0</th>
+      <th>Layers</th>
+      <th class="th-sortable" data-col="6" onclick="sortTable(6)">Fit <span class="sort-arrow" id="sa-6"></span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for j in jobs %}
+    {% if j.offer_received %}{% set row_cls = 'row-offer' %}{% set cat = 'offer' %}
+    {% elif j.interview_scheduled %}{% set row_cls = 'row-interview' %}{% set cat = 'interview' %}
+    {% elif j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}{% set cat = 'rejected' %}
+    {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}{% set cat = 'company_rejected' %}
+    {% elif j.applied %}{% set row_cls = 'row-applied' %}{% set cat = 'applied' %}
+    {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}{% set cat = 'rejected_soft' %}
+    {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat = 'worth_considering' %}
+    {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{% set cat = 'warning' %}
+    {% else %}{% set row_cls = '' %}{% set cat = j.verdict or 'unknown' %}{% endif %}
+    <tr class="clickable{% if row_cls %} {{ row_cls }}{% endif %}" data-job-id="{{ j.id }}" data-category="{{ cat }}" onclick="openModal({{ j.id }})">
+      <td class="td-date">{{ j.analyzed_at }}</td>
+      <td class="td-role">{{ j.role or '—' }}</td>
+      <td class="fw-500">{{ j.company or 'Unknown' }}</td>
+      <td class="td-nowrap">
+        {%- if j.offer_received -%}<span class="badge badge-offer" data-verdict="{{ j.verdict }}">Offer received</span>
+        {%- elif j.interview_scheduled -%}<span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
+        {%- elif j.company_rejected -%}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
+        {%- elif j.applied -%}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
+        {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
+        {%- elif j.verdict == 'rejected' -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
+        {%- else -%}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
+        {%- endif %}
+      </td>
+      <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'YES' if j.zero_list_hit else '—' }}</td>
+      <td class="td-layers">
+        <span class="dot-row">
+          <span class="dot dot-{{ j.triage_status or 'unknown' }}"     title="Triage: {{ j.triage_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.product_status or 'unknown' }}"    title="Product: {{ j.product_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.business_status or 'unknown' }}"   title="Business: {{ j.business_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.reputation_status or 'unknown' }}" title="Reputation: {{ j.reputation_status or 'unknown' }}"></span>
+          <span class="dot dot-{{ j.values_status or 'unknown' }}"     title="Values: {{ j.values_status or 'unknown' }}"></span>
+        </span>
+      </td>
+      <td class="td-mono {% if j.fit_score is not none %}{% if j.fit_status == 'ok' %}td-green{% elif j.fit_status == 'warning' %}td-warning{% elif j.fit_status == 'flag' %}td-red{% else %}td-dim{% endif %}{% else %}td-dim{% endif %}">{{ "%.1f"|format(j.fit_score) ~ '/5' if j.fit_score is not none else '—' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<div class="job-cards">
+  {% for j in jobs %}
+  {% if j.offer_received %}{% set row_cls = 'row-offer' %}{% set cat = 'offer' %}
+  {% elif j.interview_scheduled %}{% set row_cls = 'row-interview' %}{% set cat = 'interview' %}
+  {% elif j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}{% set cat = 'rejected' %}
+  {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}{% set cat = 'company_rejected' %}
+  {% elif j.applied %}{% set row_cls = 'row-applied' %}{% set cat = 'applied' %}
+  {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}{% set cat = 'rejected_soft' %}
+  {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat = 'worth_considering' %}
+  {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{% set cat = 'warning' %}
+  {% else %}{% set row_cls = '' %}{% set cat = j.verdict or 'unknown' %}{% endif %}
+  <div class="job-card {{ row_cls }}" data-job-id="{{ j.id }}" data-category="{{ cat }}" tabindex="0" onclick="openModal({{ j.id }})">
+    <div class="job-card-header">
+      <div class="job-card-title">
+        <div class="job-card-company">{{ j.company or 'Unknown' }}</div>
+        <div class="job-card-role">{{ j.role or '—' }}</div>
+      </div>
+      {%- if j.offer_received -%}
+        <span class="badge badge-offer" data-verdict="{{ j.verdict }}">Offer received</span>
+      {%- elif j.interview_scheduled -%}
+        <span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
+      {%- elif j.company_rejected -%}
+        <span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
+      {%- elif j.applied -%}
+        <span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
+      {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}
+        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
+      {%- elif j.verdict == 'rejected' -%}
+        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
+      {%- else -%}
+        <span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
+      {%- endif %}
+    </div>
+    <div class="job-card-meta">
+      <span class="td-date">{{ j.analyzed_at[:10] }}</span>
+      <span data-status-text>
+        {%- if j.offer_received %}Offer
+        {%- elif j.interview_scheduled %}Interview
+        {%- elif j.applied %}Applied
+        {%- elif j.company_rejected %}Rejected by co.
+        {%- else %}—{%- endif %}
+      </span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="notice">No analyses yet. Submit your first listing above.</div>
 {% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
-const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
-const sClass = s => ({ok:'ok', warning:'warning', flag:'flag'}[s]||'unknown');
-const sLabel = s => ({ok:'No issues', warning:'Needs review', flag:'Red flag'}[s]||'—');
+let JOB_IDS = {{ jobs | map(attribute='id') | list | tojson }};
+let modalIdx = -1;
+let _skipPushState = false;
 
-let openLayers = {};
-function toggleLayer(id) {
-  openLayers[id] = !openLayers[id];
-  document.getElementById('lb-'+id).classList.toggle('open', openLayers[id]);
-  document.getElementById('lc-'+id).classList.toggle('open', openLayers[id]);
-}
-
-function mkLayer(id, name, status, findings) {
-  return `<div class="layer">
-    <div class="layer-hdr" onclick="toggleLayer('${id}')">
-      <div class="layer-left">
-        <div class="dot dot-${sClass(status)}"></div>
-        <div><div class="layer-name">${name}</div><div class="layer-status-label">${sLabel(status)}</div></div>
-      </div>
-      <span class="chev" id="lc-${id}">▶</span>
-    </div>
-    <div class="layer-body" id="lb-${id}">${findings||'—'}</div>
-  </div>`;
-}
-
-function renderResult(r, jobId, sourceUrl, sourceText) {
-  openLayers = {};
-  const l = r.layers||{};
-  const fit = r.fit||{};
-  const fitFindings = [
-    fit.strengths ? '<strong>Strengths:</strong> '+fit.strengths : '',
-    fit.gaps      ? '<strong>Gaps:</strong> '+fit.gaps : '',
-    fit.improve   ? '<strong>To strengthen:</strong> '+fit.improve : ''
-  ].filter(Boolean).join('<br><br>');
-
-  // always show both rejection options; soft = AI verdict unconfirmed, rejected = user confirmed
-  const isSoftRejected = r.verdict === 'rejected' && !r.zero_list_hit;
-  const verdictOpts = `
-    <optgroup label="Job analysis">
-      <option value="worth_considering" ${r.verdict==='worth_considering'?'selected':''}>Worth considering</option>
-      <option value="warning" ${r.verdict==='warning'?'selected':''}>Needs review</option>
-      <option value="rejected_soft" ${isSoftRejected?'selected':''}>AI rejected</option>
-      <option value="rejected" ${r.verdict==='rejected'&&!isSoftRejected?'selected':''}>User rejected</option>
-    </optgroup>
-    <optgroup label="Application">
-      <option value="applied">Applied</option>
-    </optgroup>`;
-
-  // source preview
-  const sourceHtml = `
-    <div class="layer">
-      <div class="layer-hdr" onclick="toggleLayer('src-new')">
-        <div class="layer-left">
-          <div class="dot dot-unknown"></div>
-          <div><div class="layer-name">Listing source</div>
-          <div class="layer-status-label">${sourceUrl ? 'URL' : ''}${sourceUrl && sourceText ? ' + ' : ''}${sourceText ? 'Text' : ''}</div></div>
-        </div>
-        <span class="chev" id="lc-src-new">▶</span>
-      </div>
-      <div class="layer-body" id="lb-src-new">
-        ${sourceUrl ? `<div class="source-url-label">URL</div><a href="${sourceUrl}" target="_blank" class="source-url-link">${sourceUrl}</a>` : ''}
-        ${sourceText ? `<div class="source-url-label" class="${sourceUrl?'source-preview-label-gap':''}">Text</div><div class="source-text" class="source-preview-text">${sourceText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
-      </div>
-    </div>`;
-
-  return `<div class="card" style="animation: fadeIn 0.3s ease;">
-    <div class="card-header">
-      <span class="badge badge-${r.verdict}" id="result-badge">${vLabel(r.verdict)}</span>
-      ${r.triage?.role_archetype ? `<span class="badge badge-archetype">${r.triage.role_archetype}</span>` : ''}
-      <div class="card-header-body">
-        <div class="card-title">${r.company_name||'—'} — ${r.role_title||'—'}</div>
-        <div class="card-sub">${r.verdict_summary||''}</div>
-        ${r.zero_list_hit ? `<div class="card-meta" text-red">⛔ Zero list: ${r.zero_list_reason}</div>` : ''}
-      </div>
-      <div class="verdict-select-wrap">
-        <label class="verdict-select-label">Status:</label>
-        <select class="verdict-select" onchange="setVerdictInline(this.value)">
-          ${verdictOpts}
-        </select>
-      </div>
-    </div>
-    ${mkLayer('triage','Triage', r.triage?.status, r.triage?.findings)}
-    ${mkLayer('prod','Product layer', l.product?.status, l.product?.findings)}
-    ${mkLayer('biz','Business layer', l.business?.status, l.business?.findings)}
-    ${mkLayer('rep','Reputation layer', l.reputation?.status, l.reputation?.findings)}
-    ${mkLayer('val','Values layer', l.values?.status, l.values?.findings)}
-    ${mkLayer('fit','Skills fit', fit.status, fitFindings)}
-    ${mkLayer('gut','Gut feeling', 'unknown', r.gut_feeling)}
-    ${sourceHtml}
-  </div>`;
-}
-
-let currentJobId = null;
-
-async function setVerdictInline(value) {
-  if (!currentJobId) return;
-  const badge = document.getElementById('result-badge');
-  const labels = {rejected:'User rejected', rejected_soft:'AI rejected', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
-  const badgeClass = {applied:'applied'};
-  try {
-    const fd = new FormData();
-    let url;
-    if (value === 'applied') {
-      fd.append('status', 'applied');
-      url = `/job/${currentJobId}/status`;
-    } else {
-      fd.append('verdict', value);
-      url = `/job/${currentJobId}/verdict`;
-    }
-    const resp = await fetch(url, {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
-    const data = await resp.json();
-    if (data.ok && badge) {
-      badge.className = 'badge badge-' + (badgeClass[value] || value);
-      badge.textContent = labels[value] || value;
-    }
-  } catch(e) { console.error(e); }
-}
+// ── Cmd-zone ──────────────────────────────────────────────────────────────
 
 const SCRAPE_ERRORS = {
   timeout:  { title: 'Server did not respond', fallback: true },
@@ -231,15 +207,31 @@ function toggleCmdText(forceOpen) {
   if (open) document.getElementById('cmd-text').focus();
 }
 
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
-  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-    e.preventDefault();
-    var el = document.getElementById('cmd-input');
-    el.focus();
-    el.select();
-  }
-});
+const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
+
+async function setVerdictInline(value) {
+  const jobId = getCurrentJobId();
+  if (!jobId) return;
+  const badge = document.getElementById('result-badge');
+  const labels = {rejected:'User rejected', rejected_soft:'AI rejected', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
+  try {
+    const fd = new FormData();
+    let url;
+    if (value === 'applied') {
+      fd.append('status', 'applied');
+      url = `/job/${jobId}/status`;
+    } else {
+      fd.append('verdict', value);
+      url = `/job/${jobId}/verdict`;
+    }
+    const resp = await fetch(url, {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
+    const data = await resp.json();
+    if (data.ok && badge) {
+      badge.className = 'badge badge-' + value;
+      badge.textContent = labels[value] || value;
+    }
+  } catch(e) { console.error(e); }
+}
 
 async function runAnalysis(force = false) {
   const url = document.getElementById('cmd-input').value.trim();
@@ -248,7 +240,6 @@ async function runAnalysis(force = false) {
 
   const statusEl = document.getElementById('source-status');
 
-  // check for duplicate
   try {
     const chkFd = new FormData();
     if (url) chkFd.append('url', url);
@@ -297,8 +288,8 @@ async function runAnalysis(force = false) {
       const p = data.previous;
       document.getElementById('result-box').innerHTML = `
         <div class="notice warn duplicate-notice">
-          <div class="td-mono" duplicate-label">⚠ This listing was already analyzed</div>
-          <div duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
+          <div class="td-mono duplicate-label">⚠ This listing was already analyzed</div>
+          <div class="duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
           <div class="td-mono duplicate-meta">
             Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
           </div>
@@ -309,8 +300,6 @@ async function runAnalysis(force = false) {
         </div>`;
       document.getElementById('result-box').scrollIntoView({behavior:'smooth', block:'nearest'});
     } else if (data.analysis_id) {
-      document.getElementById('loading').style.display = 'none';
-      statusEl.style.display = 'none';
       document.getElementById('result-box').innerHTML =
         '<div class="notice ok">Analysis started — you can navigate away. ' +
         'The banner above will update when done.</div>';
@@ -336,16 +325,7 @@ async function runAnalysis(force = false) {
   document.getElementById('analyze-btn').disabled = false;
 }
 
-
-const style = document.createElement('style');
-style.textContent = '@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }';
-document.head.appendChild(style);
-
-// ── Recent jobs modal ─────────────────────────────────────────────────────
-
-let JOB_IDS = {{ jobs[:10] | map(attribute='id') | list | tojson }};
-let modalIdx = -1;
-let _skipPushState = false;
+// ── Modal core ────────────────────────────────────────────────────────────
 
 async function openModal(jobId) {
   modalIdx = JOB_IDS.indexOf(jobId);
@@ -397,20 +377,28 @@ function updateModalNav() {
   document.getElementById('modal-counter').textContent = `${modalIdx + 1} / ${JOB_IDS.length}`;
 }
 
-// close on backdrop click
 document.getElementById('job-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('job-modal')) closeModal();
 });
 
-// keyboard navigation
-document.addEventListener('keydown', e => {
-  if (document.getElementById('job-modal').style.display === 'none') return;
-  if (e.key === 'Escape') { closeModal(); return; }
-  if (e.key === 'ArrowLeft')  { navigateModal(-1); return; }
-  if (e.key === 'ArrowRight') { navigateModal(1);  return; }
+// single keydown handler: modal shortcuts take priority; cmd-zone blocked when modal open
+document.addEventListener('keydown', function(e) {
+  const modalOpen = document.getElementById('job-modal').style.display !== 'none';
+  if (modalOpen) {
+    if (e.key === 'Escape') { closeModal(); return; }
+    if (e.key === 'ArrowLeft')  { navigateModal(-1); return; }
+    if (e.key === 'ArrowRight') { navigateModal(1);  return; }
+    return;
+  }
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
+  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+    e.preventDefault();
+    var el = document.getElementById('cmd-input');
+    el.focus();
+    el.select();
+  }
 });
 
-// popstate: back/forward browser navigation
 window.addEventListener('popstate', e => {
   const modal = document.getElementById('job-modal');
   if (e.state && e.state.jobId && JOB_IDS.includes(e.state.jobId)) {
@@ -422,7 +410,6 @@ window.addEventListener('popstate', e => {
   }
 });
 
-// auto-open if ?job= present on page load
 (function() {
   const jobId = parseInt(new URLSearchParams(location.search).get('job'));
   if (jobId && JOB_IDS.includes(jobId)) {
@@ -434,20 +421,47 @@ window.addEventListener('popstate', e => {
 // ── Table row helpers ─────────────────────────────────────────────────────
 
 function updateTableRow(jobId, status, verdict) {
-  const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
-  if (!row) return;
-  row.classList.remove('row-rejected', 'row-rejected-soft', 'row-applied', 'row-company-rejected', 'row-worth-considering', 'row-warning', 'row-interview', 'row-offer');
-  if (status === 'offer')                 row.classList.add('row-offer');
-  else if (status === 'interview')        row.classList.add('row-interview');
-  else if (status === 'rejected')         row.classList.add('row-rejected');
-  else if (status === 'company_rejected') row.classList.add('row-company-rejected');
-  else if (status === 'applied')          row.classList.add('row-applied');
-  else if (status === 'rejected_soft')    row.classList.add('row-rejected-soft');
-  else if (verdict === 'worth_considering') row.classList.add('row-worth-considering');
-  else if (verdict === 'warning')         row.classList.add('row-warning');
+  const ROW_CLASSES = ['row-rejected', 'row-rejected-soft', 'row-applied', 'row-company-rejected', 'row-worth-considering', 'row-warning', 'row-interview', 'row-offer'];
+  const newCat = (['applied', 'company_rejected', 'rejected', 'rejected_soft', 'interview', 'offer'].includes(status))
+    ? status : verdict;
 
-  const badge = row.querySelector('.badge');
-  if (badge) {
+  const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+  if (row) {
+    row.classList.remove(...ROW_CLASSES);
+    if (status === 'offer')                    row.classList.add('row-offer');
+    else if (status === 'interview')           row.classList.add('row-interview');
+    else if (status === 'rejected')            row.classList.add('row-rejected');
+    else if (status === 'company_rejected')    row.classList.add('row-company-rejected');
+    else if (status === 'applied')             row.classList.add('row-applied');
+    else if (status === 'rejected_soft')       row.classList.add('row-rejected-soft');
+    else if (verdict === 'worth_considering')  row.classList.add('row-worth-considering');
+    else if (verdict === 'warning')            row.classList.add('row-warning');
+    row.dataset.category = newCat;
+  }
+
+  const card = document.querySelector(`.job-card[data-job-id="${jobId}"]`);
+  if (card) {
+    card.classList.remove(...ROW_CLASSES);
+    if (status === 'offer')                    card.classList.add('row-offer');
+    else if (status === 'interview')           card.classList.add('row-interview');
+    else if (status === 'rejected')            card.classList.add('row-rejected');
+    else if (status === 'company_rejected')    card.classList.add('row-company-rejected');
+    else if (status === 'applied')             card.classList.add('row-applied');
+    else if (status === 'rejected_soft')       card.classList.add('row-rejected-soft');
+    else if (verdict === 'worth_considering')  card.classList.add('row-worth-considering');
+    else if (verdict === 'warning')            card.classList.add('row-warning');
+    card.dataset.category = newCat;
+    const cardStatus = card.querySelector('[data-status-text]');
+    if (cardStatus) {
+      cardStatus.textContent = status === 'offer' ? 'Offer' : status === 'interview' ? 'Interview' : status === 'applied' ? 'Applied' : status === 'company_rejected' ? 'Rejected by co.' : '—';
+    }
+  }
+
+  applyFilter();
+
+  [row, card].filter(Boolean).forEach(function(el) {
+    const badge = el.querySelector('.badge');
+    if (!badge) return;
     if (status === 'offer') {
       badge.className = 'badge badge-offer'; badge.textContent = 'Offer received';
     } else if (status === 'interview') {
@@ -465,7 +479,7 @@ function updateTableRow(jobId, status, verdict) {
       badge.textContent = {warning:'Needs review', worth_considering:'Worth considering'}[verdict] || verdict;
     }
     badge.dataset.verdict = verdict;
-  }
+  });
 }
 
 function readCurrentState() {
@@ -511,6 +525,9 @@ async function setStatus(status) {
       await loadModalJob(jobId);
       const { status: s, verdict: v } = readCurrentState();
       updateTableRow(jobId, s, v);
+    } else {
+      const el = document.getElementById('reanalyze-status');
+      if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Error: '+(data.error||'unknown'); }
     }
   } catch(e) { console.error(e); }
 }
@@ -525,6 +542,8 @@ async function confirmDelete() {
       closeModal();
       const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
       if (row) row.remove();
+      const card = document.querySelector(`.job-card[data-job-id="${jobId}"]`);
+      if (card) card.remove();
       JOB_IDS.splice(modalIdx, 1);
       if (modalIdx >= JOB_IDS.length) modalIdx = JOB_IDS.length - 1;
     } else {
@@ -618,8 +637,7 @@ async function generatePrep() {
   if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 20–40 seconds…'; }
   try {
     const resp = await fetch(`/job/${jobId}/interview_prep`, {
-      method: 'POST',
-      headers: {'X-CSRFToken': csrfToken()},
+      method: 'POST', headers: {'X-CSRFToken': csrfToken()},
     });
     if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
     const data = await resp.json();
@@ -631,7 +649,7 @@ async function generatePrep() {
         contentBox.innerHTML = '';
         contentBox.appendChild(div);
       }
-      if (statusEl) { statusEl.style.display = 'none'; }
+      if (statusEl) statusEl.style.display = 'none';
       if (btn) { btn.disabled = false; btn.textContent = 'Regenerate prep'; }
     } else {
       if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
@@ -653,8 +671,7 @@ async function generateCvTailoring() {
   if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 15–30 seconds…'; }
   try {
     const resp = await fetch(`/job/${jobId}/cv_tailoring`, {
-      method: 'POST',
-      headers: {'X-CSRFToken': csrfToken()},
+      method: 'POST', headers: {'X-CSRFToken': csrfToken()},
     });
     if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
     const data = await resp.json();
@@ -666,7 +683,7 @@ async function generateCvTailoring() {
         contentBox.innerHTML = '';
         contentBox.appendChild(div);
       }
-      if (statusEl) { statusEl.style.display = 'none'; }
+      if (statusEl) statusEl.style.display = 'none';
       if (btn) { btn.disabled = false; btn.textContent = 'Regenerate CV tailoring'; }
     } else {
       if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
@@ -678,5 +695,84 @@ async function generateCvTailoring() {
   }
 }
 
+// ── Table sorting ─────────────────────────────────────────────────────────
+
+var _sortCol = 0;
+var _sortAsc = true;
+
+function sortTable(col) {
+  if (_sortCol === col) { _sortAsc = !_sortAsc; }
+  else { _sortCol = col; _sortAsc = true; }
+  document.querySelectorAll('.sort-arrow').forEach(function(el) { el.textContent = ''; });
+  var arrow = document.getElementById('sa-' + col);
+  if (arrow) arrow.textContent = _sortAsc ? ' ↑' : ' ↓';
+  var tbody = document.querySelector('tbody');
+  var rows = Array.from(tbody.querySelectorAll('tr[data-category]'));
+  rows.sort(function(a, b) {
+    var av = (a.cells[col] || {textContent:''}).textContent.trim();
+    var bv = (b.cells[col] || {textContent:''}).textContent.trim();
+    if (col === 6) {
+      var an = parseFloat(av) || 0;
+      var bn = parseFloat(bv) || 0;
+      return _sortAsc ? an - bn : bn - an;
+    }
+    return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
+
+// ── Filters + search ─────────────────────────────────────────────────────
+
+const HIDDEN_KEY = 'history_hidden_categories';
+let hiddenCats = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
+
+function applyFilters() {
+  const q = (document.getElementById('history-search') ? document.getElementById('history-search').value : '').toLowerCase().trim();
+  document.querySelectorAll('tbody tr[data-category]').forEach(function(row) {
+    var cat = row.dataset.category;
+    var role = (row.querySelector('.td-role') || {textContent:''}).textContent.toLowerCase();
+    var company = (row.cells[2] || {textContent:''}).textContent.toLowerCase();
+    var matchesCat = !hiddenCats.has(cat);
+    var matchesSearch = !q || role.includes(q) || company.includes(q);
+    row.style.display = matchesCat && matchesSearch ? '' : 'none';
+  });
+  document.querySelectorAll('.job-card[data-category]').forEach(function(card) {
+    var cat = card.dataset.category;
+    var role = (card.querySelector('.job-card-role') || {textContent:''}).textContent.toLowerCase();
+    var company = (card.querySelector('.job-card-company') || {textContent:''}).textContent.toLowerCase();
+    var matchesCat = !hiddenCats.has(cat);
+    var matchesSearch = !q || role.includes(q) || company.includes(q);
+    card.style.display = matchesCat && matchesSearch ? '' : 'none';
+  });
+}
+
+function applyFilter() { applyFilters(); }
+
+function toggleFilter(cat, btn) {
+  if (hiddenCats.has(cat)) { hiddenCats.delete(cat); btn.classList.add('active'); }
+  else { hiddenCats.add(cat); btn.classList.remove('active'); }
+  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenCats]));
+  applyFilters();
+}
+
+function showAll() {
+  hiddenCats.clear();
+  localStorage.setItem(HIDDEN_KEY, '[]');
+  document.querySelectorAll('.filter-btn[data-cat]').forEach(function(b) { b.classList.add('active'); });
+  var searchEl = document.getElementById('history-search');
+  if (searchEl) searchEl.value = '';
+  applyFilters();
+}
+
+(function() {
+  hiddenCats.forEach(function(cat) {
+    var btn = document.querySelector('.filter-btn[data-cat="' + cat + '"]');
+    if (btn) btn.classList.remove('active');
+  });
+  sortTable(0);
+  applyFilters();
+  var fb = document.querySelector('.filter-bar');
+  if (fb) document.documentElement.style.setProperty('--filter-bar-h', fb.offsetHeight + 'px');
+})();
 </script>
 {% endblock %}

@@ -69,8 +69,7 @@ job-screener/
 │   ├── base.html       — layout, <link> to style.css, navigation (no footer)
 │   ├── login.html
 │   ├── register.html
-│   ├── dashboard.html  — analysis form + recent results + modal for recent analyses
-│   ├── history.html    — all analyses table + detail modal with navigation
+│   ├── dashboard.html  — unified view: command bar + full analysis table (filters, search, sort, mobile cards) + modal; `/history` and `/job/<id>` redirect here
 │   ├── job_partial.html — clean HTML (no extends) loaded via AJAX into modal; has five tabs: Overview / Layers / Skills / CV / Interview
 │   ├── settings.html   — CV, Zero Rule, Yellow List, criteria
 │   ├── about.html      — project overview, six layers, reality check, verdicts, inline changelog
@@ -179,8 +178,8 @@ POST     /check_source          — url or text, checks for duplicate
 POST     /reanalyze/<id>
 GET      /analysis_status/<id>    — background analysis status poll (pending/running/done/error); also returns `active_labels` (ordered list of source labels for all pending/running analyses for the user)
 GET      /history_latest        — returns {id} of the most recent entry
-GET      /history
-GET      /job/<id>              — redirects to /history?job=<id> (modal auto-opens)
+GET      /history               — 301 redirect to /dashboard
+GET      /job/<id>              — 301 redirect to /dashboard?job=<id> (modal auto-opens)
 GET      /job/<id>/partial      — HTML without layout, loaded via AJAX into modal
 POST     /job/<id>/verdict      — change verdict
 POST     /job/<id>/status       — change status (all 6 values)
@@ -229,12 +228,13 @@ The `data-verdict` attribute on the badge element stores the underlying verdict
 (used by `readCurrentState()` in modal JS).
 
 ### Job detail modal
-- `history.html` and `dashboard.html` have identical modal overlay (`#job-modal`)
+- Modal overlay (`#job-modal`) lives in `dashboard.html` (single template — `history.html` was deleted in v0.28)
 - Row click → `openModal(jobId)` → fetch `/job/<id>/partial` → inject HTML into `#modal-body`
 - ← → navigation between listings (keyboard and on-screen buttons)
 - URL management: `pushState` on open (`?job=<id>`), `replaceState` on navigate, `replaceState` on close
 - Browser back closes the modal; direct link `?job=<id>` auto-opens modal
-- JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in the parent template (history/dashboard), not in the partial — `<script>` tags in AJAX-loaded partials do not execute
+- JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in `dashboard.html`, not in the partial — `<script>` tags in AJAX-loaded partials do not execute
+- Single `keydown` handler with modal guard: modal open → only Escape/←/→ handled; modal closed → Cmd+Enter submits, Cmd+K focuses input
 
 ### /analyze logic
 1. `normalize_url(url)` — always before use

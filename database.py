@@ -520,21 +520,26 @@ def save_job(
         return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
 
-def get_jobs(user_id: int, limit: int = 100) -> list[dict]:
+def get_jobs(user_id: int, limit: Optional[int] = None) -> list[dict]:
     """
     Fetch the most recent n records from the database.
 
     Args:
         user_id: User ID
-        limit: Maximum number of records (default 100)
+        limit: Maximum number of records (None = all records)
 
     Returns:
         List of dictionaries with data from the database
     """
     with get_conn() as conn:
+        if limit is None:
+            return conn.execute(
+                "SELECT * FROM jobs WHERE user_id=? ORDER BY id DESC",
+                (user_id,),
+            ).fetchall()
         return conn.execute(
             "SELECT * FROM jobs WHERE user_id=? ORDER BY id DESC LIMIT ?",
-            (user_id, limit)
+            (user_id, limit),
         ).fetchall()
 
 
@@ -812,11 +817,8 @@ def export_csv(user_id: int) -> str:
     fields = [k for k in rows[0].keys() if k not in ("id", "user_id", "raw_json")]
     w = csv.DictWriter(out, fieldnames=fields)
     w.writeheader()
-    try:
-        for row in rows:
-            w.writerow({k: row[k] for k in fields})
-    except sqlite3.IntegrityError as e:
-        print(f"Warning: Integrity error during CSV export for user {user_id}: {e}")
+    for row in rows:
+        w.writerow({k: row[k] for k in fields})
     return out.getvalue()
 
 

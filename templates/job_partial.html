@@ -212,7 +212,7 @@
       <div class="tab-section-body">
         <div id="tailor-content-box"><div class="prep-content">{{ tailoring_content }}</div></div>
         {% if show_tailor_btn %}
-        <div style="margin-top:14px;">
+        <div class="tab-actions">
           <button id="tailor-btn" class="btn btn-secondary btn-sm" onclick="generateCvTailoring()">Regenerate CV tailoring</button>
           <span id="tailor-status" class="notice" style="display:none;"></span>
         </div>
@@ -241,7 +241,7 @@
       <div class="tab-section-body">
         <div id="prep-content-box"><div class="prep-content">{{ prep_content }}</div></div>
         {% if show_prep_btn %}
-        <div style="margin-top:14px;">
+        <div class="tab-actions">
           <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">Regenerate prep</button>
           <span id="prep-status" class="notice" style="display:none;"></span>
         </div>

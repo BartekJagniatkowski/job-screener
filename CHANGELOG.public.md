@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.28 — Unified dashboard
+
+- **Dashboard + history merged** — the separate History page is gone; the dashboard now shows the full analysis table with filters, search, sorting, and mobile cards; no row cap
+- **Navigation simplified** — separate "Analyze" and "History" nav links removed; logo click goes to `/dashboard`
+- **Redirects** — `/history` and `/job/<id>` issue 301 permanent redirects to `/dashboard`; bookmarks and external links continue to work
+
+---
+
 ## v0.27 — Command bar + detail tabs
 
 - **Command bar** — analyze form replaced with a clean URL input + "Analyze →" button; ⌘/Ctrl+Enter submits from anywhere; ⌘/Ctrl+K focuses the input

@@ -141,7 +141,7 @@ def login() -> str:
     Login page.
 
     Returns:
-        HTML szablon logowania
+        Rendered login template
     """
     # first run: show registration instead
     if user_count() == 0:
@@ -174,7 +174,7 @@ def register() -> str:
     Registration page.
 
     Returns:
-        HTML szablon rejestracji
+        Rendered registration template
     """
     # only allow registration if no users exist yet OR invite token matches
     allow = user_count() == 0
@@ -226,10 +226,10 @@ def dashboard() -> str:
     User dashboard page.
 
     Returns:
-        HTML szablon dashboarda
+        Rendered dashboard template
     """
     user = current_user()
-    jobs = get_jobs(user["id"], limit=50)
+    jobs = get_jobs(user["id"])
     has_cv = bool((user["cv"] or "").strip())
     has_api_key = bool(API_KEY)
     return render_template("dashboard.html",
@@ -600,15 +600,13 @@ def history_latest():
 @app.route("/history")
 @login_required
 def history():
-    user = current_user()
-    jobs = get_jobs(user["id"], limit=200)
-    return render_template("history.html", user=user, jobs=jobs)
+    return redirect(url_for("dashboard"), 301)
 
 
 @app.route("/job/<int:job_id>")
 @login_required
 def job_detail(job_id):
-    return redirect(url_for("history") + f"?job={job_id}")
+    return redirect(url_for("dashboard") + f"?job={job_id}", 301)
 
 
 @app.route("/job/<int:job_id>/partial")

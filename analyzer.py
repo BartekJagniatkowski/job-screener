@@ -139,7 +139,7 @@ FORMAT — ONLY this JSON, nothing else
       "findings": "Business model, funding, investors",
       "evidence": "Quote or fact from the listing — required when status=flag, null otherwise",
       "compensation_signal": "disclosed_above_market|disclosed_market|disclosed_below_market|undisclosed|unknown",
-      "compensation_note": "Specific note e.g. '15-20k PLN gross, market rate 18-24k for this level' or null
+      "compensation_note": "Specific note e.g. '15-20k PLN gross, market rate 18-24k for this level' or null"
     }},
     "reputation": {{
       "status": "ok|warning|flag",
@@ -425,7 +425,7 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: s
             msg = json.loads(body).get("error", {}).get("message", body)
         except Exception:
             msg = body
-        raise Exception(f"API error {e.code}: {msg}. Model: {MODEL}")
+        raise Exception(f"API error {e.code}: {msg}. Model: {model}")
     except urllib.error.URLError as e:
         raise Exception(f"No connection to API: {e.reason}")
 

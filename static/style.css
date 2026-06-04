@@ -141,6 +141,9 @@ nav { border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex;
 .container { max-width: 1280px; margin: 0 auto; padding: 40px 24px 80px; }
 .container-full { max-width: none; margin: 0; padding: 40px 24px 80px; }
 .table-wrap { overflow-x: clip; }
+.table-wrap table { table-layout: fixed; }
+.td-nowrap { white-space: nowrap; }
+.tab-actions { margin-top: 14px; }
 .col-date    { width: 90px; }
 .col-badge   { width: 200px; }
 .col-l0      { width: 44px; }
