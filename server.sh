@@ -6,7 +6,7 @@ PID_FILE="/tmp/screener.pid"
 
 _start() {
   if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-    echo "Serwer już działa (PID $(cat "$PID_FILE"))."
+    echo "Already running (PID $(cat "$PID_FILE"))."
     exit 1
   fi
 
@@ -25,22 +25,31 @@ _start() {
     [ -f "$PID_FILE" ] && break
     sleep 0.5
   done
-  echo "Serwer uruchomiony (PID: $(cat "$PID_FILE"))."
+  echo "Started (PID: $(cat "$PID_FILE"))."
 }
 
 _stop() {
-  if [ ! -f "$PID_FILE" ]; then
-    echo "Aplikacja nie działa (brak pliku PID)."
-    return 0
+  # Kill PID-file process if present
+  if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE")
+    if kill "$PID" 2>/dev/null; then
+      echo "Stopped PID $PID."
+    else
+      echo "PID $PID already gone."
+    fi
+    rm -f "$PID_FILE"
   fi
 
-  PID=$(cat "$PID_FILE")
-  if kill "$PID" 2>/dev/null; then
-    echo "Serwer zatrzymany (PID $PID)."
-  else
-    echo "Proces $PID już nie działał."
+  # Sweep any stray gunicorn workers (orphans, outside-server.sh starts, crashes)
+  if pkill -f "gunicorn.*app:app" 2>/dev/null; then
+    echo "Swept stray gunicorn processes."
   fi
-  rm -f "$PID_FILE"
+
+  # Wait up to 5 s for processes to exit before returning
+  for i in 1 2 3 4 5; do
+    pgrep -f "gunicorn.*app:app" > /dev/null 2>&1 || break
+    sleep 1
+  done
 }
 
 case "${1:-}" in
@@ -49,13 +58,13 @@ case "${1:-}" in
   restart) _stop; sleep 1; _start ;;
   status)
     if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-      echo "Działa (PID $(cat "$PID_FILE"))."
+      echo "Running (PID $(cat "$PID_FILE"))."
     else
-      echo "Zatrzymany."
+      echo "Stopped."
     fi
     ;;
   *)
-    echo "Użycie: $0 {start|stop|restart|status}"
+    echo "Usage: $0 {start|stop|restart|status}"
     exit 1
     ;;
 esac
