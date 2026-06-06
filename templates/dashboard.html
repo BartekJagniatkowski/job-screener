@@ -1,778 +1,970 @@
-{% extends "base.html" %}
-{% block title %}Job Screener{% endblock %}
-{% block container_class %}container{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}Job Screener{% endblock %} {% block
+container_class %}container{% endblock %} {% block content %}
 <!-- Job detail modal -->
-<div id="job-modal" class="modal-overlay" style="display:none;">
-  <div class="modal-container">
-    <div class="modal-header">
-      <button class="modal-nav-btn" id="modal-prev" onclick="navigateModal(-1)">←</button>
-      <span class="modal-counter" id="modal-counter"></span>
-      <button class="modal-nav-btn" id="modal-next" onclick="navigateModal(1)">→</button>
-      <button class="modal-close" onclick="closeModal()">✕</button>
+<div id="job-modal" class="modal-overlay" style="display: none">
+    <div class="modal-container">
+        <div class="modal-header">
+            <button
+                class="modal-nav-btn"
+                id="modal-prev"
+                onclick="navigateModal(-1)"
+            >
+                ←
+            </button>
+            <span class="modal-counter" id="modal-counter"></span>
+            <button
+                class="modal-nav-btn"
+                id="modal-next"
+                onclick="navigateModal(1)"
+            >
+                →
+            </button>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body" id="modal-body"></div>
     </div>
-    <div class="modal-body" id="modal-body"></div>
-  </div>
 </div>
 
 {% if not has_api_key %}
-<div class="notice warn">⚠ No API key. Contact the application administrator.</div>
-{% endif %}
-{% if not has_cv %}
-<div class="notice">No CV in your profile yet. <a href="{{ url_for('settings') }}" class="link-accent">Add it in Settings →</a></div>
+<div class="notice warn">
+    ⚠ No API key. Contact the application administrator.
+</div>
+{% endif %} {% if not has_cv %}
+<div class="notice">
+    No CV in your profile yet.
+    <a href="{{ url_for('settings') }}" class="link-accent"
+        >Add it in Settings →</a
+    >
+</div>
 {% endif %}
 
 <div class="cmd-zone">
-  <div class="cmd-bar">
-    <input type="url" id="cmd-input" class="cmd-input" placeholder="Job listing URL…" autocomplete="off">
-    <button class="cmd-btn" id="analyze-btn" onclick="runAnalysis()" {% if not has_api_key %}disabled{% endif %}>Analyze →</button>
-  </div>
-  <div class="cmd-hint">
-    <span><kbd class="cmd-key" id="hint-submit"></kbd> submit</span>
-    <span><kbd class="cmd-key" id="hint-paste"></kbd> focus input</span>
-    <button class="cmd-text-toggle" id="cmd-text-toggle" onclick="toggleCmdText()" type="button">+ paste job text</button>
-  </div>
-  <div class="cmd-text-zone" id="cmd-text-zone" style="display:none;">
-    <textarea id="cmd-text" class="cmd-text-area" rows="6" placeholder="Paste job description here — used when the URL is inaccessible (LinkedIn, Indeed, etc.)"></textarea>
-  </div>
+    <div class="cmd-bar">
+        <input
+            type="url"
+            id="cmd-input"
+            class="cmd-input"
+            placeholder="Job listing URL…"
+            autocomplete="off"
+        />
+        <button
+            class="cmd-btn"
+            id="analyze-btn"
+            onclick="runAnalysis()"
+            {%
+            if
+            not
+            has_api_key
+            %}disabled{%
+            endif
+            %}
+        >
+            Analyze →
+        </button>
+    </div>
+    <div class="cmd-hint">
+        <span><kbd class="cmd-key" id="hint-submit"></kbd> submit</span>
+        <span><kbd class="cmd-key" id="hint-paste"></kbd> focus input</span>
+        <button
+            class="cmd-text-toggle"
+            id="cmd-text-toggle"
+            onclick="toggleCmdText()"
+            type="button"
+        >
+            + paste job text
+        </button>
+    </div>
+    <div class="cmd-text-zone" id="cmd-text-zone" style="display: none">
+        <textarea
+            id="cmd-text"
+            class="cmd-text-area"
+            rows="6"
+            placeholder="Paste job description here — used when the URL is inaccessible (LinkedIn, Indeed, etc.)"
+        ></textarea>
+    </div>
 </div>
 
 <div id="source-status" class="source-status"></div>
-<div id="loading" class="notice" style="display:none;">
-  <span class="spinner"></span> Analyzing — may take 20–40 seconds…
+<div id="loading" class="notice" style="display: none">
+    <span class="spinner"></span> Analyzing — may take 20–40 seconds…
 </div>
-<div id="error-box" style="display:none;" class="notice warn"></div>
+<div id="error-box" style="display: none" class="notice warn"></div>
 <div id="result-box"></div>
 
 {% if jobs %}
-<div class="export-section">
-  <a href="{{ url_for('export') }}" class="td-mono link-accent">Download CSV →</a>
-</div>
 <div class="history-search-wrap">
-  <input type="search" id="history-search" class="history-search"
-    placeholder="Search by role or company…" oninput="applyFilters()">
+    <input
+        type="search"
+        id="history-search"
+        class="history-search"
+        placeholder="Search by role or company…"
+        oninput="applyFilters()"
+    />
 </div>
 <div class="filter-bar">
-  <span class="filter-label">Show:</span>
-  <button class="filter-btn fb-all" onclick="showAll()">Show all</button>
-  <button class="filter-btn active fb-worth_considering" data-cat="worth_considering" onclick="toggleFilter('worth_considering', this)">Worth considering</button>
-  <button class="filter-btn active fb-warning" data-cat="warning" onclick="toggleFilter('warning', this)">Needs review</button>
-  <button class="filter-btn active fb-rejected_soft" data-cat="rejected_soft" onclick="toggleFilter('rejected_soft', this)">AI rejected</button>
-  <button class="filter-btn active fb-rejected" data-cat="rejected" onclick="toggleFilter('rejected', this)">User rejected</button>
-  <button class="filter-btn active fb-applied" data-cat="applied" onclick="toggleFilter('applied', this)">Applied</button>
-  <button class="filter-btn active fb-company_rejected" data-cat="company_rejected" onclick="toggleFilter('company_rejected', this)">Rejected by company</button>
-  <button class="filter-btn active fb-interview" data-cat="interview" onclick="toggleFilter('interview', this)">Interview</button>
-  <button class="filter-btn active fb-offer" data-cat="offer" onclick="toggleFilter('offer', this)">Offer</button>
+    <span class="filter-label">Show:</span>
+    <button class="filter-btn fb-all" onclick="showAll()">Show all</button>
+    <button
+        class="filter-btn active fb-worth_considering"
+        data-cat="worth_considering"
+        onclick="toggleFilter('worth_considering', this)"
+    >
+        Worth considering
+    </button>
+    <button
+        class="filter-btn active fb-warning"
+        data-cat="warning"
+        onclick="toggleFilter('warning', this)"
+    >
+        Needs review
+    </button>
+    <button
+        class="filter-btn active fb-rejected_soft"
+        data-cat="rejected_soft"
+        onclick="toggleFilter('rejected_soft', this)"
+    >
+        AI rejected
+    </button>
+    <button
+        class="filter-btn active fb-rejected"
+        data-cat="rejected"
+        onclick="toggleFilter('rejected', this)"
+    >
+        User rejected
+    </button>
+    <button
+        class="filter-btn active fb-applied"
+        data-cat="applied"
+        onclick="toggleFilter('applied', this)"
+    >
+        Applied
+    </button>
+    <button
+        class="filter-btn active fb-company_rejected"
+        data-cat="company_rejected"
+        onclick="toggleFilter('company_rejected', this)"
+    >
+        Rejected by company
+    </button>
+    <button
+        class="filter-btn active fb-interview"
+        data-cat="interview"
+        onclick="toggleFilter('interview', this)"
+    >
+        Interview
+    </button>
+    <button
+        class="filter-btn active fb-offer"
+        data-cat="offer"
+        onclick="toggleFilter('offer', this)"
+    >
+        Offer
+    </button>
 </div>
 <div class="table-wrap">
-<table>
-  <colgroup>
-    <col class="col-date">
-    <col>
-    <col>
-    <col class="col-badge">
-    <col class="col-l0">
-    <col class="col-layers">
-    <col class="col-fit">
-  </colgroup>
-  <thead>
-    <tr>
-      <th class="th-sortable" data-col="0" onclick="sortTable(0)">Date <span class="sort-arrow" id="sa-0"></span></th>
-      <th class="th-sortable" data-col="1" onclick="sortTable(1)">Role <span class="sort-arrow" id="sa-1"></span></th>
-      <th class="th-sortable" data-col="2" onclick="sortTable(2)">Company <span class="sort-arrow" id="sa-2"></span></th>
-      <th>Verdict</th>
-      <th>L0</th>
-      <th>Layers</th>
-      <th class="th-sortable" data-col="6" onclick="sortTable(6)">Fit <span class="sort-arrow" id="sa-6"></span></th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for j in jobs %}
-    {% if j.offer_received %}{% set row_cls = 'row-offer' %}{% set cat = 'offer' %}
-    {% elif j.interview_scheduled %}{% set row_cls = 'row-interview' %}{% set cat = 'interview' %}
-    {% elif j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}{% set cat = 'rejected' %}
-    {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}{% set cat = 'company_rejected' %}
-    {% elif j.applied %}{% set row_cls = 'row-applied' %}{% set cat = 'applied' %}
-    {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}{% set cat = 'rejected_soft' %}
-    {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat = 'worth_considering' %}
-    {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{% set cat = 'warning' %}
-    {% else %}{% set row_cls = '' %}{% set cat = j.verdict or 'unknown' %}{% endif %}
-    <tr class="clickable{% if row_cls %} {{ row_cls }}{% endif %}" data-job-id="{{ j.id }}" data-category="{{ cat }}" onclick="openModal({{ j.id }})">
-      <td class="td-date">{{ j.analyzed_at }}</td>
-      <td class="td-role">{{ j.role or '—' }}</td>
-      <td class="fw-500">{{ j.company or 'Unknown' }}</td>
-      <td class="td-nowrap">
-        {%- if j.offer_received -%}<span class="badge badge-offer" data-verdict="{{ j.verdict }}">Offer received</span>
-        {%- elif j.interview_scheduled -%}<span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
-        {%- elif j.company_rejected -%}<span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
-        {%- elif j.applied -%}<span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-        {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
-        {%- elif j.verdict == 'rejected' -%}<span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
-        {%- else -%}<span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
-        {%- endif %}
-      </td>
-      <td class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}">{{ 'YES' if j.zero_list_hit else '—' }}</td>
-      <td class="td-layers">
-        <span class="dot-row">
-          <span class="dot dot-{{ j.triage_status or 'unknown' }}"     title="Triage: {{ j.triage_status or 'unknown' }}"></span>
-          <span class="dot dot-{{ j.product_status or 'unknown' }}"    title="Product: {{ j.product_status or 'unknown' }}"></span>
-          <span class="dot dot-{{ j.business_status or 'unknown' }}"   title="Business: {{ j.business_status or 'unknown' }}"></span>
-          <span class="dot dot-{{ j.reputation_status or 'unknown' }}" title="Reputation: {{ j.reputation_status or 'unknown' }}"></span>
-          <span class="dot dot-{{ j.values_status or 'unknown' }}"     title="Values: {{ j.values_status or 'unknown' }}"></span>
-        </span>
-      </td>
-      <td class="td-mono {% if j.fit_score is not none %}{% if j.fit_status == 'ok' %}td-green{% elif j.fit_status == 'warning' %}td-warning{% elif j.fit_status == 'flag' %}td-red{% else %}td-dim{% endif %}{% else %}td-dim{% endif %}">{{ "%.1f"|format(j.fit_score) ~ '/5' if j.fit_score is not none else '—' }}</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    <table>
+        <colgroup>
+            <col class="col-date" />
+            <col />
+            <col />
+            <col class="col-badge" />
+            <col class="col-l0" />
+            <col class="col-layers" />
+            <col class="col-fit" />
+        </colgroup>
+        <thead>
+            <tr>
+                <th class="th-sortable" data-col="0" onclick="sortTable(0)">
+                    Date <span class="sort-arrow" id="sa-0"></span>
+                </th>
+                <th class="th-sortable" data-col="1" onclick="sortTable(1)">
+                    Role <span class="sort-arrow" id="sa-1"></span>
+                </th>
+                <th class="th-sortable" data-col="2" onclick="sortTable(2)">
+                    Company <span class="sort-arrow" id="sa-2"></span>
+                </th>
+                <th>Verdict</th>
+                <th>L0</th>
+                <th>Layers</th>
+                <th class="th-sortable" data-col="6" onclick="sortTable(6)">
+                    Fit <span class="sort-arrow" id="sa-6"></span>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for j in jobs %} {% if j.offer_received %}{% set row_cls =
+            'row-offer' %}{% set cat = 'offer' %} {% elif j.interview_scheduled
+            %}{% set row_cls = 'row-interview' %}{% set cat = 'interview' %} {%
+            elif j.verdict == 'rejected' and j.verdict_confirmed %}{% set
+            row_cls = 'row-rejected' %}{% set cat = 'rejected' %} {% elif
+            j.company_rejected %}{% set row_cls = 'row-company-rejected' %}{%
+            set cat = 'company_rejected' %} {% elif j.applied %}{% set row_cls =
+            'row-applied' %}{% set cat = 'applied' %} {% elif j.verdict ==
+            'rejected' and not j.verdict_confirmed %}{% set row_cls =
+            'row-rejected-soft' %}{% set cat = 'rejected_soft' %} {% elif
+            j.verdict == 'worth_considering' %}{% set row_cls =
+            'row-worth-considering' %}{% set cat = 'worth_considering' %} {%
+            elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{%
+            set cat = 'warning' %} {% else %}{% set row_cls = '' %}{% set cat =
+            j.verdict or 'unknown' %}{% endif %}
+            <tr
+                class="clickable{% if row_cls %} {{ row_cls }}{% endif %}"
+                data-job-id="{{ j.id }}"
+                data-category="{{ cat }}"
+                onclick="openModal({{ j.id }})"
+            >
+                <td class="td-date">{{ j.analyzed_at }}</td>
+                <td class="td-role">{{ j.role or '—' }}</td>
+                <td class="fw-500">{{ j.company or 'Unknown' }}</td>
+                <td class="td-nowrap">
+                    {%- if j.offer_received -%}<span
+                        class="badge badge-offer"
+                        data-verdict="{{ j.verdict }}"
+                        >Offer received</span
+                    >
+                    {%- elif j.interview_scheduled -%}<span
+                        class="badge badge-interview"
+                        data-verdict="{{ j.verdict }}"
+                        >Interview</span
+                    >
+                    {%- elif j.company_rejected -%}<span
+                        class="badge badge-company_rejected"
+                        data-verdict="{{ j.verdict }}"
+                        >Rejected by company</span
+                    >
+                    {%- elif j.applied -%}<span
+                        class="badge badge-applied"
+                        data-verdict="{{ j.verdict }}"
+                        >Applied</span
+                    >
+                    {%- elif j.verdict == 'rejected' and j.verdict_confirmed
+                    -%}<span
+                        class="badge badge-rejected"
+                        data-verdict="{{ j.verdict }}"
+                        >User rejected</span
+                    >
+                    {%- elif j.verdict == 'rejected' -%}<span
+                        class="badge badge-rejected"
+                        data-verdict="{{ j.verdict }}"
+                        >AI rejected</span
+                    >
+                    {%- else -%}<span
+                        class="badge badge-{{ j.verdict }}"
+                        data-verdict="{{ j.verdict }}"
+                        >{{ {'warning':'Needs review','worth_considering':'Worth
+                        considering'}.get(j.verdict, j.verdict) }}</span
+                    >
+                    {%- endif %}
+                </td>
+                <td
+                    class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}"
+                >
+                    {{ 'YES' if j.zero_list_hit else '—' }}
+                </td>
+                <td class="td-layers">
+                    <span class="dot-row">
+                        <span
+                            class="dot dot-{{ j.triage_status or 'unknown' }}"
+                            title="Triage: {{ j.triage_status or 'unknown' }}"
+                        ></span>
+                        <span
+                            class="dot dot-{{ j.product_status or 'unknown' }}"
+                            title="Product: {{ j.product_status or 'unknown' }}"
+                        ></span>
+                        <span
+                            class="dot dot-{{ j.business_status or 'unknown' }}"
+                            title="Business: {{ j.business_status or 'unknown' }}"
+                        ></span>
+                        <span
+                            class="dot dot-{{ j.reputation_status or 'unknown' }}"
+                            title="Reputation: {{ j.reputation_status or 'unknown' }}"
+                        ></span>
+                        <span
+                            class="dot dot-{{ j.values_status or 'unknown' }}"
+                            title="Values: {{ j.values_status or 'unknown' }}"
+                        ></span>
+                    </span>
+                </td>
+                <td
+                    class="td-mono {% if j.fit_score is not none %}{% if j.fit_status == 'ok' %}td-green{% elif j.fit_status == 'warning' %}td-warning{% elif j.fit_status == 'flag' %}td-red{% else %}td-dim{% endif %}{% else %}td-dim{% endif %}"
+                >
+                    {{ "%.1f"|format(j.fit_score) ~ '/5' if j.fit_score is not
+                    none else '—' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 <div class="job-cards">
-  {% for j in jobs %}
-  {% if j.offer_received %}{% set row_cls = 'row-offer' %}{% set cat = 'offer' %}
-  {% elif j.interview_scheduled %}{% set row_cls = 'row-interview' %}{% set cat = 'interview' %}
-  {% elif j.verdict == 'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}{% set cat = 'rejected' %}
-  {% elif j.company_rejected %}{% set row_cls = 'row-company-rejected' %}{% set cat = 'company_rejected' %}
-  {% elif j.applied %}{% set row_cls = 'row-applied' %}{% set cat = 'applied' %}
-  {% elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls = 'row-rejected-soft' %}{% set cat = 'rejected_soft' %}
-  {% elif j.verdict == 'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat = 'worth_considering' %}
-  {% elif j.verdict == 'warning' %}{% set row_cls = 'row-warning' %}{% set cat = 'warning' %}
-  {% else %}{% set row_cls = '' %}{% set cat = j.verdict or 'unknown' %}{% endif %}
-  <div class="job-card {{ row_cls }}" data-job-id="{{ j.id }}" data-category="{{ cat }}" tabindex="0" onclick="openModal({{ j.id }})">
-    <div class="job-card-header">
-      <div class="job-card-title">
-        <div class="job-card-company">{{ j.company or 'Unknown' }}</div>
-        <div class="job-card-role">{{ j.role or '—' }}</div>
-      </div>
-      {%- if j.offer_received -%}
-        <span class="badge badge-offer" data-verdict="{{ j.verdict }}">Offer received</span>
-      {%- elif j.interview_scheduled -%}
-        <span class="badge badge-interview" data-verdict="{{ j.verdict }}">Interview</span>
-      {%- elif j.company_rejected -%}
-        <span class="badge badge-company_rejected" data-verdict="{{ j.verdict }}">Rejected by company</span>
-      {%- elif j.applied -%}
-        <span class="badge badge-applied" data-verdict="{{ j.verdict }}">Applied</span>
-      {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}
-        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">User rejected</span>
-      {%- elif j.verdict == 'rejected' -%}
-        <span class="badge badge-rejected" data-verdict="{{ j.verdict }}">AI rejected</span>
-      {%- else -%}
-        <span class="badge badge-{{ j.verdict }}" data-verdict="{{ j.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(j.verdict, j.verdict) }}</span>
-      {%- endif %}
+    {% for j in jobs %} {% if j.offer_received %}{% set row_cls = 'row-offer'
+    %}{% set cat = 'offer' %} {% elif j.interview_scheduled %}{% set row_cls =
+    'row-interview' %}{% set cat = 'interview' %} {% elif j.verdict ==
+    'rejected' and j.verdict_confirmed %}{% set row_cls = 'row-rejected' %}{%
+    set cat = 'rejected' %} {% elif j.company_rejected %}{% set row_cls =
+    'row-company-rejected' %}{% set cat = 'company_rejected' %} {% elif
+    j.applied %}{% set row_cls = 'row-applied' %}{% set cat = 'applied' %} {%
+    elif j.verdict == 'rejected' and not j.verdict_confirmed %}{% set row_cls =
+    'row-rejected-soft' %}{% set cat = 'rejected_soft' %} {% elif j.verdict ==
+    'worth_considering' %}{% set row_cls = 'row-worth-considering' %}{% set cat
+    = 'worth_considering' %} {% elif j.verdict == 'warning' %}{% set row_cls =
+    'row-warning' %}{% set cat = 'warning' %} {% else %}{% set row_cls = '' %}{%
+    set cat = j.verdict or 'unknown' %}{% endif %}
+    <div
+        class="job-card {{ row_cls }}"
+        data-job-id="{{ j.id }}"
+        data-category="{{ cat }}"
+        tabindex="0"
+        onclick="openModal({{ j.id }})"
+    >
+        <div class="job-card-header">
+            <div class="job-card-title">
+                <div class="job-card-company">{{ j.company or 'Unknown' }}</div>
+                <div class="job-card-role">{{ j.role or '—' }}</div>
+            </div>
+            {%- if j.offer_received -%}
+            <span class="badge badge-offer" data-verdict="{{ j.verdict }}"
+                >Offer received</span
+            >
+            {%- elif j.interview_scheduled -%}
+            <span class="badge badge-interview" data-verdict="{{ j.verdict }}"
+                >Interview</span
+            >
+            {%- elif j.company_rejected -%}
+            <span
+                class="badge badge-company_rejected"
+                data-verdict="{{ j.verdict }}"
+                >Rejected by company</span
+            >
+            {%- elif j.applied -%}
+            <span class="badge badge-applied" data-verdict="{{ j.verdict }}"
+                >Applied</span
+            >
+            {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}
+            <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
+                >User rejected</span
+            >
+            {%- elif j.verdict == 'rejected' -%}
+            <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
+                >AI rejected</span
+            >
+            {%- else -%}
+            <span
+                class="badge badge-{{ j.verdict }}"
+                data-verdict="{{ j.verdict }}"
+                >{{ {'warning':'Needs review','worth_considering':'Worth
+                considering'}.get(j.verdict, j.verdict) }}</span
+            >
+            {%- endif %}
+        </div>
+        <div class="job-card-meta">
+            <span class="td-date">{{ j.analyzed_at[:10] }}</span>
+            <span data-status-text>
+                {%- if j.offer_received %}Offer {%- elif j.interview_scheduled
+                %}Interview {%- elif j.applied %}Applied {%- elif
+                j.company_rejected %}Rejected by co. {%- else %}—{%- endif %}
+            </span>
+        </div>
     </div>
-    <div class="job-card-meta">
-      <span class="td-date">{{ j.analyzed_at[:10] }}</span>
-      <span data-status-text>
-        {%- if j.offer_received %}Offer
-        {%- elif j.interview_scheduled %}Interview
-        {%- elif j.applied %}Applied
-        {%- elif j.company_rejected %}Rejected by co.
-        {%- else %}—{%- endif %}
-      </span>
-    </div>
-  </div>
-  {% endfor %}
+    {% endfor %}
 </div>
 {% else %}
 <div class="notice">No analyses yet. Submit your first listing above.</div>
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
+{% endif %} {% endblock %} {% block scripts %}
 <script>
-let JOB_IDS = {{ jobs | map(attribute='id') | list | tojson }};
-let modalIdx = -1;
-let _skipPushState = false;
+    let JOB_IDS = {{ jobs | map(attribute='id') | list | tojson }};
+    let modalIdx = -1;
+    let _skipPushState = false;
 
-// ── Cmd-zone ──────────────────────────────────────────────────────────────
+    // ── Cmd-zone ──────────────────────────────────────────────────────────────
 
-const SCRAPE_ERRORS = {
-  timeout:  { title: 'Server did not respond', fallback: true },
-  notfound: { title: 'Listing not found (404)', fallback: false },
-  blocked:  { title: 'Content inaccessible', fallback: true },
-  network:  { title: 'Network error', fallback: true },
-};
+    const SCRAPE_ERRORS = {
+      timeout:  { title: 'Server did not respond', fallback: true },
+      notfound: { title: 'Listing not found (404)', fallback: false },
+      blocked:  { title: 'Content inaccessible', fallback: true },
+      network:  { title: 'Network error', fallback: true },
+    };
 
-const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
-const modKey = isMac ? '⌘' : 'Ctrl';
-document.getElementById('hint-submit').textContent = modKey + ' Enter';
-document.getElementById('hint-paste').textContent = modKey + ' K';
+    const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+    const modKey = isMac ? '⌘' : 'Ctrl';
+    document.getElementById('hint-submit').textContent = modKey + ' Enter';
+    document.getElementById('hint-paste').textContent = modKey + ' K';
 
-function toggleCmdText(forceOpen) {
-  const zone = document.getElementById('cmd-text-zone');
-  const btn = document.getElementById('cmd-text-toggle');
-  const open = forceOpen !== undefined ? forceOpen : zone.style.display === 'none';
-  zone.style.display = open ? 'block' : 'none';
-  btn.textContent = open ? '− hide job text' : '+ paste job text';
-  if (open) document.getElementById('cmd-text').focus();
-}
-
-const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
-
-async function setVerdictInline(value) {
-  const jobId = getCurrentJobId();
-  if (!jobId) return;
-  const badge = document.getElementById('result-badge');
-  const labels = {rejected:'User rejected', rejected_soft:'AI rejected', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
-  try {
-    const fd = new FormData();
-    let url;
-    if (value === 'applied') {
-      fd.append('status', 'applied');
-      url = `/job/${jobId}/status`;
-    } else {
-      fd.append('verdict', value);
-      url = `/job/${jobId}/verdict`;
+    function toggleCmdText(forceOpen) {
+      const zone = document.getElementById('cmd-text-zone');
+      const btn = document.getElementById('cmd-text-toggle');
+      const open = forceOpen !== undefined ? forceOpen : zone.style.display === 'none';
+      zone.style.display = open ? 'block' : 'none';
+      btn.textContent = open ? '− hide job text' : '+ paste job text';
+      if (open) document.getElementById('cmd-text').focus();
     }
-    const resp = await fetch(url, {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
-    const data = await resp.json();
-    if (data.ok && badge) {
-      badge.className = 'badge badge-' + value;
-      badge.textContent = labels[value] || value;
+
+    const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
+
+    async function setVerdictInline(value) {
+      const jobId = getCurrentJobId();
+      if (!jobId) return;
+      const badge = document.getElementById('result-badge');
+      const labels = {rejected:'User rejected', rejected_soft:'AI rejected', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
+      try {
+        const fd = new FormData();
+        let url;
+        if (value === 'applied') {
+          fd.append('status', 'applied');
+          url = `/job/${jobId}/status`;
+        } else {
+          fd.append('verdict', value);
+          url = `/job/${jobId}/verdict`;
+        }
+        const resp = await fetch(url, {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
+        const data = await resp.json();
+        if (data.ok && badge) {
+          badge.className = 'badge badge-' + value;
+          badge.textContent = labels[value] || value;
+        }
+      } catch(e) { console.error(e); }
     }
-  } catch(e) { console.error(e); }
-}
 
-async function runAnalysis(force = false) {
-  const url = document.getElementById('cmd-input').value.trim();
-  const text = document.getElementById('cmd-text').value.trim();
-  if (!url && !text) { document.getElementById('cmd-input').focus(); return; }
+    async function runAnalysis(force = false) {
+      const url = document.getElementById('cmd-input').value.trim();
+      const text = document.getElementById('cmd-text').value.trim();
+      if (!url && !text) { document.getElementById('cmd-input').focus(); return; }
 
-  const statusEl = document.getElementById('source-status');
+      const statusEl = document.getElementById('source-status');
 
-  try {
-    const chkFd = new FormData();
-    if (url) chkFd.append('url', url);
-    if (text) chkFd.append('text', text);
-    const chk = await fetch('/check_source', {method:'POST', body:chkFd, headers:{'X-CSRFToken': csrfToken()}});
-    const chkData = await chk.json();
-    if (chkData.exists) {
-      statusEl.className = 'source-status notice warn';
-      statusEl.style.display = 'block';
-      statusEl.textContent = `⚠ This listing was already analyzed (${chkData.analyzed_at}). Analysis will run again.`;
-    } else {
-      statusEl.className = 'source-status notice ok';
-      statusEl.style.display = 'block';
-      statusEl.textContent = '✓ New listing — not yet in the database.';
-    }
-  } catch(e) { statusEl.style.display = 'none'; }
+      try {
+        const chkFd = new FormData();
+        if (url) chkFd.append('url', url);
+        if (text) chkFd.append('text', text);
+        const chk = await fetch('/check_source', {method:'POST', body:chkFd, headers:{'X-CSRFToken': csrfToken()}});
+        const chkData = await chk.json();
+        if (chkData.exists) {
+          statusEl.className = 'source-status notice warn';
+          statusEl.style.display = 'block';
+          statusEl.textContent = `⚠ This listing was already analyzed (${chkData.analyzed_at}). Analysis will run again.`;
+        } else {
+          statusEl.className = 'source-status notice ok';
+          statusEl.style.display = 'block';
+          statusEl.textContent = '✓ New listing — not yet in the database.';
+        }
+      } catch(e) { statusEl.style.display = 'none'; }
 
-  document.getElementById('analyze-btn').disabled = true;
-  document.getElementById('loading').style.display = 'block';
-  document.getElementById('error-box').style.display = 'none';
-  document.getElementById('result-box').innerHTML = '';
+      document.getElementById('analyze-btn').disabled = true;
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('error-box').style.display = 'none';
+      document.getElementById('result-box').innerHTML = '';
 
-  const fd = new FormData();
-  if (url) fd.append('url', url);
-  if (text) fd.append('text', text);
-  if (force) fd.append('force', '1');
+      const fd = new FormData();
+      if (url) fd.append('url', url);
+      if (text) fd.append('text', text);
+      if (force) fd.append('force', '1');
 
-  try {
-    const resp = await fetch('/analyze', {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
-    const data = await resp.json();
-    document.getElementById('loading').style.display = 'none';
-    statusEl.style.display = 'none';
+      try {
+        const resp = await fetch('/analyze', {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
+        const data = await resp.json();
+        document.getElementById('loading').style.display = 'none';
+        statusEl.style.display = 'none';
 
-    if (data.scrape_error) {
-      const info = SCRAPE_ERRORS[data.error_code] || {title:'Error', fallback:true};
-      document.getElementById('error-box').innerHTML =
-        `<strong>${info.title}</strong><br>${data.error_detail || ''}` +
-        (info.fallback ? '<br><br>Paste the job description in the text field below and submit again.' : '');
-      document.getElementById('error-box').style.display = 'block';
-      if (info.fallback) toggleCmdText(true);
+        if (data.scrape_error) {
+          const info = SCRAPE_ERRORS[data.error_code] || {title:'Error', fallback:true};
+          document.getElementById('error-box').innerHTML =
+            `<strong>${info.title}</strong><br>${data.error_detail || ''}` +
+            (info.fallback ? '<br><br>Paste the job description in the text field below and submit again.' : '');
+          document.getElementById('error-box').style.display = 'block';
+          if (info.fallback) toggleCmdText(true);
+          document.getElementById('analyze-btn').disabled = false;
+          return;
+        }
+
+        if (data.duplicate) {
+          const p = data.previous;
+          document.getElementById('result-box').innerHTML = `
+            <div class="notice warn duplicate-notice">
+              <div class="td-mono duplicate-label">⚠ This listing was already analyzed</div>
+              <div class="duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
+              <div class="td-mono duplicate-meta">
+                Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
+              </div>
+              <div class="duplicate-actions">
+                <button class="btn btn-secondary btn-sm" onclick="openModal(${p.id})">View previous analysis →</button>
+                <button class="btn btn-secondary btn-sm" onclick="runAnalysis(true)">Analyze again</button>
+              </div>
+            </div>`;
+          document.getElementById('result-box').scrollIntoView({behavior:'smooth', block:'nearest'});
+        } else if (data.analysis_id) {
+          document.getElementById('result-box').innerHTML =
+            '<div class="notice ok">Analysis started — you can navigate away. ' +
+            'The banner above will update when done.</div>';
+          var active = {
+            id: data.analysis_id,
+            source_label: (url || text).slice(0, 60).replace(/\n/g, ' ')
+          };
+          localStorage.setItem('activeAnalysis', JSON.stringify(active));
+          window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
+          document.getElementById('cmd-input').value = '';
+          document.getElementById('cmd-text').value = '';
+          toggleCmdText(false);
+          document.getElementById('cmd-input').focus();
+        } else if (data.error) {
+          document.getElementById('error-box').textContent = 'Error: ' + data.error;
+          document.getElementById('error-box').style.display = 'block';
+        }
+      } catch(e) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('error-box').textContent = 'Connection error: ' + e.message;
+        document.getElementById('error-box').style.display = 'block';
+      }
       document.getElementById('analyze-btn').disabled = false;
-      return;
     }
 
-    if (data.duplicate) {
-      const p = data.previous;
-      document.getElementById('result-box').innerHTML = `
-        <div class="notice warn duplicate-notice">
-          <div class="td-mono duplicate-label">⚠ This listing was already analyzed</div>
-          <div class="duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
-          <div class="td-mono duplicate-meta">
-            Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
-          </div>
-          <div class="duplicate-actions">
-            <button class="btn btn-secondary btn-sm" onclick="openModal(${p.id})">View previous analysis →</button>
-            <button class="btn btn-secondary btn-sm" onclick="runAnalysis(true)">Analyze again</button>
-          </div>
-        </div>`;
-      document.getElementById('result-box').scrollIntoView({behavior:'smooth', block:'nearest'});
-    } else if (data.analysis_id) {
-      document.getElementById('result-box').innerHTML =
-        '<div class="notice ok">Analysis started — you can navigate away. ' +
-        'The banner above will update when done.</div>';
-      var active = {
-        id: data.analysis_id,
-        source_label: (url || text).slice(0, 60).replace(/\n/g, ' ')
-      };
-      localStorage.setItem('activeAnalysis', JSON.stringify(active));
-      window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
-      document.getElementById('cmd-input').value = '';
-      document.getElementById('cmd-text').value = '';
-      toggleCmdText(false);
-      document.getElementById('cmd-input').focus();
-    } else if (data.error) {
-      document.getElementById('error-box').textContent = 'Error: ' + data.error;
-      document.getElementById('error-box').style.display = 'block';
-    }
-  } catch(e) {
-    document.getElementById('loading').style.display = 'none';
-    document.getElementById('error-box').textContent = 'Connection error: ' + e.message;
-    document.getElementById('error-box').style.display = 'block';
-  }
-  document.getElementById('analyze-btn').disabled = false;
-}
+    // ── Modal core ────────────────────────────────────────────────────────────
 
-// ── Modal core ────────────────────────────────────────────────────────────
-
-async function openModal(jobId) {
-  modalIdx = JOB_IDS.indexOf(jobId);
-  await loadModalJob(jobId);
-  document.getElementById('job-modal').style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-  updateModalNav();
-  if (_skipPushState) {
-    history.replaceState({jobId}, '', location.pathname + '?job=' + jobId);
-    _skipPushState = false;
-  } else {
-    history.pushState({jobId}, '', location.pathname + '?job=' + jobId);
-  }
-}
-
-function closeModal() {
-  document.getElementById('job-modal').style.display = 'none';
-  document.body.style.overflow = '';
-  if (new URLSearchParams(location.search).get('job')) {
-    history.replaceState(null, '', location.pathname);
-  }
-}
-
-async function navigateModal(delta) {
-  const next = modalIdx + delta;
-  if (next < 0 || next >= JOB_IDS.length) return;
-  modalIdx = next;
-  await loadModalJob(JOB_IDS[modalIdx]);
-  updateModalNav();
-  history.replaceState({jobId: JOB_IDS[modalIdx]}, '', location.pathname + '?job=' + JOB_IDS[modalIdx]);
-}
-
-async function loadModalJob(jobId) {
-  const body = document.getElementById('modal-body');
-  body.innerHTML = '<div class="modal-loading">Loading…</div>';
-  try {
-    const resp = await fetch(`/job/${jobId}/partial`);
-    if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Loading error.</div>'; return; }
-    body.innerHTML = await resp.text();
-    body.scrollTop = 0;
-  } catch(e) {
-    body.innerHTML = '<div class="modal-loading">Connection error.</div>';
-  }
-}
-
-function updateModalNav() {
-  document.getElementById('modal-prev').disabled = modalIdx <= 0;
-  document.getElementById('modal-next').disabled = modalIdx >= JOB_IDS.length - 1;
-  document.getElementById('modal-counter').textContent = `${modalIdx + 1} / ${JOB_IDS.length}`;
-}
-
-document.getElementById('job-modal').addEventListener('click', e => {
-  if (e.target === document.getElementById('job-modal')) closeModal();
-});
-
-// single keydown handler: modal shortcuts take priority; cmd-zone blocked when modal open
-document.addEventListener('keydown', function(e) {
-  const modalOpen = document.getElementById('job-modal').style.display !== 'none';
-  if (modalOpen) {
-    if (e.key === 'Escape') { closeModal(); return; }
-    if (e.key === 'ArrowLeft')  { navigateModal(-1); return; }
-    if (e.key === 'ArrowRight') { navigateModal(1);  return; }
-    return;
-  }
-  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
-  if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-    e.preventDefault();
-    var el = document.getElementById('cmd-input');
-    el.focus();
-    el.select();
-  }
-});
-
-window.addEventListener('popstate', e => {
-  const modal = document.getElementById('job-modal');
-  if (e.state && e.state.jobId && JOB_IDS.includes(e.state.jobId)) {
-    _skipPushState = true;
-    openModal(e.state.jobId);
-  } else if (modal.style.display !== 'none') {
-    modal.style.display = 'none';
-    document.body.style.overflow = '';
-  }
-});
-
-(function() {
-  const jobId = parseInt(new URLSearchParams(location.search).get('job'));
-  if (jobId && JOB_IDS.includes(jobId)) {
-    _skipPushState = true;
-    openModal(jobId);
-  }
-})();
-
-// ── Table row helpers ─────────────────────────────────────────────────────
-
-function updateTableRow(jobId, status, verdict) {
-  const ROW_CLASSES = ['row-rejected', 'row-rejected-soft', 'row-applied', 'row-company-rejected', 'row-worth-considering', 'row-warning', 'row-interview', 'row-offer'];
-  const newCat = (['applied', 'company_rejected', 'rejected', 'rejected_soft', 'interview', 'offer'].includes(status))
-    ? status : verdict;
-
-  const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
-  if (row) {
-    row.classList.remove(...ROW_CLASSES);
-    if (status === 'offer')                    row.classList.add('row-offer');
-    else if (status === 'interview')           row.classList.add('row-interview');
-    else if (status === 'rejected')            row.classList.add('row-rejected');
-    else if (status === 'company_rejected')    row.classList.add('row-company-rejected');
-    else if (status === 'applied')             row.classList.add('row-applied');
-    else if (status === 'rejected_soft')       row.classList.add('row-rejected-soft');
-    else if (verdict === 'worth_considering')  row.classList.add('row-worth-considering');
-    else if (verdict === 'warning')            row.classList.add('row-warning');
-    row.dataset.category = newCat;
-  }
-
-  const card = document.querySelector(`.job-card[data-job-id="${jobId}"]`);
-  if (card) {
-    card.classList.remove(...ROW_CLASSES);
-    if (status === 'offer')                    card.classList.add('row-offer');
-    else if (status === 'interview')           card.classList.add('row-interview');
-    else if (status === 'rejected')            card.classList.add('row-rejected');
-    else if (status === 'company_rejected')    card.classList.add('row-company-rejected');
-    else if (status === 'applied')             card.classList.add('row-applied');
-    else if (status === 'rejected_soft')       card.classList.add('row-rejected-soft');
-    else if (verdict === 'worth_considering')  card.classList.add('row-worth-considering');
-    else if (verdict === 'warning')            card.classList.add('row-warning');
-    card.dataset.category = newCat;
-    const cardStatus = card.querySelector('[data-status-text]');
-    if (cardStatus) {
-      cardStatus.textContent = status === 'offer' ? 'Offer' : status === 'interview' ? 'Interview' : status === 'applied' ? 'Applied' : status === 'company_rejected' ? 'Rejected by co.' : '—';
-    }
-  }
-
-  applyFilter();
-
-  [row, card].filter(Boolean).forEach(function(el) {
-    const badge = el.querySelector('.badge');
-    if (!badge) return;
-    if (status === 'offer') {
-      badge.className = 'badge badge-offer'; badge.textContent = 'Offer received';
-    } else if (status === 'interview') {
-      badge.className = 'badge badge-interview'; badge.textContent = 'Interview';
-    } else if (status === 'applied') {
-      badge.className = 'badge badge-applied'; badge.textContent = 'Applied';
-    } else if (status === 'company_rejected') {
-      badge.className = 'badge badge-company_rejected'; badge.textContent = 'Rejected by company';
-    } else if (status === 'rejected_soft') {
-      badge.className = 'badge badge-rejected'; badge.textContent = 'AI rejected';
-    } else if (status === 'rejected') {
-      badge.className = 'badge badge-rejected'; badge.textContent = 'User rejected';
-    } else {
-      badge.className = `badge badge-${verdict}`;
-      badge.textContent = {warning:'Needs review', worth_considering:'Worth considering'}[verdict] || verdict;
-    }
-    badge.dataset.verdict = verdict;
-  });
-}
-
-function readCurrentState() {
-  const select = document.getElementById('status-select');
-  const status = select ? select.value : 'worth_considering';
-  const badge = document.querySelector('#modal-body .badge');
-  const verdict = badge
-    ? (badge.dataset.verdict || badge.className.match(/badge-([\w_]+)/)?.[1] || 'worth_considering')
-    : 'worth_considering';
-  return { status, verdict };
-}
-
-// ── Layer accordions ──────────────────────────────────────────────────────
-
-function tog(id) {
-  const lb = document.getElementById('lb-' + id);
-  const ch = document.getElementById('lc-' + id);
-  if (!lb || !ch) return;
-  const open = lb.classList.toggle('open');
-  ch.classList.toggle('open', open);
-}
-
-function switchJobTab(btn, tabId) {
-  var card = btn.closest('.card');
-  card.querySelectorAll('.job-tab').forEach(function(t) { t.classList.remove('active'); });
-  card.querySelectorAll('.job-tab-content').forEach(function(c) { c.classList.remove('active'); });
-  btn.classList.add('active');
-  document.getElementById(tabId).classList.add('active');
-}
-
-// ── Job actions (called from job_partial.html) ────────────────────────────
-
-function getCurrentJobId() { return JOB_IDS[modalIdx]; }
-
-async function setStatus(status) {
-  const jobId = getCurrentJobId();
-  try {
-    const fd = new FormData();
-    fd.append('status', status);
-    const resp = await fetch(`/job/${jobId}/status`, { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
-    const data = await resp.json();
-    if (data.ok) {
+    async function openModal(jobId) {
+      modalIdx = JOB_IDS.indexOf(jobId);
       await loadModalJob(jobId);
-      const { status: s, verdict: v } = readCurrentState();
-      updateTableRow(jobId, s, v);
-    } else {
-      const el = document.getElementById('reanalyze-status');
-      if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Error: '+(data.error||'unknown'); }
+      document.getElementById('job-modal').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+      updateModalNav();
+      if (_skipPushState) {
+        history.replaceState({jobId}, '', location.pathname + '?job=' + jobId);
+        _skipPushState = false;
+      } else {
+        history.pushState({jobId}, '', location.pathname + '?job=' + jobId);
+      }
     }
-  } catch(e) { console.error(e); }
-}
 
-async function confirmDelete() {
-  if (!confirm('Delete this analysis? This action cannot be undone.')) return;
-  const jobId = getCurrentJobId();
-  try {
-    const resp = await fetch(`/job/${jobId}/delete`, { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
-    const data = await resp.json();
-    if (data.ok) {
-      closeModal();
+    function closeModal() {
+      document.getElementById('job-modal').style.display = 'none';
+      document.body.style.overflow = '';
+      if (new URLSearchParams(location.search).get('job')) {
+        history.replaceState(null, '', location.pathname);
+      }
+    }
+
+    async function navigateModal(delta) {
+      const next = modalIdx + delta;
+      if (next < 0 || next >= JOB_IDS.length) return;
+      modalIdx = next;
+      await loadModalJob(JOB_IDS[modalIdx]);
+      updateModalNav();
+      history.replaceState({jobId: JOB_IDS[modalIdx]}, '', location.pathname + '?job=' + JOB_IDS[modalIdx]);
+    }
+
+    async function loadModalJob(jobId) {
+      const body = document.getElementById('modal-body');
+      body.innerHTML = '<div class="modal-loading">Loading…</div>';
+      try {
+        const resp = await fetch(`/job/${jobId}/partial`);
+        if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Loading error.</div>'; return; }
+        body.innerHTML = await resp.text();
+        body.scrollTop = 0;
+      } catch(e) {
+        body.innerHTML = '<div class="modal-loading">Connection error.</div>';
+      }
+    }
+
+    function updateModalNav() {
+      document.getElementById('modal-prev').disabled = modalIdx <= 0;
+      document.getElementById('modal-next').disabled = modalIdx >= JOB_IDS.length - 1;
+      document.getElementById('modal-counter').textContent = `${modalIdx + 1} / ${JOB_IDS.length}`;
+    }
+
+    document.getElementById('job-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('job-modal')) closeModal();
+    });
+
+    // single keydown handler: modal shortcuts take priority; cmd-zone blocked when modal open
+    document.addEventListener('keydown', function(e) {
+      const modalOpen = document.getElementById('job-modal').style.display !== 'none';
+      if (modalOpen) {
+        if (e.key === 'Escape') { closeModal(); return; }
+        if (e.key === 'ArrowLeft')  { navigateModal(-1); return; }
+        if (e.key === 'ArrowRight') { navigateModal(1);  return; }
+        return;
+      }
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        var el = document.getElementById('cmd-input');
+        el.focus();
+        el.select();
+      }
+    });
+
+    window.addEventListener('popstate', e => {
+      const modal = document.getElementById('job-modal');
+      if (e.state && e.state.jobId && JOB_IDS.includes(e.state.jobId)) {
+        _skipPushState = true;
+        openModal(e.state.jobId);
+      } else if (modal.style.display !== 'none') {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+      }
+    });
+
+    (function() {
+      const jobId = parseInt(new URLSearchParams(location.search).get('job'));
+      if (jobId && JOB_IDS.includes(jobId)) {
+        _skipPushState = true;
+        openModal(jobId);
+      }
+    })();
+
+    // ── Table row helpers ─────────────────────────────────────────────────────
+
+    function updateTableRow(jobId, status, verdict) {
+      const ROW_CLASSES = ['row-rejected', 'row-rejected-soft', 'row-applied', 'row-company-rejected', 'row-worth-considering', 'row-warning', 'row-interview', 'row-offer'];
+      const newCat = (['applied', 'company_rejected', 'rejected', 'rejected_soft', 'interview', 'offer'].includes(status))
+        ? status : verdict;
+
       const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
-      if (row) row.remove();
+      if (row) {
+        row.classList.remove(...ROW_CLASSES);
+        if (status === 'offer')                    row.classList.add('row-offer');
+        else if (status === 'interview')           row.classList.add('row-interview');
+        else if (status === 'rejected')            row.classList.add('row-rejected');
+        else if (status === 'company_rejected')    row.classList.add('row-company-rejected');
+        else if (status === 'applied')             row.classList.add('row-applied');
+        else if (status === 'rejected_soft')       row.classList.add('row-rejected-soft');
+        else if (verdict === 'worth_considering')  row.classList.add('row-worth-considering');
+        else if (verdict === 'warning')            row.classList.add('row-warning');
+        row.dataset.category = newCat;
+      }
+
       const card = document.querySelector(`.job-card[data-job-id="${jobId}"]`);
-      if (card) card.remove();
-      JOB_IDS.splice(modalIdx, 1);
-      if (modalIdx >= JOB_IDS.length) modalIdx = JOB_IDS.length - 1;
-    } else {
-      alert('Error: ' + (data.error || 'unknown'));
-    }
-  } catch(e) { alert('Connection error: ' + e.message); }
-}
-
-async function reanalyze() {
-  const jobId = getCurrentJobId();
-  const btn = document.getElementById('reanalyze-btn');
-  const statusEl = document.getElementById('reanalyze-status');
-  if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
-  if (statusEl) { statusEl.style.display = 'none'; statusEl.className = 'notice'; }
-  try {
-    const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
-    const data = await resp.json();
-    if (data.analysis_id) {
-      const active = { id: data.analysis_id, source_label: 'Re-analysis' };
-      localStorage.setItem('activeAnalysis', JSON.stringify(active));
-      window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
-      if (statusEl) statusEl.style.display = 'none';
-      if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
-    } else if (data.error) {
-      if (statusEl) { statusEl.textContent = data.error; statusEl.style.display = 'block'; }
-    }
-  } catch(e) {
-    if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Connection error: '+e.message; }
-    if (btn) { btn.disabled=false; btn.textContent='Re-analyze'; }
-  }
-}
-
-function showUrlEdit() {
-  const el = document.getElementById('url-edit');
-  if (el) el.style.display = 'block';
-}
-
-async function saveUrl() {
-  const jobId = getCurrentJobId();
-  const urlInput = document.getElementById('url-input');
-  const statusEl = document.getElementById('url-status');
-  const url = urlInput ? urlInput.value.trim() : '';
-  if (!url.startsWith('http')) {
-    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Please enter a valid URL.'; }
-    return;
-  }
-  try {
-    const fd = new FormData();
-    fd.append('url', url);
-    const resp = await fetch(`/job/${jobId}/url`, { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
-    const data = await resp.json();
-    if (data.ok) {
-      if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='URL saved.'; }
-      setTimeout(() => loadModalJob(jobId), 900);
-    } else {
-      if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Save error.'; }
-    }
-  } catch(e) {
-    if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Connection error.'; }
-  }
-}
-
-async function saveNotes() {
-  const jobId = getCurrentJobId();
-  const notes = document.getElementById('notes-textarea').value;
-  const status = document.getElementById('notes-status');
-  try {
-    const fd = new FormData();
-    fd.append('notes', notes);
-    const resp = await fetch(`/job/${jobId}/notes`, {
-      method: 'POST', body: fd, headers: { 'X-CSRFToken': csrfToken() }
-    });
-    const data = await resp.json();
-    if (status) {
-      status.textContent = data.ok ? 'Saved.' : 'Error saving.';
-      status.className = 'notes-status ' + (data.ok ? 'notes-status-ok' : 'notes-status-err');
-      setTimeout(() => { status.textContent = ''; status.className = 'notes-status'; }, 2000);
-    }
-  } catch(e) {
-    if (status) { status.textContent = 'Connection error.'; status.className = 'notes-status notes-status-err'; }
-  }
-}
-
-async function generatePrep() {
-  const jobId = getCurrentJobId();
-  if (!jobId) return;
-  const btn = document.getElementById('prep-btn');
-  const statusEl = document.getElementById('prep-status');
-  const contentBox = document.getElementById('prep-content-box');
-  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-  if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 20–40 seconds…'; }
-  try {
-    const resp = await fetch(`/job/${jobId}/interview_prep`, {
-      method: 'POST', headers: {'X-CSRFToken': csrfToken()},
-    });
-    if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
-    const data = await resp.json();
-    if (data.ok) {
-      if (contentBox) {
-        const div = document.createElement('div');
-        div.className = 'prep-content';
-        div.textContent = data.content;
-        contentBox.innerHTML = '';
-        contentBox.appendChild(div);
+      if (card) {
+        card.classList.remove(...ROW_CLASSES);
+        if (status === 'offer')                    card.classList.add('row-offer');
+        else if (status === 'interview')           card.classList.add('row-interview');
+        else if (status === 'rejected')            card.classList.add('row-rejected');
+        else if (status === 'company_rejected')    card.classList.add('row-company-rejected');
+        else if (status === 'applied')             card.classList.add('row-applied');
+        else if (status === 'rejected_soft')       card.classList.add('row-rejected-soft');
+        else if (verdict === 'worth_considering')  card.classList.add('row-worth-considering');
+        else if (verdict === 'warning')            card.classList.add('row-warning');
+        card.dataset.category = newCat;
+        const cardStatus = card.querySelector('[data-status-text]');
+        if (cardStatus) {
+          cardStatus.textContent = status === 'offer' ? 'Offer' : status === 'interview' ? 'Interview' : status === 'applied' ? 'Applied' : status === 'company_rejected' ? 'Rejected by co.' : '—';
+        }
       }
-      if (statusEl) statusEl.style.display = 'none';
-      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate prep'; }
-    } else {
-      if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
-      if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
-    }
-  } catch(e) {
-    if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
-    if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
-  }
-}
 
-async function generateCvTailoring() {
-  const btn = document.getElementById('tailor-btn');
-  const statusEl = document.getElementById('tailor-status');
-  const contentBox = document.getElementById('tailor-content-box');
-  const jobId = getCurrentJobId();
-  if (!jobId) return;
-  if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
-  if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 15–30 seconds…'; }
-  try {
-    const resp = await fetch(`/job/${jobId}/cv_tailoring`, {
-      method: 'POST', headers: {'X-CSRFToken': csrfToken()},
-    });
-    if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
-    const data = await resp.json();
-    if (data.ok) {
-      if (contentBox) {
-        const div = document.createElement('div');
-        div.className = 'prep-content';
-        div.textContent = data.content;
-        contentBox.innerHTML = '';
-        contentBox.appendChild(div);
+      applyFilter();
+
+      [row, card].filter(Boolean).forEach(function(el) {
+        const badge = el.querySelector('.badge');
+        if (!badge) return;
+        if (status === 'offer') {
+          badge.className = 'badge badge-offer'; badge.textContent = 'Offer received';
+        } else if (status === 'interview') {
+          badge.className = 'badge badge-interview'; badge.textContent = 'Interview';
+        } else if (status === 'applied') {
+          badge.className = 'badge badge-applied'; badge.textContent = 'Applied';
+        } else if (status === 'company_rejected') {
+          badge.className = 'badge badge-company_rejected'; badge.textContent = 'Rejected by company';
+        } else if (status === 'rejected_soft') {
+          badge.className = 'badge badge-rejected'; badge.textContent = 'AI rejected';
+        } else if (status === 'rejected') {
+          badge.className = 'badge badge-rejected'; badge.textContent = 'User rejected';
+        } else {
+          badge.className = `badge badge-${verdict}`;
+          badge.textContent = {warning:'Needs review', worth_considering:'Worth considering'}[verdict] || verdict;
+        }
+        badge.dataset.verdict = verdict;
+      });
+    }
+
+    function readCurrentState() {
+      const select = document.getElementById('status-select');
+      const status = select ? select.value : 'worth_considering';
+      const badge = document.querySelector('#modal-body .badge');
+      const verdict = badge
+        ? (badge.dataset.verdict || badge.className.match(/badge-([\w_]+)/)?.[1] || 'worth_considering')
+        : 'worth_considering';
+      return { status, verdict };
+    }
+
+    // ── Layer accordions ──────────────────────────────────────────────────────
+
+    function tog(id) {
+      const lb = document.getElementById('lb-' + id);
+      const ch = document.getElementById('lc-' + id);
+      if (!lb || !ch) return;
+      const open = lb.classList.toggle('open');
+      ch.classList.toggle('open', open);
+    }
+
+    function switchJobTab(btn, tabId) {
+      var card = btn.closest('.card');
+      card.querySelectorAll('.job-tab').forEach(function(t) { t.classList.remove('active'); });
+      card.querySelectorAll('.job-tab-content').forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+    }
+
+    // ── Job actions (called from job_partial.html) ────────────────────────────
+
+    function getCurrentJobId() { return JOB_IDS[modalIdx]; }
+
+    async function setStatus(status) {
+      const jobId = getCurrentJobId();
+      try {
+        const fd = new FormData();
+        fd.append('status', status);
+        const resp = await fetch(`/job/${jobId}/status`, { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
+        const data = await resp.json();
+        if (data.ok) {
+          await loadModalJob(jobId);
+          const { status: s, verdict: v } = readCurrentState();
+          updateTableRow(jobId, s, v);
+        } else {
+          const el = document.getElementById('reanalyze-status');
+          if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Error: '+(data.error||'unknown'); }
+        }
+      } catch(e) { console.error(e); }
+    }
+
+    async function confirmDelete() {
+      if (!confirm('Delete this analysis? This action cannot be undone.')) return;
+      const jobId = getCurrentJobId();
+      try {
+        const resp = await fetch(`/job/${jobId}/delete`, { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
+        const data = await resp.json();
+        if (data.ok) {
+          closeModal();
+          const row = document.querySelector(`tr[data-job-id="${jobId}"]`);
+          if (row) row.remove();
+          const card = document.querySelector(`.job-card[data-job-id="${jobId}"]`);
+          if (card) card.remove();
+          JOB_IDS.splice(modalIdx, 1);
+          if (modalIdx >= JOB_IDS.length) modalIdx = JOB_IDS.length - 1;
+        } else {
+          alert('Error: ' + (data.error || 'unknown'));
+        }
+      } catch(e) { alert('Connection error: ' + e.message); }
+    }
+
+    async function reanalyze() {
+      const jobId = getCurrentJobId();
+      const btn = document.getElementById('reanalyze-btn');
+      const statusEl = document.getElementById('reanalyze-status');
+      if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
+      if (statusEl) { statusEl.style.display = 'none'; statusEl.className = 'notice'; }
+      try {
+        const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
+        const data = await resp.json();
+        if (data.analysis_id) {
+          const active = { id: data.analysis_id, source_label: 'Re-analysis' };
+          localStorage.setItem('activeAnalysis', JSON.stringify(active));
+          window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
+          if (statusEl) statusEl.style.display = 'none';
+          if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
+        } else if (data.error) {
+          if (statusEl) { statusEl.textContent = data.error; statusEl.style.display = 'block'; }
+        }
+      } catch(e) {
+        if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Connection error: '+e.message; }
+        if (btn) { btn.disabled=false; btn.textContent='Re-analyze'; }
       }
-      if (statusEl) statusEl.style.display = 'none';
-      if (btn) { btn.disabled = false; btn.textContent = 'Regenerate CV tailoring'; }
-    } else {
-      if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
-      if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate CV tailoring' : 'Tailor CV for this role'; }
     }
-  } catch(e) {
-    if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
-    if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate CV tailoring' : 'Tailor CV for this role'; }
-  }
-}
 
-// ── Table sorting ─────────────────────────────────────────────────────────
-
-var _sortCol = 0;
-var _sortAsc = true;
-
-function sortTable(col) {
-  if (_sortCol === col) { _sortAsc = !_sortAsc; }
-  else { _sortCol = col; _sortAsc = true; }
-  document.querySelectorAll('.sort-arrow').forEach(function(el) { el.textContent = ''; });
-  var arrow = document.getElementById('sa-' + col);
-  if (arrow) arrow.textContent = _sortAsc ? ' ↑' : ' ↓';
-  var tbody = document.querySelector('tbody');
-  var rows = Array.from(tbody.querySelectorAll('tr[data-category]'));
-  rows.sort(function(a, b) {
-    var av = (a.cells[col] || {textContent:''}).textContent.trim();
-    var bv = (b.cells[col] || {textContent:''}).textContent.trim();
-    if (col === 6) {
-      var an = parseFloat(av) || 0;
-      var bn = parseFloat(bv) || 0;
-      return _sortAsc ? an - bn : bn - an;
+    function showUrlEdit() {
+      const el = document.getElementById('url-edit');
+      if (el) el.style.display = 'block';
     }
-    return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
-  });
-  rows.forEach(function(r) { tbody.appendChild(r); });
-}
 
-// ── Filters + search ─────────────────────────────────────────────────────
+    async function saveUrl() {
+      const jobId = getCurrentJobId();
+      const urlInput = document.getElementById('url-input');
+      const statusEl = document.getElementById('url-status');
+      const url = urlInput ? urlInput.value.trim() : '';
+      if (!url.startsWith('http')) {
+        if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Please enter a valid URL.'; }
+        return;
+      }
+      try {
+        const fd = new FormData();
+        fd.append('url', url);
+        const resp = await fetch(`/job/${jobId}/url`, { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
+        const data = await resp.json();
+        if (data.ok) {
+          if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='URL saved.'; }
+          setTimeout(() => loadModalJob(jobId), 900);
+        } else {
+          if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Save error.'; }
+        }
+      } catch(e) {
+        if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Connection error.'; }
+      }
+    }
 
-const HIDDEN_KEY = 'history_hidden_categories';
-let hiddenCats = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
+    async function saveNotes() {
+      const jobId = getCurrentJobId();
+      const notes = document.getElementById('notes-textarea').value;
+      const status = document.getElementById('notes-status');
+      try {
+        const fd = new FormData();
+        fd.append('notes', notes);
+        const resp = await fetch(`/job/${jobId}/notes`, {
+          method: 'POST', body: fd, headers: { 'X-CSRFToken': csrfToken() }
+        });
+        const data = await resp.json();
+        if (status) {
+          status.textContent = data.ok ? 'Saved.' : 'Error saving.';
+          status.className = 'notes-status ' + (data.ok ? 'notes-status-ok' : 'notes-status-err');
+          setTimeout(() => { status.textContent = ''; status.className = 'notes-status'; }, 2000);
+        }
+      } catch(e) {
+        if (status) { status.textContent = 'Connection error.'; status.className = 'notes-status notes-status-err'; }
+      }
+    }
 
-function applyFilters() {
-  const q = (document.getElementById('history-search') ? document.getElementById('history-search').value : '').toLowerCase().trim();
-  document.querySelectorAll('tbody tr[data-category]').forEach(function(row) {
-    var cat = row.dataset.category;
-    var role = (row.querySelector('.td-role') || {textContent:''}).textContent.toLowerCase();
-    var company = (row.cells[2] || {textContent:''}).textContent.toLowerCase();
-    var matchesCat = !hiddenCats.has(cat);
-    var matchesSearch = !q || role.includes(q) || company.includes(q);
-    row.style.display = matchesCat && matchesSearch ? '' : 'none';
-  });
-  document.querySelectorAll('.job-card[data-category]').forEach(function(card) {
-    var cat = card.dataset.category;
-    var role = (card.querySelector('.job-card-role') || {textContent:''}).textContent.toLowerCase();
-    var company = (card.querySelector('.job-card-company') || {textContent:''}).textContent.toLowerCase();
-    var matchesCat = !hiddenCats.has(cat);
-    var matchesSearch = !q || role.includes(q) || company.includes(q);
-    card.style.display = matchesCat && matchesSearch ? '' : 'none';
-  });
-}
+    async function generatePrep() {
+      const jobId = getCurrentJobId();
+      if (!jobId) return;
+      const btn = document.getElementById('prep-btn');
+      const statusEl = document.getElementById('prep-status');
+      const contentBox = document.getElementById('prep-content-box');
+      if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+      if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 20–40 seconds…'; }
+      try {
+        const resp = await fetch(`/job/${jobId}/interview_prep`, {
+          method: 'POST', headers: {'X-CSRFToken': csrfToken()},
+        });
+        if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
+        const data = await resp.json();
+        if (data.ok) {
+          if (contentBox) {
+            const div = document.createElement('div');
+            div.className = 'prep-content';
+            div.textContent = data.content;
+            contentBox.innerHTML = '';
+            contentBox.appendChild(div);
+          }
+          if (statusEl) statusEl.style.display = 'none';
+          if (btn) { btn.disabled = false; btn.textContent = 'Regenerate prep'; }
+        } else {
+          if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
+          if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
+        }
+      } catch(e) {
+        if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
+        if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
+      }
+    }
 
-function applyFilter() { applyFilters(); }
+    async function generateCvTailoring() {
+      const btn = document.getElementById('tailor-btn');
+      const statusEl = document.getElementById('tailor-status');
+      const contentBox = document.getElementById('tailor-content-box');
+      const jobId = getCurrentJobId();
+      if (!jobId) return;
+      if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+      if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Calling AI — may take 15–30 seconds…'; }
+      try {
+        const resp = await fetch(`/job/${jobId}/cv_tailoring`, {
+          method: 'POST', headers: {'X-CSRFToken': csrfToken()},
+        });
+        if (!resp.headers.get('content-type')?.includes('application/json')) throw new Error(`Server error ${resp.status}`);
+        const data = await resp.json();
+        if (data.ok) {
+          if (contentBox) {
+            const div = document.createElement('div');
+            div.className = 'prep-content';
+            div.textContent = data.content;
+            contentBox.innerHTML = '';
+            contentBox.appendChild(div);
+          }
+          if (statusEl) statusEl.style.display = 'none';
+          if (btn) { btn.disabled = false; btn.textContent = 'Regenerate CV tailoring'; }
+        } else {
+          if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Error: ' + (data.error || 'unknown'); }
+          if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate CV tailoring' : 'Tailor CV for this role'; }
+        }
+      } catch(e) {
+        if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
+        if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate CV tailoring' : 'Tailor CV for this role'; }
+      }
+    }
 
-function toggleFilter(cat, btn) {
-  if (hiddenCats.has(cat)) { hiddenCats.delete(cat); btn.classList.add('active'); }
-  else { hiddenCats.add(cat); btn.classList.remove('active'); }
-  localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenCats]));
-  applyFilters();
-}
+    // ── Table sorting ─────────────────────────────────────────────────────────
 
-function showAll() {
-  hiddenCats.clear();
-  localStorage.setItem(HIDDEN_KEY, '[]');
-  document.querySelectorAll('.filter-btn[data-cat]').forEach(function(b) { b.classList.add('active'); });
-  var searchEl = document.getElementById('history-search');
-  if (searchEl) searchEl.value = '';
-  applyFilters();
-}
+    var _sortCol = 0;
+    var _sortAsc = true;
 
-(function() {
-  hiddenCats.forEach(function(cat) {
-    var btn = document.querySelector('.filter-btn[data-cat="' + cat + '"]');
-    if (btn) btn.classList.remove('active');
-  });
-  sortTable(0);
-  applyFilters();
-  var fb = document.querySelector('.filter-bar');
-  if (fb) document.documentElement.style.setProperty('--filter-bar-h', fb.offsetHeight + 'px');
-})();
+    function sortTable(col) {
+      if (_sortCol === col) { _sortAsc = !_sortAsc; }
+      else { _sortCol = col; _sortAsc = true; }
+      document.querySelectorAll('.sort-arrow').forEach(function(el) { el.textContent = ''; });
+      var arrow = document.getElementById('sa-' + col);
+      if (arrow) arrow.textContent = _sortAsc ? ' ↑' : ' ↓';
+      var tbody = document.querySelector('tbody');
+      var rows = Array.from(tbody.querySelectorAll('tr[data-category]'));
+      rows.sort(function(a, b) {
+        var av = (a.cells[col] || {textContent:''}).textContent.trim();
+        var bv = (b.cells[col] || {textContent:''}).textContent.trim();
+        if (col === 6) {
+          var an = parseFloat(av) || 0;
+          var bn = parseFloat(bv) || 0;
+          return _sortAsc ? an - bn : bn - an;
+        }
+        return _sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+      });
+      rows.forEach(function(r) { tbody.appendChild(r); });
+    }
+
+    // ── Filters + search ─────────────────────────────────────────────────────
+
+    const HIDDEN_KEY = 'history_hidden_categories';
+    let hiddenCats = new Set(JSON.parse(localStorage.getItem(HIDDEN_KEY) || '[]'));
+
+    function applyFilters() {
+      const q = (document.getElementById('history-search') ? document.getElementById('history-search').value : '').toLowerCase().trim();
+      document.querySelectorAll('tbody tr[data-category]').forEach(function(row) {
+        var cat = row.dataset.category;
+        var role = (row.querySelector('.td-role') || {textContent:''}).textContent.toLowerCase();
+        var company = (row.cells[2] || {textContent:''}).textContent.toLowerCase();
+        var matchesCat = !hiddenCats.has(cat);
+        var matchesSearch = !q || role.includes(q) || company.includes(q);
+        row.style.display = matchesCat && matchesSearch ? '' : 'none';
+      });
+      document.querySelectorAll('.job-card[data-category]').forEach(function(card) {
+        var cat = card.dataset.category;
+        var role = (card.querySelector('.job-card-role') || {textContent:''}).textContent.toLowerCase();
+        var company = (card.querySelector('.job-card-company') || {textContent:''}).textContent.toLowerCase();
+        var matchesCat = !hiddenCats.has(cat);
+        var matchesSearch = !q || role.includes(q) || company.includes(q);
+        card.style.display = matchesCat && matchesSearch ? '' : 'none';
+      });
+    }
+
+    function applyFilter() { applyFilters(); }
+
+    function toggleFilter(cat, btn) {
+      if (hiddenCats.has(cat)) { hiddenCats.delete(cat); btn.classList.add('active'); }
+      else { hiddenCats.add(cat); btn.classList.remove('active'); }
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenCats]));
+      applyFilters();
+    }
+
+    function showAll() {
+      hiddenCats.clear();
+      localStorage.setItem(HIDDEN_KEY, '[]');
+      document.querySelectorAll('.filter-btn[data-cat]').forEach(function(b) { b.classList.add('active'); });
+      var searchEl = document.getElementById('history-search');
+      if (searchEl) searchEl.value = '';
+      applyFilters();
+    }
+
+    (function() {
+      hiddenCats.forEach(function(cat) {
+        var btn = document.querySelector('.filter-btn[data-cat="' + cat + '"]');
+        if (btn) btn.classList.remove('active');
+      });
+      sortTable(0);
+      applyFilters();
+      var fb = document.querySelector('.filter-bar');
+      if (fb) document.documentElement.style.setProperty('--filter-bar-h', fb.offsetHeight + 'px');
+    })();
 </script>
 {% endblock %}
