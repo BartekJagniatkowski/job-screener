@@ -72,18 +72,6 @@ CREATE TABLE IF NOT EXISTS analyses (
 );
 """
 
-DEFAULT_ZERO_LIST = """- Alcohol, tobacco, gambling, sex industry
-- Weapons and defense (military component suppliers, AI for defense, defense tech funds)
-- Big pharma, insurance, finance (banks, fintechs, trading)
-- Marketing and e-commerce as core business (driving uncontrolled consumption)
-
-Note: connection through a direct investor/co-founder actively managing a company from the above categories = red flag (not automatic rejection). Connection through an investor's investor = too distant.""".strip()
-
-DEFAULT_CRITERIA = """Looking for roles at the intersection of product discovery, strategy, and the human dimension of products.
-Prefer: healthcare, science, social impact, AI ethics, edtech.
-Avoid: execution PM without discovery component, growth PM (A/B testing as core), technical PM focused on tool integrations.
-Cultural red flag: quarterly layoff cycles, toxic leadership (Glassdoor < 3.5 with a clear downward trend).""".strip()
-
 
 def get_conn() -> sqlite3.Connection:
     """
@@ -268,9 +256,8 @@ def create_user(username: str, password: str) -> bool:
     try:
         with get_conn() as conn:
             conn.execute(
-                "INSERT INTO users (username, password_hash, zero_list, criteria) VALUES (?,?,?,?)",
-                (username.lower().strip(), hash_password(password),
-                 DEFAULT_ZERO_LIST, DEFAULT_CRITERIA)
+                "INSERT INTO users (username, password_hash) VALUES (?,?)",
+                (username.lower().strip(), hash_password(password))
             )
         return True
     except sqlite3.IntegrityError:
