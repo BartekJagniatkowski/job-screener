@@ -11,6 +11,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **Redirects** — `/history` and `/job/<id>` issue 301 permanent redirects to `/dashboard`; bookmarks and external links continue to work
 - **Removed** — CSV export link removed from dashboard
 - **Bug fix** — new accounts no longer start with pre-filled Zero List and Criteria text; fields now show real placeholders
+- **Account removal** — accounts no longer needed can now be removed (admin-side tool, no UI yet)
 
 ---
 

@@ -295,6 +295,30 @@ def get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
         return conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
 
 
+def delete_user(username: str) -> bool:
+    """
+    Delete a user account and all associated data (jobs, analyses).
+
+    Args:
+        username: Username (case-insensitive)
+
+    Returns:
+        True if a user was found and deleted, False otherwise
+    """
+    with get_conn() as conn:
+        row = conn.execute(
+            "SELECT id FROM users WHERE username=?",
+            (username.lower().strip(),)
+        ).fetchone()
+        if row is None:
+            return False
+        user_id = row["id"]
+        conn.execute("DELETE FROM analyses WHERE user_id=?", (user_id,))
+        conn.execute("DELETE FROM jobs WHERE user_id=?", (user_id,))
+        conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+        return True
+
+
 def update_user_profile(user_id: int, cv: str, zero_list: str, criteria: str, yellow_list: str = "") -> None:
     """
     Update a user's profile.
