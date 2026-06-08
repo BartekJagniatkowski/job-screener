@@ -12,6 +12,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **Removed** — CSV export link removed from dashboard
 - **Bug fix** — new accounts no longer start with pre-filled Zero List and Criteria text; fields now show real placeholders
 - **Account removal** — accounts no longer needed can now be removed (admin-side tool, no UI yet)
+- **Mobile fix** — job detail tabs (Overview/Layers/Skills/CV/Interview) no longer get cut off on narrow screens; the tab bar now scrolls horizontally
 
 ---
 

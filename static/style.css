@@ -815,8 +815,9 @@ footer a:hover { color: var(--muted); }
 .cmd-text-area::placeholder { color: var(--dim); }
 
 /* ── detail tabs ─────────────────────────────────────────────────────────── */
-.job-tabs              { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 20px; margin-top: 4px; }
-.job-tab               { font-family: var(--fm); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 2px solid transparent; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; transition: color 0.15s; line-height: 1; }
+.job-tabs              { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 20px; margin-top: 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.job-tabs::-webkit-scrollbar { display: none; }
+.job-tab               { font-family: var(--fm); font-size: var(--fs-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 10px 14px; border-bottom: 2px solid transparent; cursor: pointer; background: none; border-top: none; border-left: none; border-right: none; transition: color 0.15s; line-height: 1; white-space: nowrap; flex-shrink: 0; }
 .job-tab:hover         { color: var(--text); }
 .job-tab.active        { color: var(--text); border-bottom-color: var(--text); }
 .job-tab-content       { display: none; }
