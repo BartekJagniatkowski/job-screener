@@ -9,6 +9,7 @@ dependencies = [
     "flask-wtf>=1.2.2",
     "flask-limiter>=3.9.0",
     "gunicorn>=23.0.0",
+    "requests>=2.32.5",
 ]
 
 [dependency-groups]

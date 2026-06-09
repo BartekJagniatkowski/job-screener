@@ -25,7 +25,10 @@ from database import (
     create_analysis, update_analysis_status, get_analysis, count_active_analyses, get_active_analyses_labels,
     save_interview_prep, get_interview_prep,
     save_cv_tailoring, get_cv_tailoring,
+    add_feed, get_feeds, delete_feed, save_feed_items, get_feed_items, get_feed_item,
+    mark_feed_item_analyzed, update_feed_fetched,
 )
+from fetcher import fetch_feed
 from analyzer import analyze, interview_prep, cv_tailoring
 from scraper import fetch as scrape_url, normalize_url
 
@@ -242,12 +245,15 @@ def _run_analysis_bg(
     user: dict,
     input_text: str,
     url: str,
+    feed_item_id: Optional[int] = None,
 ) -> None:
     try:
         update_analysis_status(analysis_id, "running")
         result = analyze(user, input_text, "text", API_KEY, MODEL)
         job_id = save_job(user["id"], result, source_url=url, source_text=input_text)
         update_analysis_status(analysis_id, "done", result_job_id=job_id)
+        if feed_item_id is not None:
+            mark_feed_item_analyzed(feed_item_id, job_id)
     except Exception as e:
         try:
             update_analysis_status(analysis_id, "error", error=str(e))
@@ -683,11 +689,11 @@ def settings():
                 f"Remove them from one list before saving.",
                 "error",
             )
-            return render_template("settings.html", user=user)
+            return render_template("settings.html", user=user, feeds=get_feeds(user["id"]))
         update_user_profile(user["id"], cv, zero_list, criteria, yellow_list)
         flash("Profile saved.")
         return redirect(url_for("settings"))
-    return render_template("settings.html", user=current_user())
+    return render_template("settings.html", user=current_user(), feeds=get_feeds(current_user()["id"]))
 
 
 @app.route("/settings/password", methods=["POST"])
@@ -734,6 +740,145 @@ def statistics():
     user = current_user()
     data = get_statistics(user["id"])
     return render_template("statistics.html", user=user, data=data)
+
+@app.route("/discover")
+@login_required
+def discover():
+    user = current_user()
+    user_id = user["id"]
+    feeds = get_feeds(user_id)
+
+    if feeds:
+        from datetime import datetime, timedelta
+        for feed in feeds:
+            if not feed["active"]:
+                continue
+            last = feed["last_fetched_at"]
+            if last:
+                try:
+                    if datetime.now() - datetime.fromisoformat(last) < timedelta(hours=1):
+                        continue
+                except Exception:
+                    pass
+            try:
+                items = fetch_feed(dict(feed))
+                save_feed_items(feed["id"], user_id, items, feed["keywords"] or "")
+                update_feed_fetched(feed["id"])
+            except Exception:
+                pass
+
+    feed_items = get_feed_items(user_id, analyzed=False)
+
+    zero_entries = [
+        e.strip().lstrip("-").strip().lower()
+        for e in (user["zero_list"] or "").splitlines()
+        if e.strip().lstrip("-").strip()
+    ]
+
+    normal = []
+    filtered = []
+    for item in feed_items:
+        company_lc = (item["company"] or "").lower()
+        title_lc = (item["title"] or "").lower()
+        hit = any(z and (z in company_lc or z in title_lc) for z in zero_entries)
+        (filtered if hit else normal).append(item)
+
+    return render_template("discover.html", items=normal, filtered=filtered, feeds=feeds)
+
+
+@app.route("/feeds/refresh", methods=["POST"])
+@login_required
+def feeds_refresh():
+    user = current_user()
+    user_id = user["id"]
+    count = 0
+    errors = []
+    for feed in get_feeds(user_id):
+        if not feed["active"]:
+            continue
+        try:
+            items = fetch_feed(dict(feed))
+            count += save_feed_items(feed["id"], user_id, items, feed["keywords"] or "")
+            update_feed_fetched(feed["id"])
+        except Exception as e:
+            errors.append(feed["label"])
+    return jsonify({"new": count, "errors": errors})
+
+
+@app.route("/feeds/add", methods=["POST"])
+@login_required
+def feeds_add():
+    user = current_user()
+    feed_type = request.form.get("type", "").strip()
+    source = request.form.get("source", "").strip()
+    label = request.form.get("label", "").strip()
+    keywords = request.form.get("keywords", "").strip()
+
+    if feed_type not in ("remoteok", "lever", "greenhouse", "rss"):
+        flash("Invalid feed type.", "error")
+        return redirect(url_for("settings") + "#feeds")
+    if not source:
+        flash("Source is required.", "error")
+        return redirect(url_for("settings") + "#feeds")
+    if not label:
+        label = f"{feed_type.capitalize()} — {source}"
+
+    add_feed(user["id"], feed_type, source, label, keywords)
+    flash("Feed added.")
+    return redirect(url_for("settings") + "#feeds")
+
+
+@app.route("/feeds/<int:feed_id>/delete", methods=["POST"])
+@login_required
+def feeds_delete(feed_id):
+    user = current_user()
+    delete_feed(feed_id, user["id"])
+    flash("Feed removed.")
+    return redirect(url_for("settings") + "#feeds")
+
+
+@app.route("/discover/<int:item_id>/analyze", methods=["POST"])
+@limiter.limit("20 per hour")
+@login_required
+def discover_analyze(item_id):
+    user = current_user()
+    if not API_KEY:
+        return jsonify({"error": "No API key configured."}), 400
+
+    item = get_feed_item(item_id, user["id"])
+    if not item:
+        return jsonify({"error": "Item not found."}), 404
+
+    item = dict(item)
+    url = item["url"]
+    text = item.get("description", "") or ""
+
+    dedup_key = url or text
+    duplicate = check_duplicate(user["id"], dedup_key)
+    if duplicate:
+        mark_feed_item_analyzed(item_id, duplicate["id"])
+        return jsonify({
+            "duplicate": True,
+            "previous": {
+                "id": duplicate["id"],
+                "company": duplicate["company"],
+                "role": duplicate["role"],
+                "verdict": duplicate["verdict"],
+                "analyzed_at": duplicate["analyzed_at"],
+            },
+        })
+
+    input_text = text if text else url
+    source_label = url or (text[:60].replace("\n", " "))
+    analysis_id = create_analysis(user["id"], source_label)
+    t = threading.Thread(
+        target=_run_analysis_bg,
+        args=(analysis_id, {k: user[k] for k in user.keys()}, input_text, url, item_id),
+        daemon=True,
+    )
+    t.start()
+    return jsonify({"analysis_id": analysis_id})
+
 
 # ── startup ──────────────────────────────────────────────────────────────────
 

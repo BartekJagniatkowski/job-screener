@@ -28,6 +28,7 @@
   <a href="{{ url_for('dashboard') }}" class="nav-brand">Job Screener</a>
   <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">☰</button>
   <div class="nav-links">
+    <a href="{{ url_for('discover') }}" {% if request.endpoint == 'discover' %}class="active"{% endif %}>Discover</a>
     <a href="{{ url_for('statistics') }}" {% if request.endpoint == 'statistics' %}class="active"{% endif %}>Statistics</a>
     <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
     <a href="{{ url_for('about') }}" {% if request.endpoint == 'about' %}class="active"{% endif %}>About</a>

@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}Discover — Job Screener{% endblock %}
+{% block content %}
+<div class="page-title">Discover</div>
+<p class="page-sub">New listings from your feeds, filtered through your Zero Rule.</p>
+
+{% if not feeds %}
+<div class="notice">
+    No feeds configured yet. <a href="{{ url_for('settings') }}#feeds" class="link-accent">Add feeds in Settings →</a>
+</div>
+{% else %}
+
+<div class="discover-toolbar">
+    <span class="discover-count">
+        {% if items %}{{ items|length }} new listing{{ 's' if items|length != 1 else '' }}{% else %}No new listings{% endif %}
+    </span>
+    {% if filtered %}
+    <span class="discover-filtered-hint">{{ filtered|length }} filtered by Zero Rule</span>
+    {% endif %}
+    <button class="btn btn-secondary btn-sm" id="btn-refresh">Refresh →</button>
+</div>
+
+{% if items %}
+<table class="discover-table">
+    <thead>
+        <tr>
+            <th>Company</th>
+            <th>Role</th>
+            <th>Feed</th>
+            <th>Found</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody id="discover-tbody">
+        {% for item in items %}
+        <tr class="discover-row" id="di-{{ item.id }}" data-item-id="{{ item.id }}">
+            <td class="fw-500">{{ item.company or '—' }}</td>
+            <td>{{ item.title }}</td>
+            <td class="td-dim">{{ item.feed_label }}</td>
+            <td class="td-date">{{ item.fetched_at[:10] if item.fetched_at else '—' }}</td>
+            <td class="discover-actions">
+                <button class="btn btn-primary btn-sm discover-analyze-btn" data-item-id="{{ item.id }}">Analyze →</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if items|length > 1 %}
+<div class="discover-bulk">
+    <button class="btn btn-secondary btn-sm" id="btn-analyze-all">Analyze all ({{ items|length }}) →</button>
+</div>
+{% endif %}
+
+{% else %}
+<div class="discover-empty">All caught up — no unanalyzed listings.</div>
+{% endif %}
+
+{% if filtered %}
+<details class="discover-filtered-section">
+    <summary class="discover-filtered-summary">{{ filtered|length }} listing{{ 's' if filtered|length != 1 else '' }} filtered by Zero Rule</summary>
+    <table class="discover-table discover-table-muted">
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Role</th>
+                <th>Feed</th>
+                <th>Found</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in filtered %}
+            <tr class="discover-row">
+                <td class="fw-500">{{ item.company or '—' }}</td>
+                <td>{{ item.title }}</td>
+                <td class="td-dim">{{ item.feed_label }}</td>
+                <td class="td-date">{{ item.fetched_at[:10] if item.fetched_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</details>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+    function analyzeItem(itemId, btn) {
+        btn.disabled = true;
+        btn.textContent = 'Queued…';
+        fetch('/discover/' + itemId + '/analyze', {
+            method: 'POST',
+            headers: { 'X-CSRFToken': csrfToken() }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.error) {
+                btn.disabled = false;
+                btn.textContent = 'Analyze →';
+                return;
+            }
+            var row = document.getElementById('di-' + itemId);
+            if (d.duplicate) {
+                if (row) row.classList.add('discover-row-done');
+                return;
+            }
+            if (row) row.classList.add('discover-row-analyzing');
+            localStorage.setItem('activeAnalysis', JSON.stringify({
+                id: d.analysis_id,
+                source_label: btn.closest('tr') ? (btn.closest('tr').querySelector('td').textContent.trim()) : ''
+            }));
+            window.dispatchEvent(new CustomEvent('analysisStarted', {
+                detail: { id: d.analysis_id, source_label: '' }
+            }));
+        })
+        .catch(function () {
+            btn.disabled = false;
+            btn.textContent = 'Analyze →';
+        });
+    }
+
+    document.querySelectorAll('.discover-analyze-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            analyzeItem(btn.dataset.itemId, btn);
+        });
+    });
+
+    var analyzeAllBtn = document.getElementById('btn-analyze-all');
+    if (analyzeAllBtn) {
+        analyzeAllBtn.addEventListener('click', function () {
+            analyzeAllBtn.disabled = true;
+            var btns = Array.from(document.querySelectorAll('.discover-analyze-btn:not(:disabled)'));
+            var i = 0;
+            function next() {
+                if (i >= btns.length) return;
+                var btn = btns[i++];
+                analyzeItem(btn.dataset.itemId, btn);
+                setTimeout(next, 600);
+            }
+            next();
+        });
+    }
+
+    var refreshBtn = document.getElementById('btn-refresh');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function () {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = 'Refreshing…';
+            fetch('/feeds/refresh', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken() }
+            })
+            .then(function () { window.location.reload(); })
+            .catch(function () {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = 'Refresh →';
+            });
+        });
+    }
+})();
+</script>
+{% endblock %}

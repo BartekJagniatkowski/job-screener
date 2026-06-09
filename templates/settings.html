@@ -118,6 +118,50 @@
     </div>
 </div>
 
+<div class="section-label" id="feeds">Job Feeds</div>
+<div class="settings-section">
+    <div class="field-hint">Feeds are checked when you visit Discover (at most once per hour). Remotive uses category slugs; Lever and Greenhouse use company slugs.</div>
+
+    <form method="POST" action="{{ url_for('feeds_add') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <div class="feeds-add-row">
+            <select name="type" id="feed-type-select" class="feeds-type-select">
+                <option value="remoteok">Remote OK</option>
+                <option value="lever">Lever</option>
+                <option value="greenhouse">Greenhouse</option>
+                <option value="rss">RSS</option>
+            </select>
+            <input type="text" name="source" id="feed-source" class="feeds-source-input" placeholder="e.g. product-designer" />
+            <input type="text" name="label" class="feeds-label-input" placeholder="Label (optional)" />
+        </div>
+        <div class="feeds-add-row">
+            <input type="text" name="keywords" class="feeds-keywords-input" placeholder="Keywords filter — e.g. product designer, ux designer (leave empty = no filter)" />
+            <button type="submit" class="btn btn-primary btn-sm">Add →</button>
+        </div>
+        <div id="feed-source-hint" class="field-hint feeds-source-hint">Tag slug — e.g. product-designer, ux-designer, design</div>
+    </form>
+
+    {% if feeds %}
+    <div class="feeds-list">
+        {% for feed in feeds %}
+        <div class="feeds-list-item">
+            <div class="feeds-list-info">
+                <span class="feeds-list-label">{{ feed.label }}</span>
+                <span class="feeds-list-meta">{{ feed.type }} · {{ feed.source }}{% if feed.keywords %} · keywords: {{ feed.keywords }}{% endif %}</span>
+                <span class="feeds-list-fetched">{% if feed.last_fetched_at %}Last fetched: {{ feed.last_fetched_at[:16] }}{% else %}Never fetched{% endif %}</span>
+            </div>
+            <form method="POST" action="{{ url_for('feeds_delete', feed_id=feed.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="feeds-empty">No feeds configured.</div>
+    {% endif %}
+</div>
+
 <div class="section-label">Data export</div>
 <div class="settings-section">
     <div class="field-hint">Export all of your data in a CSV file.</div>
@@ -161,6 +205,31 @@
     </button>
 </form>
 {% endblock %} {% block scripts %}
+<script>
+    (function () {
+        var hints = {
+            remoteok: 'Tag slug from remoteok.com — e.g. product-designer, ux-designer, design, frontend',
+            lever: 'Company slug from Lever URL — e.g. stripe, linear, notion',
+            greenhouse: 'Company slug from Greenhouse URL — e.g. stripe, figma, vercel',
+            rss: 'Full RSS/Atom feed URL — e.g. https://weworkremotely.com/categories/remote-design-jobs.rss',
+        };
+        var placeholders = {
+            remoteok: 'e.g. product-designer',
+            lever: 'e.g. stripe',
+            greenhouse: 'e.g. figma',
+            rss: 'https://…',
+        };
+        var sel = document.getElementById('feed-type-select');
+        var src = document.getElementById('feed-source');
+        var hint = document.getElementById('feed-source-hint');
+        if (sel) {
+            sel.addEventListener('change', function () {
+                if (hint) hint.textContent = hints[sel.value] || '';
+                if (src) src.placeholder = placeholders[sel.value] || '';
+            });
+        }
+    })();
+</script>
 <script>
     async function saveSection(section, textareaId, btn, statusId) {
         var ta = document.getElementById(textareaId);

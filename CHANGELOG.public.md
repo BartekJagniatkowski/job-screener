@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.29 — Discover feed
+
+- **Discover page** — new nav link shows unanalyzed listings from your configured feeds; Zero Rule pre-filters matches before display; "Analyze →" per item or "Analyze all" queues the full list; "Refresh" force-fetches all feeds
+- **Feed management** — new Feeds section in Settings; supports Remote OK (tag-based), Lever (company slug), Greenhouse (company slug), and RSS/Atom feeds; fetched at most once per hour when you visit Discover
+- **Keyword filter** — optional comma-separated keywords per feed; only items whose title matches a keyword are saved (prevents tag-noise from broad searches)
+
+---
+
 ## v0.28 — Unified dashboard
 
 - **Dashboard + history merged** — the separate History page is gone; the dashboard now shows the full analysis table with filters, search, sorting, and mobile cards; no row cap

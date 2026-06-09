@@ -70,6 +70,36 @@ CREATE TABLE IF NOT EXISTS analyses (
     FOREIGN KEY (user_id) REFERENCES users(id),
     FOREIGN KEY (result_job_id) REFERENCES jobs(id)
 );
+
+CREATE TABLE IF NOT EXISTS feeds (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    source TEXT NOT NULL,
+    label TEXT NOT NULL,
+    active INTEGER DEFAULT 1,
+    last_fetched_at TEXT,
+    created_at TEXT DEFAULT (date('now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+CREATE TABLE IF NOT EXISTS feed_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    feed_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    external_id TEXT NOT NULL,
+    title TEXT,
+    company TEXT,
+    url TEXT NOT NULL,
+    description TEXT,
+    source_hash TEXT NOT NULL,
+    fetched_at TEXT DEFAULT (date('now')),
+    analyzed INTEGER DEFAULT 0,
+    job_id INTEGER,
+    UNIQUE(user_id, source_hash),
+    FOREIGN KEY (feed_id) REFERENCES feeds(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
 """
 
 
@@ -126,6 +156,7 @@ def init_db() -> None:
             ("cv_tailoring TEXT", "jobs"),
             # kept for migration chain: old DBs may not have this yet before rename
             ("lista_zolta TEXT DEFAULT ''", "users"),
+            ("keywords TEXT DEFAULT ''", "feeds"),
         ]:
             try:
                 conn.execute(f"ALTER TABLE {tbl} ADD COLUMN {col}")
@@ -314,6 +345,8 @@ def delete_user(username: str) -> bool:
             return False
         user_id = row["id"]
         conn.execute("DELETE FROM analyses WHERE user_id=?", (user_id,))
+        conn.execute("DELETE FROM feed_items WHERE user_id=?", (user_id,))
+        conn.execute("DELETE FROM feeds WHERE user_id=?", (user_id,))
         conn.execute("DELETE FROM jobs WHERE user_id=?", (user_id,))
         conn.execute("DELETE FROM users WHERE id=?", (user_id,))
         return True
@@ -951,6 +984,105 @@ def get_statistics(user_id: int) -> dict:
         'archetype_distribution': dict(sorted(archetype_distribution.items(), key=lambda x: -x[1])),
         'zero_list_hits': zero_list_hits,
     }
+def add_feed(user_id: int, feed_type: str, source: str, label: str, keywords: str = "") -> int:
+    with get_conn() as conn:
+        conn.execute(
+            "INSERT INTO feeds (user_id, type, source, label, keywords) VALUES (?,?,?,?,?)",
+            (user_id, feed_type, source, label, keywords.strip()),
+        )
+        return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+
+def get_feeds(user_id: int) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM feeds WHERE user_id=? ORDER BY created_at",
+            (user_id,),
+        ).fetchall()
+
+
+def delete_feed(feed_id: int, user_id: int) -> bool:
+    with get_conn() as conn:
+        conn.execute(
+            "DELETE FROM feed_items WHERE feed_id=? AND user_id=?",
+            (feed_id, user_id),
+        )
+        cur = conn.execute(
+            "DELETE FROM feeds WHERE id=? AND user_id=?",
+            (feed_id, user_id),
+        )
+        return cur.rowcount > 0
+
+
+def save_feed_items(feed_id: int, user_id: int, items: list, keywords: str = "") -> int:
+    kw_list = [k.strip().lower() for k in keywords.split(",") if k.strip()]
+    if kw_list:
+        items = [
+            i for i in items
+            if any(k in (i.get("title") or "").lower() for k in kw_list)
+        ]
+    count = 0
+    with get_conn() as conn:
+        for item in items:
+            url = item.get("url", "")
+            if not url:
+                continue
+            h = compute_hash(url)
+            conn.execute(
+                """INSERT OR IGNORE INTO feed_items
+                   (feed_id, user_id, external_id, title, company, url, description, source_hash)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    feed_id, user_id,
+                    item.get("external_id", url),
+                    item.get("title", ""),
+                    item.get("company", ""),
+                    url,
+                    item.get("description", ""),
+                    h,
+                ),
+            )
+            if conn.execute("SELECT changes()").fetchone()[0]:
+                count += 1
+    return count
+
+
+def get_feed_items(user_id: int, analyzed: bool = False) -> list:
+    with get_conn() as conn:
+        return conn.execute(
+            """SELECT fi.*, f.label AS feed_label, f.type AS feed_type
+               FROM feed_items fi
+               JOIN feeds f ON f.id = fi.feed_id
+               WHERE fi.user_id=? AND fi.analyzed=?
+               ORDER BY fi.fetched_at DESC""",
+            (user_id, 1 if analyzed else 0),
+        ).fetchall()
+
+
+def get_feed_item(item_id: int, user_id: int) -> Optional[sqlite3.Row]:
+    with get_conn() as conn:
+        return conn.execute(
+            "SELECT * FROM feed_items WHERE id=? AND user_id=?",
+            (item_id, user_id),
+        ).fetchone()
+
+
+def mark_feed_item_analyzed(item_id: int, job_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE feed_items SET analyzed=1, job_id=? WHERE id=?",
+            (job_id, item_id),
+        )
+
+
+def update_feed_fetched(feed_id: int) -> None:
+    with get_conn() as conn:
+        conn.execute(
+            "UPDATE feeds SET last_fetched_at=datetime('now') WHERE id=?",
+            (feed_id,),
+        )
+
+
 def user_count() -> int:
     """
     Return the number of users in the database.
