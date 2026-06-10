@@ -4,6 +4,18 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.31 — Badge/button redesign and fit score badge
+
+- **Skills fit score** — now shown as a badge in the job detail header (`Fit X.X/5`), color-coded by fit status
+- **Status dropdown fix** — fixed a bug where the dropdown showed "Worth considering" while the badge showed "AI rejected"
+- **Dropdown label** — "Reject" renamed to "Rejected" for clarity
+- **Badges and buttons redesigned** — badges are now small pill-shaped indicators with transparent backgrounds; secondary/danger buttons use solid backgrounds, making them visually distinct from badges
+- **Modal layout** — verdict/archetype/fit badges grouped together; Delete button moved to the right, separated from other actions
+- **Icons** — Re-analyze, Delete, Save notes, and Download CSV buttons now show a clearer trailing icon
+- **Security** — hardened against prompt injection from job listing content
+
+---
+
 ## v0.30 — Re-analysis banner + yellow/zero list styling
 
 - **Re-analysis banner** — now shows which listing is being re-analyzed (company · role) instead of a generic "Re-analysis" label

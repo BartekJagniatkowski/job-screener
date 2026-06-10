@@ -15,9 +15,12 @@
     <label class="verdict-select-label">Status:</label>
     <select id="status-select" class="verdict-select" onchange="setStatus(this.value)">
       <optgroup label="Job analysis">
+        {% if cur_status == 'rejected_soft' %}
+        <option value="rejected_soft" disabled hidden selected>AI rejected</option>
+        {% endif %}
         <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
         <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
-        <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Reject</option>
+        <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Rejected</option>
       </optgroup>
       <optgroup label="Application">
         <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Applied</option>
@@ -28,14 +31,15 @@
     </select>
   </div>
   {% if job.source_full or job.source %}
-  <button id="reanalyze-btn" class="btn btn-secondary btn-sm" onclick="reanalyze()">Re-analyze</button>
+  <button id="reanalyze-btn" class="btn btn-secondary btn-sm" onclick="reanalyze()">Re-analyze <span class="btn-icon">↻</span></button>
   {% endif %}
-  <button class="btn btn-secondary btn-sm btn-danger" onclick="confirmDelete()">Delete</button>
+  <button class="btn btn-secondary btn-sm btn-danger modal-action-delete" onclick="confirmDelete()">Delete <span class="btn-icon">✕</span></button>
 </div>
 <div id="reanalyze-status" class="notice" style="display:none;"></div>
 
 <div class="card">
   <div class="card-header card-header--vertical">
+    <div class="card-badges">
     {%- if job.offer_received %}<span class="badge badge-offer" data-verdict="{{ job.verdict }}">Offer received</span>
     {%- elif job.interview_scheduled %}<span class="badge badge-interview" data-verdict="{{ job.verdict }}">Interview</span>
     {%- elif job.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ job.verdict }}">Rejected by company</span>
@@ -44,6 +48,8 @@
     {%- elif job.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">AI rejected</span>
     {%- else %}<span class="badge badge-{{ job.verdict }}" data-verdict="{{ job.verdict }}">{{ vl.get(job.verdict, job.verdict) }}</span>{% endif %}
     {% if job.role_archetype %}<span class="badge badge-archetype">{{ job.role_archetype }}</span>{% endif %}
+    {% if job.fit_score is not none %}<span class="badge badge-fit badge-fit-{{ job.fit_status }}">Fit {{ "%.1f"|format(job.fit_score) }}/5</span>{% endif %}
+    </div>
     <div class="card-title">{{ job.role or '—' }}</div>
     <div class="card-company">{{ job.company or 'Unknown' }}</div>
     {% if job.verdict_summary %}<div class="card-sub">{{ job.verdict_summary }}</div>{% endif %}
@@ -274,6 +280,6 @@
 <div class="notes-section">
   <div class="notes-label">Notes</div>
   <textarea id="notes-textarea" class="notes-textarea" maxlength="10000" placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
-  <button class="btn btn-secondary btn-sm notes-save-btn" onclick="saveNotes()">Save notes</button>
+  <button class="btn btn-secondary btn-sm notes-save-btn" onclick="saveNotes()">Save notes <span class="btn-icon">↓</span></button>
   <span id="notes-status" class="notes-status"></span>
 </div>

@@ -748,7 +748,7 @@ container_class %}container{% endblock %} {% block content %}
       const jobId = getCurrentJobId();
       const btn = document.getElementById('reanalyze-btn');
       const statusEl = document.getElementById('reanalyze-status');
-      if (btn) { btn.disabled = true; btn.textContent = 'Analyzing…'; }
+      if (btn) { btn.disabled = true; btn.innerHTML = 'Analyzing… <span class="btn-icon">↻</span>'; }
       if (statusEl) { statusEl.style.display = 'none'; statusEl.className = 'notice'; }
       try {
         const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
@@ -762,13 +762,13 @@ container_class %}container{% endblock %} {% block content %}
           localStorage.setItem('activeAnalysis', JSON.stringify(active));
           window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
           if (statusEl) statusEl.style.display = 'none';
-          if (btn) { btn.disabled = false; btn.textContent = 'Re-analyze'; }
+          if (btn) { btn.disabled = false; btn.innerHTML = 'Re-analyze <span class="btn-icon">↻</span>'; }
         } else if (data.error) {
           if (statusEl) { statusEl.textContent = data.error; statusEl.style.display = 'block'; }
         }
       } catch(e) {
         if (statusEl) { statusEl.style.display='block'; statusEl.className='notice warn'; statusEl.textContent='Connection error: '+e.message; }
-        if (btn) { btn.disabled=false; btn.textContent='Re-analyze'; }
+        if (btn) { btn.disabled=false; btn.innerHTML='Re-analyze <span class="btn-icon">↻</span>'; }
       }
     }
 
