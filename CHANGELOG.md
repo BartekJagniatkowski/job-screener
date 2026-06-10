@@ -4,6 +4,13 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.30 — Re-analysis banner + yellow list styling
+
+- **Re-analysis banner** — now shows which listing is being re-analyzed (company · role) instead of a generic "Re-analysis" label
+- **Yellow list notice** — redesigned as a highlighted card in the Overview tab, matching the Reality check section style
+
+---
+
 ## v0.29 — Discover feed
 
 - **Discover page** — new nav link shows unanalyzed listings from your configured feeds; Zero Rule pre-filters matches before display; "Analyze →" per item or "Analyze all" queues the full list; "Refresh" force-fetches all feeds

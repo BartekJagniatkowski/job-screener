@@ -752,6 +752,26 @@ footer a:hover { color: var(--muted); }
 .reality-check-plain  { color: #c8c8c8; }
 [data-theme="light"] .reality-check-plain { color: var(--text); }
 
+/* ── yellow list notice ─────────────────────────────────────────────────── */
+.yellow-list-card {
+  background: var(--yellow-bg);
+  border-top: 1px solid var(--border);
+  padding: 14px 28px;
+}
+.yellow-list-label {
+  font-family: var(--fm);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--yellow);
+  margin-bottom: 8px;
+}
+.yellow-list-body {
+  font-size: var(--fs-md);
+  color: var(--muted);
+  line-height: 1.65;
+}
+
 /* ── Notes section ───────────────────────────────────────────────────── */
 .notes-section        { padding: 16px 20px 20px; border-top: 1px solid var(--border); }
 .notes-label          { font-family: var(--fm); font-size: var(--fs-xs); text-transform: uppercase;

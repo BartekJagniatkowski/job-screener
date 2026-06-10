@@ -58,9 +58,6 @@
     <div class="evidence"><span class="evidence-label">Evidence from listing</span>{{ raw.get('zero_list_evidence') }}</div>
     {% endif %}
     {% endif %}
-    {% if raw.get('yellow_list_hit') %}
-    <div class="card-meta text-yellow">⚠ Yellow list: {{ raw.get('yellow_list_reason') }}</div>
-    {% endif %}
     <div class="card-meta">
       Analyzed: {{ job.analyzed_at }}
       {% if job.offer_received and job.offer_at %}
@@ -86,6 +83,13 @@
 
   {# ── Tab: Overview ── #}
   <div id="jt-overview" class="job-tab-content active">
+    {% if raw.get('yellow_list_hit') %}
+    <div class="yellow-list-card">
+      <div class="yellow-list-label">⚠ Yellow list</div>
+      <div class="yellow-list-body">{{ raw.get('yellow_list_reason') }}</div>
+    </div>
+    {% endif %}
+
     {% set rc = raw.get('reality_check') %}
     {% if rc %}
     <div class="reality-check-card">

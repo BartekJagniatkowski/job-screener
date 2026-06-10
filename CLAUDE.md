@@ -535,6 +535,8 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.reality-check-phrase` — italic dim text (the corpo-speak phrase)
 `.reality-check-arrow` — green `→` separator
 `.reality-check-plain` — muted text (the plain-English meaning)
+`.yellow-list-card` — yellow-bg card in Overview tab showing the yellow list reason (matches reality-check-card layout)
+`.yellow-list-label`, `.yellow-list-body` — uppercase yellow label and regular-body-font text inside the yellow list card
 `.about-lead` — large intro paragraph on the About page (muted, 1.7 line-height)
 `.about-section-label` — uppercase monospace section heading on About page
 `.about-layer-name` — uppercase monospace layer title inside layer card

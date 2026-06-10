@@ -386,7 +386,10 @@ def reanalyze(job_id):
             })
     else:
         input_text = saved_text or source
-    source_label = saved_url or (saved_text or "")[:60].replace("\n", " ") or "Re-analysis"
+    job_label = " · ".join(p for p in (job["company"], job["role"]) if p)
+    source_label = f"Re-analysis: {job_label}" if job_label else (
+        saved_url or (saved_text or "")[:60].replace("\n", " ") or "Re-analysis"
+    )
     analysis_id = create_analysis(user["id"], source_label)
     t = threading.Thread(
         target=_run_analysis_bg,

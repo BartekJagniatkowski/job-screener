@@ -754,7 +754,11 @@ container_class %}container{% endblock %} {% block content %}
         const resp = await fetch(`/reanalyze/${jobId}`, { method: 'POST', headers: {'X-CSRFToken': csrfToken()} });
         const data = await resp.json();
         if (data.analysis_id) {
-          const active = { id: data.analysis_id, source_label: 'Re-analysis' };
+          const roleEl = document.querySelector('#modal-body .card-title');
+          const companyEl = document.querySelector('#modal-body .card-company');
+          const parts = [companyEl, roleEl].map(el => el && el.textContent.trim()).filter(Boolean);
+          const label = parts.length ? `Re-analysis: ${parts.join(' · ')}` : 'Re-analysis';
+          const active = { id: data.analysis_id, source_label: label };
           localStorage.setItem('activeAnalysis', JSON.stringify(active));
           window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
           if (statusEl) statusEl.style.display = 'none';
