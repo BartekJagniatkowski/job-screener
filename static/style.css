@@ -788,6 +788,10 @@ tr.row-rejected-soft:hover td {
     color: var(--muted);
     font-size: var(--fs-md);
 }
+.company-note {
+    color: var(--muted);
+    cursor: help;
+}
 .td-mono {
     font-family: var(--fm);
     font-size: var(--fs-sm);

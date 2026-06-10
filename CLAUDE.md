@@ -280,6 +280,7 @@ The `data-verdict` attribute on the badge element stores the underlying verdict
 - URL management: `pushState` on open (`?job=<id>`), `replaceState` on navigate, `replaceState` on close
 - Browser back closes the modal; direct link `?job=<id>` auto-opens modal
 - JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in `dashboard.html`, not in the partial — `<script>` tags in AJAX-loaded partials do not execute
+- `company_display(j)` — Jinja macro in `dashboard.html`; if `job.company` contains `(`, shows only the text before it plus a `.company-note` "(?)" with the full name as `title`; used in both the table and mobile cards
 - Single `keydown` handler with modal guard: modal open → only Escape/←/→ handled; modal closed → Cmd+Enter submits, Cmd+K focuses input
 
 ### /analyze logic
@@ -504,6 +505,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.auth-hint` — supplementary text below login/register form
 `.text-red`, `.text-yellow`, `.text-green`, `.text-accent`
 `.td-date`, `.td-role`, `.td-mono`, `.fw-500`
+`.company-note` — "(?)" marker after a shortened company name; `title` attribute holds the full name with parenthetical explanation
 `.td-dim`, `.td-red`, `.td-green`, `.td-orange`, `.td-blue`
 `.card-body`, `.card-mb`, `.card-header-body`
 `.card-sub`, `.card-meta` — card header subtitle and metadata

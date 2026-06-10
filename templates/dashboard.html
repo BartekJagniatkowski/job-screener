@@ -1,5 +1,13 @@
 {% extends "base.html" %} {% block title %}Job Screener{% endblock %} {% block
 container_class %}container{% endblock %} {% block content %}
+{% macro company_display(j) %}
+{%- set name = j.company or 'Unknown' -%}
+{%- if '(' in name -%}
+{{ name.split('(')[0].strip() }}<span class="company-note" title="{{ name }}"> (?)</span>
+{%- else -%}
+{{ name }}
+{%- endif -%}
+{% endmacro %}
 <!-- Job detail modal -->
 <div id="job-modal" class="modal-overlay" style="display: none">
     <div class="modal-container">
@@ -215,7 +223,7 @@ container_class %}container{% endblock %} {% block content %}
             >
                 <td class="td-date">{{ j.analyzed_at }}</td>
                 <td class="td-role">{{ j.role or '—' }}</td>
-                <td class="fw-500">{{ j.company or 'Unknown' }}</td>
+                <td class="fw-500">{{ company_display(j) }}</td>
                 <td class="td-nowrap">
                     {%- if j.offer_received -%}<span
                         class="badge badge-offer"
@@ -319,7 +327,7 @@ container_class %}container{% endblock %} {% block content %}
     >
         <div class="job-card-header">
             <div class="job-card-title">
-                <div class="job-card-company">{{ j.company or 'Unknown' }}</div>
+                <div class="job-card-company">{{ company_display(j) }}</div>
                 <div class="job-card-role">{{ j.role or '—' }}</div>
             </div>
             {%- if j.offer_received -%}

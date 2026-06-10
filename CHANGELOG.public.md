@@ -14,6 +14,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **Icons** — Re-analyze, Delete, Save notes, and Download CSV buttons now show a clearer trailing icon
 - **Security** — hardened against prompt injection from job listing content
 - **Early duplicate check** — pasting a job listing URL now checks for duplicates immediately, before you paste the full text or click Analyze
+- **Company name display** — long parenthetical explanations in the company name are now shown as a "(?)" marker with the full text on hover, instead of cluttering the table
 
 ---
 
