@@ -494,7 +494,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.card-company` — company name below role title in vertical card header
 `.card-source-url` — listing link in card header, below summary; truncated with ellipsis
 `.duplicate-notice`, `.duplicate-label`, `.duplicate-title`, `.duplicate-meta`, `.duplicate-actions`
-`.evidence`, `.evidence-label`, `.evidence-text`
+`.evidence`, `.evidence-label`, `.evidence-text` — `.evidence-text` is regular body font (`--fs-md`, muted, 1.65 line-height), not bold/mono
 `.source-text`, `.source-url-label`, `.source-url-link`, `.source-url-hint`
 `.source-url-input-row`, `.source-url-input`, `.source-inline-link`
 `.btn-inline`, `.source-old-text`, `.source-old-hint`, `.source-none`
@@ -537,6 +537,8 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.reality-check-plain` — muted text (the plain-English meaning)
 `.yellow-list-card` — yellow-bg card in Overview tab showing the yellow list reason (matches reality-check-card layout)
 `.yellow-list-label`, `.yellow-list-body` — uppercase yellow label and regular-body-font text inside the yellow list card
+`.zero-list-card` — red-bg card in Overview tab showing the zero list reason and evidence (matches yellow-list-card layout)
+`.zero-list-label`, `.zero-list-body` — uppercase red label and regular-body-font text inside the zero list card
 `.about-lead` — large intro paragraph on the About page (muted, 1.7 line-height)
 `.about-section-label` — uppercase monospace section heading on About page
 `.about-layer-name` — uppercase monospace layer title inside layer card

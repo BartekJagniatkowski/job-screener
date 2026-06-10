@@ -4,10 +4,10 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
-## v0.30 — Re-analysis banner + yellow list styling
+## v0.30 — Re-analysis banner + yellow/zero list styling
 
 - **Re-analysis banner** — now shows which listing is being re-analyzed (company · role) instead of a generic "Re-analysis" label
-- **Yellow list notice** — redesigned as a highlighted card in the Overview tab, matching the Reality check section style
+- **Yellow and zero list notices** — redesigned as highlighted cards in the Overview tab, matching the Reality check section style
 
 ---
 

@@ -229,7 +229,7 @@ textarea { resize: vertical; min-height: 100px; line-height: 1.5; }
 /* ── evidence block ─────────────────────────────────────────────────────── */
 .evidence { margin-top: 10px; padding: 8px 12px; border-left: 2px solid var(--red); background: var(--red-bg); line-height: 1.6; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .evidence-label { font-family: var(--fm); font-size: var(--fs-2xs); letter-spacing: 0.08em; text-transform: uppercase; color: #e74c3c; display: block; margin-bottom: 2px; }
-.evidence-text { font-family: var(--fm); font-size: var(--fs-sm); color: #e74c3c; }
+.evidence-text { font-size: var(--fs-md); color: var(--muted); font-weight: normal; line-height: 1.65; }
 
 /* ── table ──────────────────────────────────────────────────────────────── */
 table { width: 100%; border-collapse: collapse; font-size: var(--fs-base); }
@@ -751,6 +751,26 @@ footer a:hover { color: var(--muted); }
 .reality-check-arrow  { color: var(--green); margin: 0 4px; }
 .reality-check-plain  { color: #c8c8c8; }
 [data-theme="light"] .reality-check-plain { color: var(--text); }
+
+/* ── zero list notice ───────────────────────────────────────────────────── */
+.zero-list-card {
+  background: var(--red-bg);
+  border-top: 1px solid var(--border);
+  padding: 14px 28px;
+}
+.zero-list-label {
+  font-family: var(--fm);
+  font-size: var(--fs-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #e74c3c;
+  margin-bottom: 8px;
+}
+.zero-list-body {
+  font-size: var(--fs-md);
+  color: var(--muted);
+  line-height: 1.65;
+}
 
 /* ── yellow list notice ─────────────────────────────────────────────────── */
 .yellow-list-card {

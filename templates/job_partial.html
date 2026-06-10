@@ -52,12 +52,6 @@
     {% elif job.source_full and job.source_full.startswith('http') %}
     <div class="card-source-url"><a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a></div>
     {% endif %}
-    {% if job.zero_list_hit %}
-    <div class="card-meta text-red">⛔ Zero list: {{ job.zero_list_reason }}</div>
-    {% if raw.get('zero_list_evidence') %}
-    <div class="evidence"><span class="evidence-label">Evidence from listing</span>{{ raw.get('zero_list_evidence') }}</div>
-    {% endif %}
-    {% endif %}
     <div class="card-meta">
       Analyzed: {{ job.analyzed_at }}
       {% if job.offer_received and job.offer_at %}
@@ -83,6 +77,16 @@
 
   {# ── Tab: Overview ── #}
   <div id="jt-overview" class="job-tab-content active">
+    {% if job.zero_list_hit %}
+    <div class="zero-list-card">
+      <div class="zero-list-label">⛔ Zero list</div>
+      <div class="zero-list-body">{{ job.zero_list_reason }}</div>
+      {% if raw.get('zero_list_evidence') %}
+      <div class="evidence"><span class="evidence-label">Evidence from listing</span><span class="evidence-text">{{ raw.get('zero_list_evidence') }}</span></div>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if raw.get('yellow_list_hit') %}
     <div class="yellow-list-card">
       <div class="yellow-list-label">⚠ Yellow list</div>
@@ -167,7 +171,7 @@
     <div class="tab-section-body">
       {{ findings or '—' }}
       {% if evidence %}
-      <div class="evidence"><span class="evidence-label">Evidence from listing</span>{{ evidence }}</div>
+      <div class="evidence"><span class="evidence-label">Evidence from listing</span><span class="evidence-text">{{ evidence }}</span></div>
       {% endif %}
     </div>
   </div>
