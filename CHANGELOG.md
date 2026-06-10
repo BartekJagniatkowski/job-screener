@@ -13,6 +13,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **Modal layout** — verdict/archetype/fit badges grouped together; Delete button moved to the right, separated from other actions
 - **Icons** — Re-analyze, Delete, Save notes, and Download CSV buttons now show a clearer trailing icon
 - **Security** — hardened against prompt injection from job listing content
+- **Early duplicate check** — pasting a job listing URL now checks for duplicates immediately, before you paste the full text or click Analyze
 
 ---
 

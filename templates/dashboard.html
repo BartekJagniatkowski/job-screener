@@ -425,13 +425,8 @@ container_class %}container{% endblock %} {% block content %}
       } catch(e) { console.error(e); }
     }
 
-    async function runAnalysis(force = false) {
-      const url = document.getElementById('cmd-input').value.trim();
-      const text = document.getElementById('cmd-text').value.trim();
-      if (!url && !text) { document.getElementById('cmd-input').focus(); return; }
-
+    async function checkSource(url, text) {
       const statusEl = document.getElementById('source-status');
-
       try {
         const chkFd = new FormData();
         if (url) chkFd.append('url', url);
@@ -447,7 +442,28 @@ container_class %}container{% endblock %} {% block content %}
           statusEl.style.display = 'block';
           statusEl.textContent = '✓ New listing — not yet in the database.';
         }
-      } catch(e) { statusEl.style.display = 'none'; }
+        return chkData;
+      } catch(e) {
+        statusEl.style.display = 'none';
+        return null;
+      }
+    }
+
+    // check duplicates as soon as a URL is pasted, before the text field is opened
+    document.getElementById('cmd-input').addEventListener('paste', function() {
+      setTimeout(() => {
+        const url = this.value.trim();
+        if (url) checkSource(url, '');
+      }, 0);
+    });
+
+    async function runAnalysis(force = false) {
+      const url = document.getElementById('cmd-input').value.trim();
+      const text = document.getElementById('cmd-text').value.trim();
+      if (!url && !text) { document.getElementById('cmd-input').focus(); return; }
+
+      const statusEl = document.getElementById('source-status');
+      await checkSource(url, text);
 
       document.getElementById('analyze-btn').disabled = true;
       document.getElementById('loading').style.display = 'block';
