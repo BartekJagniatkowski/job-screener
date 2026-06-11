@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.32 — Feed setup fixes
+
+- **Lever/Greenhouse validation** — adding a feed now checks the value looks like a company name from the board URL, with a clear error and example if not
+- **Discover error surfacing** — feed fetch failures now show an error message naming the feed, instead of silently leaving it stuck at "Never fetched"
+- **Plain-language feed hints** — Settings copy for feed types rewritten to avoid jargon, with concrete examples
+
+---
+
 ## v0.31 — Badge/button redesign and fit score badge
 
 - **Skills fit score** — now shown as a badge in the job detail header (`Fit X.X/5`), color-coded by fit status

@@ -120,7 +120,7 @@
 
 <div class="section-label" id="feeds">Job Feeds</div>
 <div class="settings-section">
-    <div class="field-hint">Feeds are checked when you visit Discover (at most once per hour). Remotive uses category slugs; Lever and Greenhouse use company slugs.</div>
+    <div class="field-hint">Feeds are checked when you visit Discover (at most once per hour). Remote OK searches by job category across all companies. Lever and Greenhouse don't support search — each feed pulls listings from one specific company's job board.</div>
 
     <form method="POST" action="{{ url_for('feeds_add') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -138,7 +138,7 @@
             <input type="text" name="keywords" class="feeds-keywords-input" placeholder="Keywords filter — e.g. product designer, ux designer (leave empty = no filter)" />
             <button type="submit" class="btn btn-primary btn-sm">Add →</button>
         </div>
-        <div id="feed-source-hint" class="field-hint feeds-source-hint">Tag slug — e.g. product-designer, ux-designer, design</div>
+        <div id="feed-source-hint" class="field-hint feeds-source-hint">Job category to search for — e.g. product-designer, ux-designer, design, frontend</div>
     </form>
 
     {% if feeds %}
@@ -208,9 +208,9 @@
 <script>
     (function () {
         var hints = {
-            remoteok: 'Tag slug from remoteok.com — e.g. product-designer, ux-designer, design, frontend',
-            lever: 'Company slug from Lever URL — e.g. stripe, linear, notion',
-            greenhouse: 'Company slug from Greenhouse URL — e.g. stripe, figma, vercel',
+            remoteok: 'Job category to search for — e.g. product-designer, ux-designer, design, frontend',
+            lever: 'One company\'s name as it appears in their Lever job board URL (jobs.lever.co/<name>) — e.g. stripe, linear, notion. This adds listings from that company only, not a search.',
+            greenhouse: 'One company\'s name as it appears in their Greenhouse job board URL (boards.greenhouse.io/<name>) — e.g. stripe, figma, vercel. This adds listings from that company only, not a search.',
             rss: 'Full RSS/Atom feed URL — e.g. https://weworkremotely.com/categories/remote-design-jobs.rss',
         };
         var placeholders = {

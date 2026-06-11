@@ -753,6 +753,7 @@ def discover():
 
     if feeds:
         from datetime import datetime, timedelta
+        fetch_errors = []
         for feed in feeds:
             if not feed["active"]:
                 continue
@@ -767,8 +768,10 @@ def discover():
                 items = fetch_feed(dict(feed))
                 save_feed_items(feed["id"], user_id, items, feed["keywords"] or "")
                 update_feed_fetched(feed["id"])
-            except Exception:
-                pass
+            except Exception as e:
+                fetch_errors.append(f"{feed['label']}: {e}")
+        if fetch_errors:
+            flash("Some feeds failed to fetch — " + "; ".join(fetch_errors), "error")
 
     feed_items = get_feed_items(user_id, analyzed=False)
 
@@ -822,6 +825,15 @@ def feeds_add():
         return redirect(url_for("settings") + "#feeds")
     if not source:
         flash("Source is required.", "error")
+        return redirect(url_for("settings") + "#feeds")
+    if feed_type in ("lever", "greenhouse") and not re.fullmatch(r"[a-z0-9-]+", source):
+        board_url = "jobs.lever.co/stripe" if feed_type == "lever" else "boards.greenhouse.io/stripe"
+        flash(
+            f"\"{source}\" doesn't look like a company name from a {feed_type.capitalize()} job board URL "
+            f"(e.g. \"stripe\" from {board_url}). "
+            f"{feed_type.capitalize()} feeds pull listings from one company at a time, not a search term.",
+            "error",
+        )
         return redirect(url_for("settings") + "#feeds")
     if not label:
         label = f"{feed_type.capitalize()} — {source}"
