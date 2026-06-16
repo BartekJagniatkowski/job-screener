@@ -1,10 +1,40 @@
 import json
 import os
-import re
-import sqlite3
 import urllib.request
 import urllib.error
 from typing import Any, Dict
+
+def _escape_json_string_controls(s: str) -> str:
+    """Escape unescaped control chars inside JSON string literals (state-machine scan)."""
+    out = []
+    i = 0
+    in_str = False
+    while i < len(s):
+        c = s[i]
+        if in_str:
+            if c == "\\":
+                out.append(c)
+                i += 1
+                if i < len(s):
+                    out.append(s[i])
+            elif c == '"':
+                in_str = False
+                out.append(c)
+            elif c == "\n":
+                out.append("\\n")
+            elif c == "\r":
+                out.append("\\r")
+            elif c == "\t":
+                out.append("\\t")
+            else:
+                out.append(c)
+        else:
+            if c == '"':
+                in_str = True
+            out.append(c)
+        i += 1
+    return "".join(out)
+
 
 API_URL: str = "https://api.anthropic.com/v1/messages"
 DEFAULT_MODEL: str = "claude-sonnet-4-6"
@@ -231,28 +261,7 @@ For each of the 3–5 most impactful CV bullets, show a rewrite:
 """
 
 
-def interview_prep(user: User, job_source: str, company: str, role: str, api_key: str) -> str:
-    """Generate interview preparation brief for a specific job.
-
-    Returns:
-        Markdown string with the interview prep brief.
-
-    Raises:
-        Exception: On API error or empty response.
-    """
-    cv = (user.get("cv") or "")[:3000].strip() or "[No CV — add it in Settings]"
-    job_source = job_source[:4000]
-    _vals = {"company": company or "Unknown", "role": role or "Unknown"}
-    system = re.sub(r'\{(company|role)\}', lambda m: _vals[m.group(1)], INTERVIEW_PREP_SYSTEM)
-    user_msg = f"Candidate CV:\n{cv}\n\nJob description:\n{job_source}"
-
-    payload_bytes = json.dumps({
-        "model": INTERVIEW_PREP_MODEL,
-        "max_tokens": 2000,
-        "system": system,
-        "messages": [{"role": "user", "content": user_msg}],
-    }).encode("utf-8")
-
+def _post_api(payload_bytes: bytes, api_key: str) -> Dict[str, Any]:
     req = urllib.request.Request(
         API_URL,
         data=payload_bytes,
@@ -263,10 +272,9 @@ def interview_prep(user: User, job_source: str, company: str, role: str, api_key
         },
         method="POST",
     )
-
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+            return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8")
         try:
@@ -275,73 +283,42 @@ def interview_prep(user: User, job_source: str, company: str, role: str, api_key
             msg = body
         raise Exception(f"API error {e.code}: {msg}")
     except urllib.error.URLError as e:
-        raise Exception(f"No API connection: {e.reason}")
+        raise Exception(f"API connection error: {e.reason}")
 
+
+def _run_secondary(system_template: str, model: str, max_tokens: int,
+                   user: User, job_source: str, company: str, role: str,
+                   api_key: str, empty_msg: str) -> str:
+    cv = (user.get("cv") or "")[:3000].strip() or "[No CV — add it in Settings]"
+    job_source = job_source[:4000]
+    system = system_template.format(company=company or "Unknown", role=role or "Unknown")
+    user_msg = f"Candidate CV:\n{cv}\n\nJob description:\n{job_source}"
+    payload_bytes = json.dumps({
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system,
+        "messages": [{"role": "user", "content": user_msg}],
+    }).encode("utf-8")
+    data = _post_api(payload_bytes, api_key)
     text = "".join(
         b.get("text", "") for b in data.get("content", [])
         if b.get("type") == "text"
     )
     if not text.strip():
-        raise Exception("Model returned empty response for interview prep.")
+        raise Exception(empty_msg)
     return text.strip()
+
+
+def interview_prep(user: User, job_source: str, company: str, role: str, api_key: str) -> str:
+    return _run_secondary(INTERVIEW_PREP_SYSTEM, INTERVIEW_PREP_MODEL, 2000,
+                          user, job_source, company, role, api_key,
+                          "Model returned empty response for interview prep.")
 
 
 def cv_tailoring(user: User, job_source: str, company: str, role: str, api_key: str) -> str:
-    """Generate CV tailoring guidance for a specific job.
-
-    Returns:
-        Markdown string with tailoring guidance.
-
-    Raises:
-        Exception: On API error or empty response.
-    """
-    cv = (user.get("cv") or "")[:3000].strip() or "[No CV — add it in Settings]"
-    job_source = job_source[:4000]
-    _vals = {"company": company or "Unknown", "role": role or "Unknown"}
-    system = re.sub(r'\{(company|role)\}', lambda m: _vals[m.group(1)], CV_TAILORING_SYSTEM)
-    user_msg = f"Candidate CV:\n{cv}\n\nJob description:\n{job_source}"
-
-    payload_bytes = json.dumps({
-        "model": CV_TAILORING_MODEL,
-        "max_tokens": 1500,
-        "system": system,
-        "messages": [{"role": "user", "content": user_msg}],
-    }).encode("utf-8")
-
-    req = urllib.request.Request(
-        API_URL,
-        data=payload_bytes,
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8")
-        try:
-            msg = json.loads(body).get("error", {}).get("message", body)
-        except Exception:
-            msg = body
-        raise Exception(f"API error {e.code}: {msg}")
-    except urllib.error.URLError as e:
-        raise Exception(f"No API connection: {e.reason}")
-
-    text = "".join(
-        b.get("text", "") for b in data.get("content", [])
-        if b.get("type") == "text"
-    )
-    if not text.strip():
-        raise Exception("Model returned empty response for CV tailoring.")
-    return text.strip()
-
-
-__all__ = ["analyze", "interview_prep", "cv_tailoring", "build_system", "AnalysisResult", "User"]
+    return _run_secondary(CV_TAILORING_SYSTEM, CV_TAILORING_MODEL, 1500,
+                          user, job_source, company, role, api_key,
+                          "Model returned empty response for CV tailoring.")
 
 
 def build_system(user: User) -> str:
@@ -414,29 +391,10 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: s
         "messages": [{"role": "user", "content": user_msg}]
     }).encode("utf-8")
 
-    req: urllib.request.Request = urllib.request.Request(
-        API_URL,
-        data=payload_bytes,
-        headers={
-            "Content-Type": "application/json",
-            "x-api-key": api_key,
-            "anthropic-version": "2023-06-01",
-        },
-        method="POST"
-    )
-
     try:
-        with urllib.request.urlopen(req, timeout=120) as resp:
-            data: Dict[str, Any] = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8")
-        try:
-            msg = json.loads(body).get("error", {}).get("message", body)
-        except Exception:
-            msg = body
-        raise Exception(f"API error {e.code}: {msg}. Model: {model}")
-    except urllib.error.URLError as e:
-        raise Exception(f"No connection to API: {e.reason}")
+        data: Dict[str, Any] = _post_api(payload_bytes, api_key)
+    except Exception as e:
+        raise Exception(f"{e}. Model: {model}")
 
     # Extract thinking and text blocks from the response
     thinking_text: str = "".join(
@@ -454,10 +412,16 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: s
     if start == -1 or end == 0 or start > end - 1:
         raise Exception(f"Model did not return valid JSON. Fragment: {text[:300]}")
 
+    raw_json = text[start:end]
     try:
-        result: AnalysisResult = json.loads(text[start:end])
-        if thinking_text:
-            result["_reasoning"] = thinking_text
-        return result
-    except json.JSONDecodeError as e:
-        raise Exception(f"JSON parse error: {e}. Fragment: {text[start:start+200]}")
+        result: AnalysisResult = json.loads(raw_json)
+    except json.JSONDecodeError:
+        # Model sometimes emits literal newlines/tabs inside string values; escape them.
+        repaired = _escape_json_string_controls(raw_json)
+        try:
+            result = json.loads(repaired)
+        except json.JSONDecodeError as e:
+            raise Exception(f"JSON parse error: {e}. Fragment: {raw_json[:200]}")
+    if thinking_text:
+        result["_reasoning"] = thinking_text
+    return result

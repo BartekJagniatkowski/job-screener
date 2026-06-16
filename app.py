@@ -3,7 +3,6 @@ import secrets
 import functools
 import pathlib
 import re
-import sqlite3
 from typing import Optional
 import threading
 import time
@@ -53,7 +52,7 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'T
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -97,7 +96,7 @@ def security_headers(response):
 
 # ── auth helpers ────────────────────────────────────────────────────────────
 
-def current_user() -> Optional[sqlite3.Row]:
+def current_user() -> Optional[dict]:
     """
     Return the current user from the session.
 
@@ -752,7 +751,6 @@ def discover():
     feeds = get_feeds(user_id)
 
     if feeds:
-        from datetime import datetime, timedelta
         fetch_errors = []
         for feed in feeds:
             if not feed["active"]:

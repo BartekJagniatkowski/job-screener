@@ -121,23 +121,11 @@ def _looks_like_js_wall(html: str, text: str) -> bool:
     """Heuristics for detecting pages that require JavaScript."""
     html_lower = html.lower()
     signals = [
-        'enable javascript',
-        'javascript is required',
-        'javascript is disabled',
-        'please enable javascript',
-        'noscript',
-        'cf-browser-verification',
-        'challenge-platform',   # Cloudflare
-        '__cf_chl',             # Cloudflare challenge
-        'recaptcha',
+        'enable javascript', 'javascript is required', 'javascript is disabled',
+        'please enable javascript', 'noscript', 'cf-browser-verification',
+        'challenge-platform', '__cf_chl', 'recaptcha',
     ]
-    for s in signals:
-        if s in html_lower:
-            return True
-    # Very little text relative to large HTML = likely JS wall
-    if len(html) > 5000 and len(text) < 200:
-        return True
-    return False
+    return any(s in html_lower for s in signals) or (len(html) > 5000 and len(text) < 200)
 
 
 # Domains that always block scraping — return blocked without attempting a request
@@ -159,21 +147,15 @@ BLOCKED_DOMAIN_MSG = {
     'justjoin.it': 'JustJoin.it blocks automated access. Copy the job description manually.',
 }
 
-def _get_domain(url: str) -> str:
-    """Extract the domain from a URL."""
-    try:
-        return urlparse(url).netloc.lower()
-    except Exception:
-        return ''
-
-
 def fetch(url: str, timeout: int = 12) -> tuple:
     """
     Fetch job listing content from a URL.
     Returns: (text: str|None, error_code: str|None, error_detail: str|None)
     """
-    # check known blocking domains before attempting a connection
-    domain = _get_domain(url)
+    try:
+        domain = urlparse(url).netloc.lower()
+    except Exception:
+        domain = ''
     base_domain = '.'.join(domain.split('.')[-2:]) if domain else ''
     if domain in BLOCKED_DOMAINS or base_domain in BLOCKED_DOMAINS:
         msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or               'This site blocks automated access. Copy the job description manually.'

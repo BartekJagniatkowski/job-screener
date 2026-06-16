@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.33 — JSON parse fix
+
+- **JSON parse fix** — analysis no longer fails when the model returns multi-line findings with literal newlines; a repair pass now handles this automatically before giving up with an error
+
+---
+
 ## v0.32 — Feed setup fixes
 
 - **Lever/Greenhouse validation** — adding a feed now checks the value looks like a company name from the board URL, with a clear error and example if not
