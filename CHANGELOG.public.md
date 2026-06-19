@@ -4,6 +4,15 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.35 — Visual redesign, job modal rebuild
+
+- **New look** — refreshed the visual design across the app
+- **Job detail view rebuilt** — easier to scan at a glance, with status and actions always visible while you browse
+- **Keyboard shortcut** — press `d` anywhere to switch between light and dark mode
+- **Fix** — the theme mask behind an open job listing now matches whichever mode you're in, and gained a subtle blur
+
+---
+
 ## v0.34 — Security hardening, cost optimization, selection fix
 
 - **Security hardening** — closed a gap where a redirect could bypass the tool's safeguard against fetching internal/private network addresses; added a cap on request size to prevent abuse

@@ -64,9 +64,7 @@ job-screener/
 ├── server.sh           — server management: start|stop|restart|status
 ├── push-public.sh      — push to public remote with CHANGELOG.public.md substituted as CHANGELOG.md (synthetic commit, no force-push)
 ├── static/
-│   ├── style.css       — ALL application styles (zero inline styles in templates)
-│   └── fonts/
-│       └── Nohemi-VF.ttf — variable font used in headings and app name
+│   └── style.css       — ALL application styles (zero inline styles in templates)
 ├── templates/
 │   ├── base.html       — layout, <link> to style.css, navigation (no footer)
 │   ├── login.html
@@ -282,6 +280,23 @@ The `data-verdict` attribute on the badge element stores the underlying verdict
 - JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in `dashboard.html`, not in the partial — `<script>` tags in AJAX-loaded partials do not execute
 - `company_display(j)` — Jinja macro in `dashboard.html`; if `job.company` contains `(`, shows only the text before it plus a `.company-note` "(?)" with the full name as `title`; used in both the table and mobile cards
 - Single `keydown` handler with modal guard: modal open → only Escape/←/→ handled; modal closed → Cmd+Enter submits, Cmd+K focuses input
+- The `d` theme-toggle shortcut is a *separate* global `keydown` listener defined in `base.html` (not the dashboard-only handler above) — works on every page, guarded against firing while a field has focus
+- `.modal-overlay` mask uses the theme-aware `--overlay-mask` token (white-translucent in light mode, dark-translucent in dark mode — not a hardcoded colour) plus `backdrop-filter: blur(6px)`
+- `.modal-body` itself has **zero** padding — every section inside manages its own padding. (Past bug: `.modal-body` *and* each section both had `24px` padding, doubling the inset to 48px and making content look narrower than the modal — fixed by zeroing the outer one.)
+
+`job_partial.html` content order, top to bottom, all inside one `.card` (persists across tabs except where noted):
+1. `.card-header` — badges (`.card-badges`) → `.card-title` → `.card-company` → `.card-meta` (analyzed date)
+2. `.job-tabs` (Overview / Layers / Skills / CV / Interview), fixed `48px` height
+3. **Overview tab only** (`#jt-overview`, flex-column, `32px` padding, `16px` gap between children): verdict summary paragraph → `.overview-meta-row` (job URL link + "change") → `.layer-track` (full-width six-segment status bar, each segment shows a value e.g. "Warn"/"OK"/score) → reality check → yellow list → zero list ("red flag") → gut feeling
+4. `.modal-actions` — status select + Re-analyze + Delete; fixed `80px` height, `var(--surface-2)` tint, persists across all tabs (sits after the tab-content divs, not inside any one tab)
+5. `.notes-section` (outside `.card`)
+6. `.source-section` (outside `.card`, after notes) — listing source as a native `<details class="collapsible">`, collapsed by default
+
+`.tab-section` (used for Gut feeling, each Layers entry, Skills/CV/Interview content) has its padding/border
+stripped to `0`/`none` when inside `.job-tab-content` — the parent's flex `gap` does the spacing instead, so
+nothing inside a tab looks like a divided list anymore. The one place `.tab-section`'s own padding/border-bottom
+still applies is `.modal-actions` (which lives outside the tab-content scope) and is suppressed there too via
+`:last-child` since it's the last thing in `.card`.
 
 ### /analyze logic
 1. `normalize_url(url)` — always before use
@@ -436,62 +451,74 @@ All styles in `static/style.css`. New class → new entry in the appropriate
 section of the file with a section comment (e.g. `/* ── new section ───── */`).
 
 ### Design tokens
+Untitled UI–inspired system (mockup reference: `untitledui-mockup.html` in repo root, not part of the app).
 ```css
---bg, --surface, --border, --border-light   — neutral cool black (#0d0d0d / #1a1a1a)
---text, --muted, --dim                      — text greyscale
---accent, --accent-dim                      — gold (#c9a96e) — nav-brand only
---radius-sm: 8px; --radius-md: 18px; --radius-lg: 22px
---fd: 'Nohemi'   — headings, logo (font-weight: 200)
---fb: 'DM Sans'  — body text
---fm: 'DM Mono'  — labels, mono, buttons
+--bg, --surface, --surface-2, --border, --border-light   — neutral cool black (dark) / neutral grey (light)
+--text, --muted, --dim                                   — text greyscale
+--accent, --accent-dim                                    — blue (#5c5cff dark / #0000ff light) — primary buttons, links, active tab, focus ring
+--danger, --danger-hover                                  — theme-invariant solid red, used only for `.btn-danger` fill
+--shadow-xs, --shadow-sm                                   — soft drop shadows (cards, modal) — replaced the old heavy inset-black-shadow look
+--radius-sm: 8px; --radius-md: 12px; --radius-lg: 16px
+--fd: 'Inter'           — headings, logo
+--fb: 'Inter'           — body text
+--fm: 'JetBrains Mono'  — labels, mono, eyebrow text
 ```
+
+Six status colours are each a `text` / `bg` / `border` triple (`--blue`/`--blue-bg`/`--blue-border`, and
+the same pattern for `--yellow`, `--red`, `--green`, `--violet`, `--orange`) — theme-aware, so a component
+that reads `var(--red)` etc. never needs a `[data-theme="light"]` override. Light theme's `*-bg` values are
+Tailwind-50-style soft tints (e.g. `#fef3f2`), not saturated — badges and any future tinted surface should
+reuse these tokens rather than inventing new hex values.
 
 ### Typography variables
 ```css
 --fs-base-scale: 16px;  /* change only this one value */
 --fs-2xs through --fs-4xl — calc() based on base-scale
---fs-tiny: 9px   — badges, filter buttons
+--fs-tiny: 9px   — legacy, mostly superseded by literal 11px on `.badge`
 --fs-icon: 14px  — icon glyphs
---fw-light: 200; --fw-normal: 400; --fw-medium: 500
+--fw-display: 600; --fw-normal: 400; --fw-medium: 500
 ```
+`--fw-display` replaced the old `--fw-light` (200) — Inter 200 isn't loaded, so headings rendered flat;
+600 gives real visual hierarchy. Used by `.page-title`-adjacent headings, `.stat-card-value`, etc.
+`.page-title` itself is a fixed `32px` / `--fw-normal`, not token-scaled — set directly per design request.
 
 ### Light / dark mode
-- `data-theme="light"` attribute on `<html>` activates the light palette (#f2f2f2 background, white cards)
+- `data-theme="light"` attribute on `<html>` activates the light palette (neutral `#fafafa` bg / white cards — not warm cream)
 - Toggle: `<button id="theme-toggle">` in navigation (`base.html`) — ☀/☾ icon
 - Preference saved in `localStorage`; loaded by IIFE in `<head>` before CSS (zero flash)
-- Low-contrast colours on light background overridden by `[data-theme="light"] .class { ... }` rules
+- Per-component colour overrides are mostly gone now that status colours are theme-aware tokens (see Design tokens) — only a handful of genuinely one-off cases remain under `[data-theme="light"] .class { ... }`
 
-### Status colours (table rows and badges)
+### Status colours (badges and filter pills)
 
-All badges have **transparent background** — border and text colour only.
-Row highlight is the only colour signal at category level.
+Badges and filter pills are soft-tinted pills: border + text colour (the status's `--*` token) + background
+(the matching `--*-bg` token) + a small coloured dot (`.badge::before` / `.filter-btn::before`, `background: currentColor`).
+Table rows no longer carry a background tint — the badge is the only colour signal in a row, matching the
+Untitled UI reference (loud per-row highlight colour-washing was removed; it read as dated next to soft badges).
 
-| Status | Row class | Badge | Colour |
-|---|---|---|---|
-| Worth considering | `row-worth-considering` | `badge-worth_considering` | blue |
-| Needs review | `row-warning` | `badge-warning` | yellow |
-| AI rejected | `row-rejected-soft` | `badge-rejected` | red, faint row background |
-| Rejected | `row-rejected` | `badge-rejected` | red, full row background |
-| Applied | `row-applied` | `badge-applied` | green |
-| Rejected by company | `row-company-rejected` | `badge-company_rejected` | orange, no row background |
-| Interview | `row-interview` | `badge-interview` | purple, no row background |
-| Offer received | `row-offer` | `badge-offer` | green, no row background |
+| Status | Badge class | Colour token |
+|---|---|---|
+| Worth considering | `badge-worth_considering` | blue |
+| Needs review | `badge-warning` | yellow |
+| Rejected (AI or user) | `badge-rejected` | red |
+| Applied | `badge-applied` | green |
+| Rejected by company | `badge-company_rejected` | orange |
+| Interview | `badge-interview` | violet |
+| Offer received | `badge-offer` | green |
 
-Hover on coloured rows: `box-shadow: inset 0 0 0 9999px var(--hover-overlay)`
-instead of `filter: brightness()` — does not affect badge and dot colours.
+Hover on table rows: `box-shadow: inset 0 0 0 9999px var(--hover-overlay)`.
 
 ### Key utility classes
-`.page-title`, `.page-sub` — page heading and subtitle (Nohemi font-weight 200)
+`.page-title`, `.page-sub` — page heading and subtitle (Inter, `32px` regular weight — not token-scaled)
 `.field`, `.field-hint` — form field wrapper and its label
 `.flash`, `.flash.info`, `.flash.error` — flash messages from the server; `base.html` uses `get_flashed_messages(with_categories=true)` — pass `"error"` as second arg to `flash()` for red styling, omit category (defaults to `"message"`) for neutral blue
-`.nav-brand`, `.nav-links` — logo and navigation links
-`.btn-primary`, `.btn-secondary`, `.btn-sm`, `.btn-danger` — `.btn-secondary`/`.btn-danger` use solid backgrounds (visually distinct from transparent badge pills)
+`.nav-brand`, `.nav-links` — logo (`job` + accent-coloured `<span>screener</span>`) and navigation links
+`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.btn-sm`, `.btn-danger` — rounded-rect (`--radius-sm`), not pill; `.btn-primary`/`.cmd-btn` are accent-filled (white text); `.btn-secondary` is outlined on `var(--surface)`; `.btn-danger` uses the theme-invariant `--danger` token
 `.btn-icon` — trailing icon glyph in a button label, slightly enlarged (`1.15em`)
-`.badge` — 9px medium-weight pill, transparent background, border+text colour only
+`.badge` — `11px` medium-weight pill with a `::before` coloured dot, soft-tinted background (`--*-bg`) + border (`--*-border`) + text (`--*`)
 `.badge-fit`, `.badge-fit-ok`, `.badge-fit-warning`, `.badge-fit-flag`, `.badge-fit-unknown` — skills-fit-score badge in modal header, colour-coded like `.dot-*`
 `.card-badges` — flex row wrapping verdict/archetype/fit badges in `.card-header--vertical`
 `.modal-action-delete` — `margin-left: auto`, right-aligns Delete button in `.modal-actions`
-`.btn-theme-toggle` — ☀/☾ button that toggles light/dark mode
+`.btn-theme-toggle` — ☀/☾ button that toggles light/dark mode; also bound to the `d` key globally (`base.html`)
 `.btn-applied`, `.btn-applied.is-applied` — "Applied" button (green when active)
 `.btn-company-rejected.is-rejected` — rejection button (blue when active)
 `.dot`, `.dot-ok`, `.dot-warning`, `.dot-flag`, `.dot-unknown` — coloured layer status dots
@@ -509,7 +536,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.td-dim`, `.td-red`, `.td-green`, `.td-orange`, `.td-blue`
 `.card-body`, `.card-mb`, `.card-header-body`
 `.card-sub`, `.card-meta` — card header subtitle and metadata
-`.card-header--vertical` — vertical card header layout: badge → role → company → summary → dates (used in modal and detail view)
+`.card-header--vertical` — vertical card header layout: badges → role → company → analyzed date (summary/link moved into the Overview tab, not the header, in v0.35)
 `.card-company` — company name below role title in vertical card header
 `.card-source-url` — listing link in card header, below summary; truncated with ellipsis
 `.duplicate-notice`, `.duplicate-label`, `.duplicate-title`, `.duplicate-meta`, `.duplicate-actions`
@@ -544,8 +571,11 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.statistics-card-title` — uppercase label inside breakdown cards
 `.statistics-breakdown-card` — modifier on `.card` for breakdown grid cards; scopes `.bar-label` width to 90px
 `.bar-count-flag` — red colour override for flag-count numbers in layer flags card
-`.collapsible`, `.collapsible-header`, `.collapsible-body` — collapsible section (header click toggles body display:none)
+`.collapsible`, `.collapsible-header`, `.collapsible-body` — native `<details>`/`<summary>` collapsible (no JS), used for listing source; `.collapsible-arrow` rotates 90° via `.collapsible[open] .collapsible-arrow`
 `.collapsible-label`, `.collapsible-right`, `.collapsible-meta`, `.collapsible-arrow` — collapsible header anatomy
+`.layer-track` — full-width six-segment status bar (Triage/Product/Business/Reputation/Values/Fit), each `.layer-seg` is `flex:1` with a coloured dot + a muted `.layer-seg-value` (status word or score)
+`.overview-meta-row` — job URL link + "change" action, sits between the summary paragraph and the layer track in the Overview tab
+`.source-section` — footer wrapper for the listing-source collapsible, after `.notes-section`, outside `.card`
 `.reality-check-card` — left green border + green-bg tint; wraps the reality check section
 `.reality-check-label` — uppercase monospace label in green
 `.reality-check-summary` — plain-English summary text (muted, 1.65 line-height)
@@ -563,7 +593,7 @@ instead of `filter: brightness()` — does not affect badge and dot colours.
 `.about-layer-name` — uppercase monospace layer title inside layer card
 `.about-layer-desc` — small muted description text inside layer card
 `.about-verdict-row` — flex row with border separator for each verdict entry
-`.about-verdict-label` — fixed-width verdict name (uses colour utilities: `td-blue`, `text-yellow`, `text-red`, `text-green`, `td-orange`)
+`.about-verdict-label` — fixed-width (`180px`) column wrapping a `.badge` pill (natural width, not stretched); no row dividers in this table
 `.about-verdict-desc` — small muted verdict description
 `.about-changelog` — wrapper around inline changelog on About page
 `.section-label` — uppercase monospace section heading (color `--muted`); used in settings (Data export, Change password) and dashboard (Recent analyses)

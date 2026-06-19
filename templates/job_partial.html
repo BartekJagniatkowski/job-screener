@@ -1,6 +1,7 @@
 {% set vl = {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'} %}
 {% set sl = {'ok':'No issues','warning':'Needs review','flag':'Red flag'} %}
 {% set sc = {'ok':'ok','warning':'warning','flag':'flag'} %}
+{% set ssv = {'ok':'OK','warning':'Warn','flag':'Flag'} %}
 
 {%- if job.offer_received %}{% set cur_status = 'offer' %}
 {%- elif job.interview_scheduled %}{% set cur_status = 'interview' %}
@@ -9,33 +10,6 @@
 {%- elif job.verdict == 'rejected' and job.verdict_confirmed %}{% set cur_status = 'rejected' %}
 {%- elif job.verdict == 'rejected' and not job.verdict_confirmed %}{% set cur_status = 'rejected_soft' %}
 {%- else %}{% set cur_status = job.verdict or 'worth_considering' %}{% endif %}
-
-<div class="modal-actions">
-  <div class="verdict-select-wrap">
-    <label class="verdict-select-label">Status:</label>
-    <select id="status-select" class="verdict-select" onchange="setStatus(this.value)">
-      <optgroup label="Job analysis">
-        {% if cur_status == 'rejected_soft' %}
-        <option value="rejected_soft" disabled hidden selected>AI rejected</option>
-        {% endif %}
-        <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
-        <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
-        <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Rejected</option>
-      </optgroup>
-      <optgroup label="Application">
-        <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Applied</option>
-        <option value="company_rejected"  {% if cur_status == 'company_rejected' %}selected{% endif %}>Rejected by company</option>
-        <option value="interview"         {% if cur_status == 'interview' %}selected{% endif %}>Interview</option>
-        <option value="offer"             {% if cur_status == 'offer' %}selected{% endif %}>Offer received</option>
-      </optgroup>
-    </select>
-  </div>
-  {% if job.source_full or job.source %}
-  <button id="reanalyze-btn" class="btn btn-secondary btn-sm" onclick="reanalyze()">Re-analyze <span class="btn-icon">↻</span></button>
-  {% endif %}
-  <button class="btn btn-secondary btn-sm btn-danger modal-action-delete" onclick="confirmDelete()">Delete <span class="btn-icon">✕</span></button>
-</div>
-<div id="reanalyze-status" class="notice" style="display:none;"></div>
 
 <div class="card">
   <div class="card-header card-header--vertical">
@@ -52,12 +26,6 @@
     </div>
     <div class="card-title">{{ job.role or '—' }}</div>
     <div class="card-company">{{ job.company or 'Unknown' }}</div>
-    {% if job.verdict_summary %}<div class="card-sub">{{ job.verdict_summary }}</div>{% endif %}
-    {% if job.job_url %}
-    <div class="card-source-url"><a href="{{ job.job_url }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.job_url }}</a></div>
-    {% elif job.source_full and job.source_full.startswith('http') %}
-    <div class="card-source-url"><a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a></div>
-    {% endif %}
     <div class="card-meta">
       Analyzed: {{ job.analyzed_at }}
       {% if job.offer_received and job.offer_at %}
@@ -83,22 +51,37 @@
 
   {# ── Tab: Overview ── #}
   <div id="jt-overview" class="job-tab-content active">
-    {% if job.zero_list_hit %}
-    <div class="zero-list-card">
-      <div class="zero-list-label">⛔ Zero list</div>
-      <div class="zero-list-body">{{ job.zero_list_reason }}</div>
-      {% if raw.get('zero_list_evidence') %}
-      <div class="evidence"><span class="evidence-label">Evidence from listing</span><span class="evidence-text">{{ raw.get('zero_list_evidence') }}</span></div>
+    {% if job.verdict_summary %}<p class="card-sub">{{ job.verdict_summary }}</p>{% endif %}
+
+    {% if job.job_url or (job.source_full and job.source_full.startswith('http')) %}
+    <div class="overview-meta-row">
+      {% if job.job_url %}
+      <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.job_url }}</a>
+      <button onclick="showUrlEdit()" class="btn-inline">change</button>
+      {% elif job.source_full and job.source_full.startswith('http') %}
+      <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
       {% endif %}
+    </div>
+    <div id="url-edit" style="display:none">
+      <div class="source-url-input-row">
+        <input id="url-input" type="url" class="source-url-input"
+          value="{{ job.job_url or '' }}"
+          placeholder="https://..."
+          onkeydown="if(event.key==='Enter') saveUrl()">
+        <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Save URL</button>
+      </div>
+      <div id="url-status" class="notice" style="display:none; margin-top:6px;"></div>
     </div>
     {% endif %}
 
-    {% if raw.get('yellow_list_hit') %}
-    <div class="yellow-list-card">
-      <div class="yellow-list-label">⚠ Yellow list</div>
-      <div class="yellow-list-body">{{ raw.get('yellow_list_reason') }}</div>
+    <div class="layer-track">
+      <span class="layer-seg {{ sc.get(job.triage_status,'unknown') }}"><span class="dot"></span>Triage<span class="layer-seg-value">{{ ssv.get(job.triage_status,'—') }}</span></span>
+      <span class="layer-seg {{ sc.get(job.product_status,'unknown') }}"><span class="dot"></span>Product<span class="layer-seg-value">{{ ssv.get(job.product_status,'—') }}</span></span>
+      <span class="layer-seg {{ sc.get(job.business_status,'unknown') }}"><span class="dot"></span>Business<span class="layer-seg-value">{{ ssv.get(job.business_status,'—') }}</span></span>
+      <span class="layer-seg {{ sc.get(job.reputation_status,'unknown') }}"><span class="dot"></span>Reputation<span class="layer-seg-value">{{ ssv.get(job.reputation_status,'—') }}</span></span>
+      <span class="layer-seg {{ sc.get(job.values_status,'unknown') }}"><span class="dot"></span>Values<span class="layer-seg-value">{{ ssv.get(job.values_status,'—') }}</span></span>
+      <span class="layer-seg {{ sc.get(job.fit_status,'unknown') }}"><span class="dot"></span>Fit<span class="layer-seg-value">{% if job.fit_score is not none %}{{ "%.1f"|format(job.fit_score) }}{% else %}—{% endif %}</span></span>
     </div>
-    {% endif %}
 
     {% set rc = raw.get('reality_check') %}
     {% if rc %}
@@ -121,50 +104,29 @@
     </div>
     {% endif %}
 
+    {% if raw.get('yellow_list_hit') %}
+    <div class="yellow-list-card">
+      <div class="yellow-list-label">⚠ Yellow list</div>
+      <div class="yellow-list-body">{{ raw.get('yellow_list_reason') }}</div>
+    </div>
+    {% endif %}
+
+    {% if job.zero_list_hit %}
+    <div class="zero-list-card">
+      <div class="zero-list-label">⛔ Red flag — zero list</div>
+      <div class="zero-list-body">{{ job.zero_list_reason }}</div>
+      {% if raw.get('zero_list_evidence') %}
+      <div class="evidence"><span class="evidence-label">Evidence from listing</span><span class="evidence-text">{{ raw.get('zero_list_evidence') }}</span></div>
+      {% endif %}
+    </div>
+    {% endif %}
+
     {% if job.gut_feeling %}
     <div class="tab-section">
       <div class="tab-section-label">Gut feeling</div>
       <div class="tab-section-body">{{ job.gut_feeling }}</div>
     </div>
     {% endif %}
-
-    <div class="tab-section">
-      <div class="tab-section-label">Listing source</div>
-      <div class="tab-section-body">
-        {% if job.source_full %}
-          {% if job.source_full.startswith('http') %}
-            <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
-            <div class="source-url-hint">URL may be inactive if the listing was removed.</div>
-          {% else %}
-            <div class="source-text">{{ job.source_full }}</div>
-            <div class="source-url-section">
-              {% if job.job_url %}
-                <div class="source-url-label">Listing URL</div>
-                <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="source-url-link">{{ job.job_url }}</a>
-                <button onclick="showUrlEdit()" class="btn-inline">change</button>
-              {% else %}
-                <div class="source-url-label">Add listing URL</div>
-              {% endif %}
-              <div id="url-edit" {% if job.job_url %}style="display:none"{% endif %}>
-                <div class="source-url-input-row">
-                  <input id="url-input" type="url" class="source-url-input"
-                    value="{{ job.job_url or '' }}"
-                    placeholder="https://..."
-                    onkeydown="if(event.key==='Enter') saveUrl()">
-                  <button onclick="saveUrl()" class="btn btn-secondary btn-sm">Save URL</button>
-                </div>
-                <div id="url-status" class="notice" style="display:none; margin-top:6px;"></div>
-              </div>
-            </div>
-          {% endif %}
-        {% elif job.source %}
-          <div class="source-old-text">{{ job.source }}</div>
-          <div class="source-old-hint">Full text unavailable — listing was analyzed before this feature was introduced.</div>
-        {% else %}
-          <div class="source-none">No source saved.</div>
-        {% endif %}
-      </div>
-    </div>
   </div>
 
   {# ── Tab: Layers ── #}
@@ -202,7 +164,7 @@
     <div class="tab-section">
       <div class="tab-section-label">
         <span class="dot dot-{{ sc.get(job.fit_status,'unknown') }}"></span>
-        Skills fit <span class="tab-section-status">{{ sl.get(job.fit_status,'—') }}{% if job.fit_score %} · <strong>{{ "%.1f"|format(job.fit_score) }}/5</strong>{% endif %}</span>
+        Fit <span class="tab-section-status">{{ sl.get(job.fit_status,'—') }}{% if job.fit_score %} · <strong>{{ "%.1f"|format(job.fit_score) }}/5</strong>{% endif %}</span>
       </div>
       <div class="tab-section-body">
         {% if job.fit_strengths %}<strong>Strengths:</strong> {{ job.fit_strengths }}<br><br>{% endif %}
@@ -212,7 +174,7 @@
     </div>
     {% else %}
     <div class="job-tab-empty">
-      <div class="job-tab-empty-hint">No skills fit data for this analysis.</div>
+      <div class="job-tab-empty-hint">No fit data for this analysis.</div>
     </div>
     {% endif %}
   </div>
@@ -275,6 +237,33 @@
     {% endif %}
   </div>
 
+  <div class="tab-section modal-actions">
+    <div class="verdict-select-wrap">
+      <label class="verdict-select-label">Status:</label>
+      <select id="status-select" class="verdict-select" onchange="setStatus(this.value)">
+        <optgroup label="Job analysis">
+          {% if cur_status == 'rejected_soft' %}
+          <option value="rejected_soft" disabled hidden selected>AI rejected</option>
+          {% endif %}
+          <option value="worth_considering" {% if cur_status == 'worth_considering' %}selected{% endif %}>Worth considering</option>
+          <option value="warning"           {% if cur_status == 'warning' %}selected{% endif %}>Needs review</option>
+          <option value="rejected"          {% if cur_status == 'rejected' %}selected{% endif %}>Rejected</option>
+        </optgroup>
+        <optgroup label="Application">
+          <option value="applied"           {% if cur_status == 'applied' %}selected{% endif %}>Applied</option>
+          <option value="company_rejected"  {% if cur_status == 'company_rejected' %}selected{% endif %}>Rejected by company</option>
+          <option value="interview"         {% if cur_status == 'interview' %}selected{% endif %}>Interview</option>
+          <option value="offer"             {% if cur_status == 'offer' %}selected{% endif %}>Offer received</option>
+        </optgroup>
+      </select>
+    </div>
+    {% if job.source_full or job.source %}
+    <button id="reanalyze-btn" class="btn btn-secondary btn-sm" onclick="reanalyze()">Re-analyze <span class="btn-icon">↻</span></button>
+    {% endif %}
+    <button class="btn btn-secondary btn-sm btn-danger modal-action-delete" onclick="confirmDelete()">Delete <span class="btn-icon">✕</span></button>
+    <div id="reanalyze-status" class="notice" style="display:none; width:100%; margin-top:8px;"></div>
+  </div>
+
 </div>
 
 <div class="notes-section">
@@ -282,4 +271,36 @@
   <textarea id="notes-textarea" class="notes-textarea" maxlength="10000" placeholder="Add your notes — interview date, follow-up, salary info…">{{ job.notes or '' }}</textarea>
   <button class="btn btn-secondary btn-sm notes-save-btn" onclick="saveNotes()">Save notes <span class="btn-icon">↓</span></button>
   <span id="notes-status" class="notes-status"></span>
+</div>
+
+<div class="source-section">
+  <details class="collapsible">
+    <summary class="collapsible-header">
+      <span class="collapsible-label">Listing source</span>
+      <span class="collapsible-arrow">▸</span>
+    </summary>
+    <div class="collapsible-body">
+      {% if job.source_full %}
+        {% if job.source_full.startswith('http') %}
+          <a href="{{ job.source_full }}" target="_blank" rel="noopener" class="source-inline-link">{{ job.source_full }}</a>
+          <div class="source-url-hint">URL may be inactive if the listing was removed.</div>
+        {% else %}
+          <div class="source-text">{{ job.source_full }}</div>
+          <div class="source-url-section">
+            {% if job.job_url %}
+              <div class="source-url-label">Listing URL</div>
+              <a href="{{ job.job_url }}" target="_blank" rel="noopener" class="source-url-link">{{ job.job_url }}</a>
+            {% else %}
+              <div class="source-url-label">No listing URL saved.</div>
+            {% endif %}
+          </div>
+        {% endif %}
+      {% elif job.source %}
+        <div class="source-old-text">{{ job.source }}</div>
+        <div class="source-old-hint">Full text unavailable — listing was analyzed before this feature was introduced.</div>
+      {% else %}
+        <div class="source-none">No source saved.</div>
+      {% endif %}
+    </div>
+  </details>
 </div>

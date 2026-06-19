@@ -1,315 +1,456 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}Job Screener{% endblock %}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-{% block head %}{% endblock %}
-<script>
-  (function(){
-    var t = localStorage.getItem('theme');
-    if (t) document.documentElement.setAttribute('data-theme', t);
-  })();
-</script>
-<meta name="csrf-token" content="{{ csrf_token() }}">
-<script>
-  function csrfToken() {
-    var m = document.querySelector('meta[name="csrf-token"]');
-    return m ? m.getAttribute('content') : '';
-  }
-</script>
-</head>
-<body>
-{% if session.user_id %}
-<nav id="main-nav">
-  <a href="{{ url_for('dashboard') }}" class="nav-brand">Job Screener</a>
-  <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Menu" aria-expanded="false">☰</button>
-  <div class="nav-links">
-    <a href="{{ url_for('discover') }}" {% if request.endpoint == 'discover' %}class="active"{% endif %}>Discover</a>
-    <a href="{{ url_for('statistics') }}" {% if request.endpoint == 'statistics' %}class="active"{% endif %}>Statistics</a>
-    <a href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}class="active"{% endif %}>Settings</a>
-    <a href="{{ url_for('about') }}" {% if request.endpoint == 'about' %}class="active"{% endif %}>About</a>
-    <a href="{{ url_for('logout') }}">Logout</a>
-  </div>
-  <button type="button" class="btn-theme-toggle" id="theme-toggle" title="Toggle theme"></button>
-</nav>
-{% endif %}
-<div id="analysis-banner" class="analysis-banner" role="status" aria-live="polite"></div>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>{% block title %}Job Screener{% endblock %}</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='style.css') }}"
+        />
+        {% block head %}{% endblock %}
+        <script>
+            (function () {
+                var t = localStorage.getItem("theme");
+                if (t) document.documentElement.setAttribute("data-theme", t);
+            })();
+        </script>
+        <meta name="csrf-token" content="{{ csrf_token() }}" />
+        <script>
+            function csrfToken() {
+                var m = document.querySelector('meta[name="csrf-token"]');
+                return m ? m.getAttribute("content") : "";
+            }
+        </script>
+    </head>
+    <body>
+        {% if session.user_id %}
+        <nav id="main-nav">
+            <a href="{{ url_for('dashboard') }}" class="nav-brand"
+                >job<span>screener</span></a
+            >
+            <button
+                type="button"
+                class="nav-toggle"
+                id="nav-toggle"
+                aria-label="Menu"
+                aria-expanded="false"
+            >
+                ☰
+            </button>
+            <div class="nav-links">
+                <a
+                    href="{{ url_for('discover') }}"
+                    {% if request.endpoint == "discover" %}class="active"{% endif %}
+                    >Discover</a
+                >
+                <a
+                    href="{{ url_for('statistics') }}"
+                    {% if request.endpoint == "statistics" %}class="active"{% endif %}
+                    >Statistics</a
+                >
+                <a
+                    href="{{ url_for('settings') }}"
+                    {% if request.endpoint == "settings" %}class="active"{% endif %}
+                    >Settings</a
+                >
+                <a
+                    href="{{ url_for('about') }}"
+                    {% if request.endpoint == "about" %}class="active"{% endif %}
+                    >About</a
+                >
+                <a href="{{ url_for('logout') }}">Logout</a>
+            </div>
+            <button
+                type="button"
+                class="btn-theme-toggle"
+                id="theme-toggle"
+                title="Toggle theme"
+            ></button>
+        </nav>
+        {% endif %}
+        <div
+            id="analysis-banner"
+            class="analysis-banner"
+            role="status"
+            aria-live="polite"
+        ></div>
 
-<div class="{% block container_class %}container{% endblock %}">
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, msg in messages %}
-        <div class="flash {{ category if category in ('info', 'error') else 'info' }}">{{ msg }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-  {% block content %}{% endblock %}
-</div>
+        <div class="{% block container_class %}container{% endblock %}">
+            {% with messages = get_flashed_messages(with_categories=true) %} {%
+            if messages %} {% for category, msg in messages %}
+            <div
+                class="flash {{ category if category in ('info', 'error') else 'info' }}"
+            >
+                {{ msg }}
+            </div>
+            {% endfor %} {% endif %} {% endwith %} {% block content %}{%
+            endblock %}
+        </div>
 
-<script>
-(function () {
-  var POLL_MS = 3000;
-  var banner = document.getElementById('analysis-banner');
-  if (!banner) return;
-  var timer = null;
-  var cycleTimer = null;
-  var cycleLabels = [];
-  var cycleIndex = 0;
+        <script>
+            (function () {
+                var POLL_MS = 3000;
+                var banner = document.getElementById("analysis-banner");
+                if (!banner) return;
+                var timer = null;
+                var cycleTimer = null;
+                var cycleLabels = [];
+                var cycleIndex = 0;
 
-  function escHtml(s) {
-    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  }
+                function escHtml(s) {
+                    return (s || "")
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;")
+                        .replace(/"/g, "&quot;");
+                }
 
-  function vLabel(v) {
-    return v === 'worth_considering' ? 'worth considering'
-         : v === 'warning' ? 'needs review'
-         : v === 'rejected' ? 'rejected' : (v || '');
-  }
+                function vLabel(v) {
+                    return v === "worth_considering"
+                        ? "worth considering"
+                        : v === "warning"
+                          ? "needs review"
+                          : v === "rejected"
+                            ? "rejected"
+                            : v || "";
+                }
 
-  function updateCounter() {
-    var el = document.getElementById('ab-counter');
-    if (!el) return;
-    if (cycleLabels.length <= 1) {
-      el.style.display = 'none';
-    } else {
-      el.style.display = '';
-      el.textContent = (cycleIndex + 1) + ' of ' + cycleLabels.length;
-    }
-  }
+                function updateCounter() {
+                    var el = document.getElementById("ab-counter");
+                    if (!el) return;
+                    if (cycleLabels.length <= 1) {
+                        el.style.display = "none";
+                    } else {
+                        el.style.display = "";
+                        el.textContent =
+                            cycleIndex + 1 + " of " + cycleLabels.length;
+                    }
+                }
 
-  function doSlide() {
-    if (cycleLabels.length <= 1) return;
-    var src = document.getElementById('ab-source');
-    if (!src) return;
-    src.classList.add('slide-out');
-    src.addEventListener('animationend', function onOut() {
-      src.removeEventListener('animationend', onOut);
-      cycleIndex = (cycleIndex + 1) % cycleLabels.length;
-      src.textContent = cycleLabels[cycleIndex];
-      src.classList.remove('slide-out');
-      src.classList.add('slide-in');
-      updateCounter();
-      src.addEventListener('animationend', function onIn() {
-        src.removeEventListener('animationend', onIn);
-        src.classList.remove('slide-in');
-      });
-    });
-  }
+                function doSlide() {
+                    if (cycleLabels.length <= 1) return;
+                    var src = document.getElementById("ab-source");
+                    if (!src) return;
+                    src.classList.add("slide-out");
+                    src.addEventListener("animationend", function onOut() {
+                        src.removeEventListener("animationend", onOut);
+                        cycleIndex = (cycleIndex + 1) % cycleLabels.length;
+                        src.textContent = cycleLabels[cycleIndex];
+                        src.classList.remove("slide-out");
+                        src.classList.add("slide-in");
+                        updateCounter();
+                        src.addEventListener("animationend", function onIn() {
+                            src.removeEventListener("animationend", onIn);
+                            src.classList.remove("slide-in");
+                        });
+                    });
+                }
 
-  function showRunning(labels) {
-    document.title = '⏳ Analyzing… — Job Screener';
-    cycleLabels = labels.length ? labels : [''];
-    var wasRunning = banner.classList.contains('is-running');
-    if (!wasRunning) {
-      cycleIndex = 0;
-      banner.className = 'analysis-banner is-running is-visible';
-      document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
-      banner.onclick = null;
-      banner.innerHTML =
-        '<span class="analysis-banner-spinner"></span>' +
-        '<span class="analysis-banner-label">Analyzing</span>' + '<span id="ab-counter" class="analysis-banner-counter"></span>' + '<span class="analysis-banner-label">—</span>' + '<span id="ab-source" class="analysis-banner-source">' + escHtml(cycleLabels[0]) + '</span>';
-      if (cycleTimer) clearInterval(cycleTimer);
-      cycleTimer = setInterval(doSlide, 2500);
-    }
-    updateCounter();
-  }
+                function showRunning(labels) {
+                    document.title = "⏳ Analyzing… — Job Screener";
+                    cycleLabels = labels.length ? labels : [""];
+                    var wasRunning = banner.classList.contains("is-running");
+                    if (!wasRunning) {
+                        cycleIndex = 0;
+                        banner.className =
+                            "analysis-banner is-running is-visible";
+                        document.documentElement.style.setProperty(
+                            "--sticky-top",
+                            banner.offsetHeight + "px",
+                        );
+                        banner.onclick = null;
+                        banner.innerHTML =
+                            '<span class="analysis-banner-spinner"></span>' +
+                            '<span class="analysis-banner-label">Analyzing</span>' +
+                            '<span id="ab-counter" class="analysis-banner-counter"></span>' +
+                            '<span class="analysis-banner-label">—</span>' +
+                            '<span id="ab-source" class="analysis-banner-source">' +
+                            escHtml(cycleLabels[0]) +
+                            "</span>";
+                        if (cycleTimer) clearInterval(cycleTimer);
+                        cycleTimer = setInterval(doSlide, 2500);
+                    }
+                    updateCounter();
+                }
 
-  function dismissBanner() {
-    document.title = 'Job Screener';
-    localStorage.removeItem('activeAnalysis');
-    if (timer) clearInterval(timer);
-    if (cycleTimer) clearInterval(cycleTimer);
-    cycleTimer = null;
-    cycleLabels = [];
-    cycleIndex = 0;
-    banner.className = 'analysis-banner';
-    banner.innerHTML = '';
-    document.documentElement.style.setProperty('--sticky-top', '0px');
-  }
+                function dismissBanner() {
+                    document.title = "Job Screener";
+                    localStorage.removeItem("activeAnalysis");
+                    if (timer) clearInterval(timer);
+                    if (cycleTimer) clearInterval(cycleTimer);
+                    cycleTimer = null;
+                    cycleLabels = [];
+                    cycleIndex = 0;
+                    banner.className = "analysis-banner";
+                    banner.innerHTML = "";
+                    document.documentElement.style.setProperty(
+                        "--sticky-top",
+                        "0px",
+                    );
+                }
 
-  function showDone(d) {
-    document.title = '✓ Done — Job Screener';
-    if (cycleTimer) { clearInterval(cycleTimer); cycleTimer = null; }
-    banner.className = 'analysis-banner is-done is-visible';
-    document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
-    var bc = 'analysis-banner-badge badge-' + (d.verdict || '');
-    banner.innerHTML =
-      '<span class="analysis-banner-icon">✓</span>' +
-      '<span class="analysis-banner-label">Analysis done — </span>' +
-      '<span class="analysis-banner-source">' + escHtml(d.company) + (d.role ? ' · ' + escHtml(d.role) : '') + '</span>' +
-      '<span class="' + bc + '">' + vLabel(d.verdict) + '</span>' +
-      '<span class="analysis-banner-action" id="ab-view">View result →</span>' +
-      '<span class="analysis-banner-dismiss" id="ab-dismiss-done">×</span>';
-    banner.onclick = null;
-    var viewBtn = document.getElementById('ab-view');
-    if (viewBtn) viewBtn.onclick = function (e) {
-      e.stopPropagation();
-      dismissBanner();
-      if (typeof openModal === 'function') {
-        openModal(d.result_job_id);
-      } else {
-        window.location.href = '/dashboard?job=' + d.result_job_id;
-      }
-    };
-    var dismissBtn = document.getElementById('ab-dismiss-done');
-    if (dismissBtn) dismissBtn.onclick = function (e) {
-      e.stopPropagation();
-      dismissBanner();
-    };
-  }
+                function showDone(d) {
+                    document.title = "✓ Done — Job Screener";
+                    if (cycleTimer) {
+                        clearInterval(cycleTimer);
+                        cycleTimer = null;
+                    }
+                    banner.className = "analysis-banner is-done is-visible";
+                    document.documentElement.style.setProperty(
+                        "--sticky-top",
+                        banner.offsetHeight + "px",
+                    );
+                    var bc = "analysis-banner-badge badge-" + (d.verdict || "");
+                    banner.innerHTML =
+                        '<span class="analysis-banner-icon">✓</span>' +
+                        '<span class="analysis-banner-label">Analysis done — </span>' +
+                        '<span class="analysis-banner-source">' +
+                        escHtml(d.company) +
+                        (d.role ? " · " + escHtml(d.role) : "") +
+                        "</span>" +
+                        '<span class="' +
+                        bc +
+                        '">' +
+                        vLabel(d.verdict) +
+                        "</span>" +
+                        '<span class="analysis-banner-action" id="ab-view">View result →</span>' +
+                        '<span class="analysis-banner-dismiss" id="ab-dismiss-done">×</span>';
+                    banner.onclick = null;
+                    var viewBtn = document.getElementById("ab-view");
+                    if (viewBtn)
+                        viewBtn.onclick = function (e) {
+                            e.stopPropagation();
+                            dismissBanner();
+                            if (typeof openModal === "function") {
+                                openModal(d.result_job_id);
+                            } else {
+                                window.location.href =
+                                    "/dashboard?job=" + d.result_job_id;
+                            }
+                        };
+                    var dismissBtn = document.getElementById("ab-dismiss-done");
+                    if (dismissBtn)
+                        dismissBtn.onclick = function (e) {
+                            e.stopPropagation();
+                            dismissBanner();
+                        };
+                }
 
-  function showError(msg) {
-    if (cycleTimer) { clearInterval(cycleTimer); cycleTimer = null; }
-    banner.className = 'analysis-banner is-error is-visible';
-    document.documentElement.style.setProperty('--sticky-top', banner.offsetHeight + 'px');
-    banner.onclick = null;
-    banner.innerHTML =
-      '<span class="analysis-banner-icon">✕</span>' +
-      '<span class="analysis-banner-label">Analysis failed — </span>' +
-      '<span class="analysis-banner-source">' + escHtml(msg || 'Unknown error') + '</span>' +
-      '<span class="analysis-banner-action" id="ab-dismiss">Dismiss ×</span>';
-    var btn = document.getElementById('ab-dismiss');
-    if (btn) btn.onclick = function (e) { e.stopPropagation(); dismissBanner(); };
-  }
+                function showError(msg) {
+                    if (cycleTimer) {
+                        clearInterval(cycleTimer);
+                        cycleTimer = null;
+                    }
+                    banner.className = "analysis-banner is-error is-visible";
+                    document.documentElement.style.setProperty(
+                        "--sticky-top",
+                        banner.offsetHeight + "px",
+                    );
+                    banner.onclick = null;
+                    banner.innerHTML =
+                        '<span class="analysis-banner-icon">✕</span>' +
+                        '<span class="analysis-banner-label">Analysis failed — </span>' +
+                        '<span class="analysis-banner-source">' +
+                        escHtml(msg || "Unknown error") +
+                        "</span>" +
+                        '<span class="analysis-banner-action" id="ab-dismiss">Dismiss ×</span>';
+                    var btn = document.getElementById("ab-dismiss");
+                    if (btn)
+                        btn.onclick = function (e) {
+                            e.stopPropagation();
+                            dismissBanner();
+                        };
+                }
 
-  var pollErrors = 0;
-  function poll(id, src) {
-    fetch('/analysis_status/' + id)
-      .then(function (r) {
-        if (r.status === 404) {
-          localStorage.removeItem('activeAnalysis');
-          if (timer) clearInterval(timer);
-          banner.className = 'analysis-banner';
-          document.documentElement.style.setProperty('--sticky-top', '0px');
-          return null;
-        }
-        if (!r.ok) {
-          pollErrors++;
-          if (pollErrors >= 3) {
-            if (timer) clearInterval(timer);
-            localStorage.removeItem('activeAnalysis');
-            showError('Server error (' + r.status + ') — analysis status unavailable');
-          }
-          return null;
-        }
-        pollErrors = 0;
-        return r.json();
-      })
-      .then(function (d) {
-        if (!d) return;
-        if (d.status === 'pending' || d.status === 'running') {
-          var labels = (d.active_labels && d.active_labels.length) ? d.active_labels : [d.source_label || src];
-          showRunning(labels);
-        } else if (d.status === 'done') {
-          if (timer) clearInterval(timer);
-          localStorage.removeItem('activeAnalysis');
-          showDone(d);
-        } else if (d.status === 'error') {
-          if (timer) clearInterval(timer);
-          localStorage.removeItem('activeAnalysis');
-          showError(d.error);
-        }
-      })
-      .catch(function () { /* network error — silent retry */ });
-  }
+                var pollErrors = 0;
+                function poll(id, src) {
+                    fetch("/analysis_status/" + id)
+                        .then(function (r) {
+                            if (r.status === 404) {
+                                localStorage.removeItem("activeAnalysis");
+                                if (timer) clearInterval(timer);
+                                banner.className = "analysis-banner";
+                                document.documentElement.style.setProperty(
+                                    "--sticky-top",
+                                    "0px",
+                                );
+                                return null;
+                            }
+                            if (!r.ok) {
+                                pollErrors++;
+                                if (pollErrors >= 3) {
+                                    if (timer) clearInterval(timer);
+                                    localStorage.removeItem("activeAnalysis");
+                                    showError(
+                                        "Server error (" +
+                                            r.status +
+                                            ") — analysis status unavailable",
+                                    );
+                                }
+                                return null;
+                            }
+                            pollErrors = 0;
+                            return r.json();
+                        })
+                        .then(function (d) {
+                            if (!d) return;
+                            if (
+                                d.status === "pending" ||
+                                d.status === "running"
+                            ) {
+                                var labels =
+                                    d.active_labels && d.active_labels.length
+                                        ? d.active_labels
+                                        : [d.source_label || src];
+                                showRunning(labels);
+                            } else if (d.status === "done") {
+                                if (timer) clearInterval(timer);
+                                localStorage.removeItem("activeAnalysis");
+                                showDone(d);
+                            } else if (d.status === "error") {
+                                if (timer) clearInterval(timer);
+                                localStorage.removeItem("activeAnalysis");
+                                showError(d.error);
+                            }
+                        })
+                        .catch(function () {
+                            /* network error — silent retry */
+                        });
+                }
 
-  function startPolling(id, src) {
-    showRunning([src]);
-    poll(id, src);
-    timer = setInterval(function () { poll(id, src); }, POLL_MS);
-  }
+                function startPolling(id, src) {
+                    showRunning([src]);
+                    poll(id, src);
+                    timer = setInterval(function () {
+                        poll(id, src);
+                    }, POLL_MS);
+                }
 
-  var testCount = parseInt(new URLSearchParams(location.search).get('banner_test') || '0', 10);
-  if (testCount >= 1) {
-    var fakeLabels = [];
-    var fakeNames = ['Acme Corp · Senior Product Manager', 'Bigco · Staff Engineer', 'StartupXYZ · Head of Growth', 'MegaBank · Data Scientist', 'CoolSaaS · Frontend Developer'];
-    for (var i = 0; i < Math.min(testCount, 5); i++) fakeLabels.push(fakeNames[i]);
-    showRunning(fakeLabels);
-  }
+                var testCount = parseInt(
+                    new URLSearchParams(location.search).get("banner_test") ||
+                        "0",
+                    10,
+                );
+                if (testCount >= 1) {
+                    var fakeLabels = [];
+                    var fakeNames = [
+                        "Acme Corp · Senior Product Manager",
+                        "Bigco · Staff Engineer",
+                        "StartupXYZ · Head of Growth",
+                        "MegaBank · Data Scientist",
+                        "CoolSaaS · Frontend Developer",
+                    ];
+                    for (var i = 0; i < Math.min(testCount, 5); i++)
+                        fakeLabels.push(fakeNames[i]);
+                    showRunning(fakeLabels);
+                }
 
-  var stored = localStorage.getItem('activeAnalysis');
-  if (stored) {
-    try {
-      var active = JSON.parse(stored);
-      if (active && active.id) startPolling(active.id, active.source_label || '');
-    } catch (e) { localStorage.removeItem('activeAnalysis'); }
-  }
+                var stored = localStorage.getItem("activeAnalysis");
+                if (stored) {
+                    try {
+                        var active = JSON.parse(stored);
+                        if (active && active.id)
+                            startPolling(active.id, active.source_label || "");
+                    } catch (e) {
+                        localStorage.removeItem("activeAnalysis");
+                    }
+                }
 
-  window.addEventListener('analysisStarted', function (e) {
-    if (timer) clearInterval(timer);
-    startPolling(e.detail.id, e.detail.source_label || '');
-  });
-})();
-</script>
-{% block scripts %}{% endblock %}
-<script>
-(function () {
-  var toggle = document.getElementById('nav-toggle');
-  var nav = document.getElementById('main-nav');
-  if (!toggle || !nav) return;
-  toggle.addEventListener('click', function () {
-    var open = nav.classList.toggle('nav-open');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    toggle.textContent = open ? '✕' : '☰';
-  });
-  document.querySelectorAll('.nav-links a').forEach(function (a) {
-    a.addEventListener('click', function () {
-      nav.classList.remove('nav-open');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.textContent = '☰';
-    });
-  });
-  document.addEventListener('click', function (e) {
-    if (nav.classList.contains('nav-open') && !nav.contains(e.target)) {
-      nav.classList.remove('nav-open');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.textContent = '☰';
-    }
-  });
-})();
-</script>
-<script>
-  (function(){
-    var _fetch = window.fetch;
-    window.fetch = function(url, opts) {
-      opts = opts || {};
-      opts.headers = opts.headers || {};
-      if (typeof opts.headers.set === 'function') {
-        opts.headers.set('X-Requested-With', 'XMLHttpRequest');
-      } else {
-        opts.headers['X-Requested-With'] = 'XMLHttpRequest';
-      }
-      return _fetch(url, opts).then(function(resp) {
-        if (resp.status === 401) {
-          window.location.href = '/login';
-          return new Promise(function() {});
-        }
-        return resp;
-      });
-    };
-  })();
-</script>
-<script>
-  (function(){
-    var btn = document.getElementById('theme-toggle');
-    if (!btn) return;
-    function applyTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      btn.textContent = t === 'light' ? '☾' : '☀';
-      btn.title = t === 'light' ? 'Dark mode' : 'Light mode';
-      localStorage.setItem('theme', t);
-    }
-    var current = localStorage.getItem('theme') || 'dark';
-    applyTheme(current);
-    btn.addEventListener('click', function(){
-      applyTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
-    });
-  })();
-</script>
-
-</body>
+                window.addEventListener("analysisStarted", function (e) {
+                    if (timer) clearInterval(timer);
+                    startPolling(e.detail.id, e.detail.source_label || "");
+                });
+            })();
+        </script>
+        {% block scripts %}{% endblock %}
+        <script>
+            (function () {
+                var toggle = document.getElementById("nav-toggle");
+                var nav = document.getElementById("main-nav");
+                if (!toggle || !nav) return;
+                toggle.addEventListener("click", function () {
+                    var open = nav.classList.toggle("nav-open");
+                    toggle.setAttribute(
+                        "aria-expanded",
+                        open ? "true" : "false",
+                    );
+                    toggle.textContent = open ? "✕" : "☰";
+                });
+                document.querySelectorAll(".nav-links a").forEach(function (a) {
+                    a.addEventListener("click", function () {
+                        nav.classList.remove("nav-open");
+                        toggle.setAttribute("aria-expanded", "false");
+                        toggle.textContent = "☰";
+                    });
+                });
+                document.addEventListener("click", function (e) {
+                    if (
+                        nav.classList.contains("nav-open") &&
+                        !nav.contains(e.target)
+                    ) {
+                        nav.classList.remove("nav-open");
+                        toggle.setAttribute("aria-expanded", "false");
+                        toggle.textContent = "☰";
+                    }
+                });
+            })();
+        </script>
+        <script>
+            (function () {
+                var _fetch = window.fetch;
+                window.fetch = function (url, opts) {
+                    opts = opts || {};
+                    opts.headers = opts.headers || {};
+                    if (typeof opts.headers.set === "function") {
+                        opts.headers.set("X-Requested-With", "XMLHttpRequest");
+                    } else {
+                        opts.headers["X-Requested-With"] = "XMLHttpRequest";
+                    }
+                    return _fetch(url, opts).then(function (resp) {
+                        if (resp.status === 401) {
+                            window.location.href = "/login";
+                            return new Promise(function () {});
+                        }
+                        return resp;
+                    });
+                };
+            })();
+        </script>
+        <script>
+            (function () {
+                var btn = document.getElementById("theme-toggle");
+                if (!btn) return;
+                function applyTheme(t) {
+                    document.documentElement.setAttribute("data-theme", t);
+                    btn.textContent = t === "light" ? "☾" : "☀";
+                    btn.title = t === "light" ? "Dark mode" : "Light mode";
+                    localStorage.setItem("theme", t);
+                }
+                var current = localStorage.getItem("theme") || "dark";
+                applyTheme(current);
+                function toggleTheme() {
+                    applyTheme(
+                        document.documentElement.getAttribute("data-theme") ===
+                            "light"
+                            ? "dark"
+                            : "light",
+                    );
+                }
+                btn.addEventListener("click", toggleTheme);
+                document.addEventListener("keydown", function (e) {
+                    if (e.key !== "d" && e.key !== "D") return;
+                    if (e.ctrlKey || e.metaKey || e.altKey) return;
+                    var tag = (e.target.tagName || "").toLowerCase();
+                    if (tag === "input" || tag === "textarea" || tag === "select" || e.target.isContentEditable) return;
+                    toggleTheme();
+                });
+            })();
+        </script>
+    </body>
 </html>
