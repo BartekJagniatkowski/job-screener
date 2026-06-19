@@ -143,6 +143,17 @@ callouts: up to 6 specific phrases from the listing decoded into plain English.
   - Do not invent signals that are not in the text
 
 ══════════════════════════════════════════════════
+ON A ZERO LIST HIT
+══════════════════════════════════════════════════
+When zero_list_hit is true, you may skip the full per-layer analysis: set
+"triage", every entry in "layers", and "fit" to their minimal valid shape
+with status "ok", empty findings ("" or null), and no evidence — do not
+spend additional reasoning on layers that won't change the verdict. Still
+fill in "zero_list_reason", "zero_list_evidence", "verdict_summary", and
+"gut_feeling" — those are what the user sees. "reality_check" may also be
+a short summary with an empty "callouts" list.
+
+══════════════════════════════════════════════════
 FORMAT — ONLY this JSON, nothing else
 ══════════════════════════════════════════════════
 {{
@@ -363,8 +374,9 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: s
     if input_mode == "url":
         if not input_text.startswith("http"):
             # user pasted text but mode is URL
+            listing_text = input_text[:12000]
             user_msg: str = (
-                f"Analyze the following listing (URL mode, but text provided):\n\n<job_listing>\n{input_text}\n</job_listing>\n\n"
+                f"Analyze the following listing (URL mode, but text provided):\n\n<job_listing>\n{listing_text}\n</job_listing>\n\n"
                 f"If the listing comes from a recruitment agency, identify the actual employer."
             )
         else:
@@ -374,8 +386,9 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: s
                 f"Always identify the actual employer if the listing comes from a recruiter."
             )
     else:
+        listing_text = input_text[:12000]
         user_msg: str = (
-            f"Analyze the following job listing:\n\n<job_listing>\n{input_text}\n</job_listing>\n\n"
+            f"Analyze the following job listing:\n\n<job_listing>\n{listing_text}\n</job_listing>\n\n"
             f"If the listing comes from a recruitment agency, identify the actual employer."
         )
 

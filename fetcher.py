@@ -7,6 +7,7 @@ import re
 import requests
 import xml.etree.ElementTree as ET
 from html import unescape
+from urllib.parse import urljoin
 from scraper import _is_internal_host
 
 _TIMEOUT = 10
@@ -87,10 +88,20 @@ def fetch_greenhouse(company_slug: str) -> list[dict]:
 
 
 def fetch_rss(feed_url: str) -> list[dict]:
-    if _is_internal_host(feed_url):
-        raise ValueError("Internal URLs are not allowed.")
-    resp = requests.get(feed_url, timeout=_TIMEOUT)
-    resp.raise_for_status()
+    url = feed_url
+    resp = None
+    for _ in range(5):
+        if _is_internal_host(url):
+            raise ValueError("Internal URLs are not allowed.")
+        resp = requests.get(url, timeout=_TIMEOUT, allow_redirects=False)
+        if resp.is_redirect:
+            url = urljoin(url, resp.headers["Location"])
+            continue
+        resp.raise_for_status()
+        break
+    else:
+        raise ValueError("Too many redirects.")
+
     root = ET.fromstring(resp.content)
     items = []
     for item in root.findall(".//item"):

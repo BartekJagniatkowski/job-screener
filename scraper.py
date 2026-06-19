@@ -25,6 +25,21 @@ _PRIVATE_NETWORKS = [
 ]
 
 
+class _RedirectTo(Exception):
+    """Raised by _NoRedirect to surface a redirect target without following it."""
+    def __init__(self, url):
+        super().__init__(url)
+        self.url = url
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        raise _RedirectTo(newurl)
+
+
+_opener = urllib.request.build_opener(_NoRedirect)
+
+
 def _is_internal_host(url: str) -> bool:
     try:
         host = urlparse(url).hostname or ""
@@ -161,9 +176,6 @@ def fetch(url: str, timeout: int = 12) -> tuple:
         msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or               'This site blocks automated access. Copy the job description manually.'
         return None, 'blocked', msg
 
-    if _is_internal_host(url):
-        return None, 'blocked', 'Access to internal network addresses is not allowed.'
-
     headers = {
         'User-Agent': (
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
@@ -174,36 +186,44 @@ def fetch(url: str, timeout: int = 12) -> tuple:
         'Accept-Language': 'en,pl;q=0.9',
     }
 
-    req = urllib.request.Request(url, headers=headers)
-
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            content_type = resp.headers.get('Content-Type', '')
-            if 'text/html' not in content_type and 'text/plain' not in content_type:
-                return None, 'blocked', f'Unsupported content type: {content_type}'
-            html = resp.read().decode('utf-8', errors='replace')
-            max_size = 5 * 1024 * 1024  # 5MB
-            if len(html) > max_size:
-                return None, 'blocked', f'Page returned too much content: {len(html)} bytes (likely requires JavaScript)'
-
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
-            return None, 'notfound', f'Page not found (HTTP {e.code})'
-        if e.code in (401, 403, 429):
-            return None, 'blocked', f'Access blocked (HTTP {e.code})'
-        return None, 'network', f'HTTP error {e.code}'
-
-    except urllib.error.URLError as e:
-        reason = str(e.reason)
-        if 'timed out' in reason.lower() or 'timeout' in reason.lower():
+    current_url = url
+    resp = None
+    for _ in range(5):
+        if _is_internal_host(current_url):
+            return None, 'blocked', 'Access to internal network addresses is not allowed.'
+        req = urllib.request.Request(current_url, headers=headers)
+        try:
+            resp = _opener.open(req, timeout=timeout)
+            break
+        except _RedirectTo as r:
+            current_url = r.url
+            continue
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                return None, 'notfound', f'Page not found (HTTP {e.code})'
+            if e.code in (401, 403, 429):
+                return None, 'blocked', f'Access blocked (HTTP {e.code})'
+            return None, 'network', f'HTTP error {e.code}'
+        except urllib.error.URLError as e:
+            reason = str(e.reason)
+            if 'timed out' in reason.lower() or 'timeout' in reason.lower():
+                return None, 'timeout', 'Server did not respond in time (timeout)'
+            return None, 'network', f'Network error: {reason}'
+        except TimeoutError:
             return None, 'timeout', 'Server did not respond in time (timeout)'
-        return None, 'network', f'Network error: {reason}'
+        except Exception as e:
+            return None, 'network', f'Unexpected error: {str(e)}'
+    else:
+        return None, 'network', 'Too many redirects'
 
-    except TimeoutError:
-        return None, 'timeout', 'Server did not respond in time (timeout)'
-
-    except Exception as e:
-        return None, 'network', f'Unexpected error: {str(e)}'
+    with resp:
+        content_type = resp.headers.get('Content-Type', '')
+        if 'text/html' not in content_type and 'text/plain' not in content_type:
+            return None, 'blocked', f'Unsupported content type: {content_type}'
+        html = resp.read().decode('utf-8', errors='replace')
+        max_size = 5 * 1024 * 1024  # 5MB
+        if len(html) > max_size:
+            return None, 'blocked', f'Page returned too much content: {len(html)} bytes (likely requires JavaScript)'
 
     text = _html_to_text(html)
 

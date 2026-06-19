@@ -150,3 +150,30 @@ def test_analyze_rate_limit(logged_in_client):
         assert 429 in responses, f"Expected a 429 response, got: {set(responses)}"
     finally:
         app_module.limiter.enabled = False
+
+
+def test_analyze_rejects_oversized_body(logged_in_client):
+    big_text = "a" * 2_000_000  # over the 1MB cap
+    resp = logged_in_client.post("/analyze", data={"text": big_text})
+    assert resp.status_code == 413
+
+
+def test_analyze_rejects_oversized_raw_body(logged_in_client):
+    # Bypasses form-parsing entirely (no application/x-www-form-urlencoded body),
+    # so only MAX_CONTENT_LENGTH can produce the 413 here — isolates the feature
+    # from Werkzeug's pre-existing max_form_memory_size default (500KB).
+    big_body = b"a" * 2_000_000  # over the 1MB MAX_CONTENT_LENGTH cap
+    resp = logged_in_client.post("/analyze", data=big_body, content_type="application/octet-stream")
+    assert resp.status_code == 413
+
+
+def test_analyze_accepts_normal_sized_body(logged_in_client, monkeypatch):
+    import app as app_module
+
+    def fake_analyze(user, text, mode, api_key, model):
+        return {"company_name": "Test Co", "role_title": "Engineer", "verdict": "warning"}
+
+    monkeypatch.setattr(app_module, "analyze", fake_analyze)
+    resp = logged_in_client.post("/analyze", data={"text": "A normal job listing, a few hundred characters long."})
+    assert resp.status_code == 200
+    assert "analysis_id" in resp.get_json()

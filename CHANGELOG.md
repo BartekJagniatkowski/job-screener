@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.34 — Security hardening, cost optimization, selection fix
+
+- **Security hardening** — closed a gap where a redirect could bypass the tool's safeguard against fetching internal/private network addresses; added a cap on request size to prevent abuse
+- **Cost optimization** — long listings are now capped before analysis, and rejected listings skip unnecessary detailed output — same results, lower API cost
+- **Fix** — text selection was invisible in dark mode; now visible in both themes
+
+---
+
 ## v0.33 — JSON parse fix
 
 - **JSON parse fix** — analysis no longer fails when the model returns multi-line findings with literal newlines; a repair pass now handles this automatically before giving up with an error
