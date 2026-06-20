@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.38 — Dark-mode fix
+
+- **Fix** — the dashboard's animated dot background now brightens on hover in dark mode instead of fading out
+
+---
+
 ## v0.37 — Table and hero polish
 
 - **Fix** — listings with a long, wrapped job title no longer misalign their status badge and layer dots in the table

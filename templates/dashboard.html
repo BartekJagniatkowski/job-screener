@@ -143,16 +143,27 @@ container_class %}container{% endblock %} {% block content %}
   function readColors() {
     var cs = getComputedStyle(document.documentElement);
     var rgb = hexToRgb(cs.getPropertyValue('--border').trim());
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
     lightRgb = {
       r: Math.round((rgb.r + (255 - rgb.r) * LIGHTEN_FACTOR) * 0.9),
       g: Math.round((rgb.g + (255 - rgb.g) * LIGHTEN_FACTOR) * 0.9),
       b: Math.round((rgb.b + (255 - rgb.b) * LIGHTEN_FACTOR) * 0.9)
     };
-    darkRgb = {
-      r: Math.round(rgb.r * DARKEN_FACTOR * 0.9),
-      g: Math.round(rgb.g * DARKEN_FACTOR * 0.9),
-      b: Math.round(rgb.b * DARKEN_FACTOR * 0.9)
-    };
+    if (isLight) {
+      // light bg: hover state darkens toward the border colour for more contrast
+      darkRgb = {
+        r: Math.round(rgb.r * DARKEN_FACTOR * 0.9),
+        g: Math.round(rgb.g * DARKEN_FACTOR * 0.9),
+        b: Math.round(rgb.b * DARKEN_FACTOR * 0.9)
+      };
+    } else {
+      // dark bg: darkening moves toward black and disappears; hover brightens instead
+      darkRgb = {
+        r: Math.round(lightRgb.r + (255 - lightRgb.r) * LIGHTEN_FACTOR * 2),
+        g: Math.round(lightRgb.g + (255 - lightRgb.g) * LIGHTEN_FACTOR * 2),
+        b: Math.round(lightRgb.b + (255 - lightRgb.b) * LIGHTEN_FACTOR * 2)
+      };
+    }
   }
 
   function lerpRgb(c1, c2, t) {
