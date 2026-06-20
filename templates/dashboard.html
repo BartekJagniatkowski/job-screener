@@ -104,7 +104,7 @@ container_class %}container{% endblock %} {% block content %}
   var hero = document.querySelector('.dashboard-hero');
   var ctx = canvas.getContext('2d');
 
-  var SPACING = 28;
+  var SPACING = 24;
   var BASE_RADIUS = 1.5;
   var PROXIMITY = 140;
   var LIGHTEN_FACTOR = 0.12;
@@ -144,14 +144,14 @@ container_class %}container{% endblock %} {% block content %}
     var cs = getComputedStyle(document.documentElement);
     var rgb = hexToRgb(cs.getPropertyValue('--border').trim());
     lightRgb = {
-      r: Math.round(rgb.r + (255 - rgb.r) * LIGHTEN_FACTOR),
-      g: Math.round(rgb.g + (255 - rgb.g) * LIGHTEN_FACTOR),
-      b: Math.round(rgb.b + (255 - rgb.b) * LIGHTEN_FACTOR)
+      r: Math.round((rgb.r + (255 - rgb.r) * LIGHTEN_FACTOR) * 0.9),
+      g: Math.round((rgb.g + (255 - rgb.g) * LIGHTEN_FACTOR) * 0.9),
+      b: Math.round((rgb.b + (255 - rgb.b) * LIGHTEN_FACTOR) * 0.9)
     };
     darkRgb = {
-      r: Math.round(rgb.r * DARKEN_FACTOR),
-      g: Math.round(rgb.g * DARKEN_FACTOR),
-      b: Math.round(rgb.b * DARKEN_FACTOR)
+      r: Math.round(rgb.r * DARKEN_FACTOR * 0.9),
+      g: Math.round(rgb.g * DARKEN_FACTOR * 0.9),
+      b: Math.round(rgb.b * DARKEN_FACTOR * 0.9)
     };
   }
 

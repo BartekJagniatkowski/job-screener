@@ -483,6 +483,9 @@ textarea {
     border-radius: 9999px;
     background: transparent;
 }
+.td-nowrap .badge {
+    vertical-align: top;
+}
 .badge::before {
     content: "";
     width: 6px;
@@ -767,8 +770,8 @@ tr.row-rejected-soft:hover td {
     color: var(--dim);
 }
 .td-layers {
-    vertical-align: middle;
-    padding: 10px 12px;
+    vertical-align: top;
+    padding: 20px 12px;
 }
 .dot-row {
     display: flex;
@@ -1292,9 +1295,6 @@ tr.row-rejected-soft:hover td {
     }
     .page-title {
         font-size: var(--fs-2xl);
-    }
-    .hero-sub {
-        white-space: normal;
     }
     .table-wrap {
         display: none;
@@ -2038,7 +2038,7 @@ tr.row-rejected-soft:hover td {
 .dashboard-hero {
     position: relative;
     padding: 72px 24px 56px;
-    margin-bottom: 72px;
+    margin-bottom: 64px;
     border-radius: var(--radius-lg);
     text-align: center;
 }
@@ -2047,7 +2047,7 @@ tr.row-rejected-soft:hover td {
     top: 0;
     left: 0;
     width: 100%;
-    height: calc(100% + 60px);
+    height: calc(100% + 36px);
     z-index: 0;
 }
 .hero-title {
@@ -2073,6 +2073,11 @@ tr.row-rejected-soft:hover td {
     z-index: 1;
     max-width: 640px;
     margin: 0 auto;
+}
+@media (max-width: 768px) {
+    .hero-sub {
+        white-space: normal;
+    }
 }
 
 /* ── command bar ─────────────────────────────────────────────────────────── */

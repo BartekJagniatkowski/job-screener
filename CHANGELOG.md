@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.37 — Table and hero polish
+
+- **Fix** — listings with a long, wrapped job title no longer misalign their status badge and layer dots in the table
+- **Fix** — the dashboard subheadline no longer overflows the screen on smaller phones
+- **Hero polish** — small tuning to the animated dot background's spacing and colour
+
+---
+
 ## v0.36 — Dashboard hero, fixes
 
 - **Dashboard hero** — the main screen now opens with an animated dotted-grid background that reacts to your cursor
