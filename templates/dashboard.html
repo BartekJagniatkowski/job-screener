@@ -46,7 +46,11 @@ container_class %}container{% endblock %} {% block content %}
 </div>
 {% endif %}
 
-<div class="cmd-zone">
+<div class="dashboard-hero">
+    <canvas class="hero-dots" aria-hidden="true"></canvas>
+    <h1 class="hero-title">Screen an offer before you apply.</h1>
+    <p class="hero-sub">Paste a listing. Six layers of analysis tell you if it's worth your time.</p>
+    <div class="cmd-zone">
     <div class="cmd-bar">
         <input
             type="url"
@@ -91,6 +95,231 @@ container_class %}container{% endblock %} {% block content %}
         ></textarea>
     </div>
 </div>
+</div>
+
+<script>
+(function() {
+  var canvas = document.querySelector('.hero-dots');
+  if (!canvas) return;
+  var hero = document.querySelector('.dashboard-hero');
+  var ctx = canvas.getContext('2d');
+
+  var SPACING = 28;
+  var BASE_RADIUS = 1.5;
+  var PROXIMITY = 140;
+  var LIGHTEN_FACTOR = 0.12;
+  var DARKEN_FACTOR = 0.75;
+  var MIN_ROW_ALPHA = 0.2;
+  var INTENSITY_EASE = 0.035;
+  var INTENSITY_EPSILON = 0.002;
+  var IDLE_RADIUS = 110;
+  var IDLE_GESTURE_MS = 1100;
+  var IDLE_GESTURE_MIN_DIST = 90;
+  var IDLE_GESTURE_MAX_DIST = 220;
+  var IDLE_MIN_DELAY_MS = 5000;
+  var IDLE_MAX_DELAY_MS = 11000;
+  var STILL_DELAY_MS = 180;
+
+  var dots = [];
+  var mouseX = -9999;
+  var mouseY = -9999;
+  var rafId = null;
+  var idleTimerId = null;
+  var stillTimerId = null;
+  var idleGesture = null;
+  var lightRgb = { r: 0, g: 0, b: 0 };
+  var darkRgb = { r: 0, g: 0, b: 0 };
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function hexToRgb(hex) {
+    hex = hex.replace('#', '');
+    if (hex.length === 3) {
+      hex = hex.split('').map(function(c) { return c + c; }).join('');
+    }
+    var num = parseInt(hex, 16);
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  function readColors() {
+    var cs = getComputedStyle(document.documentElement);
+    var rgb = hexToRgb(cs.getPropertyValue('--border').trim());
+    lightRgb = {
+      r: Math.round(rgb.r + (255 - rgb.r) * LIGHTEN_FACTOR),
+      g: Math.round(rgb.g + (255 - rgb.g) * LIGHTEN_FACTOR),
+      b: Math.round(rgb.b + (255 - rgb.b) * LIGHTEN_FACTOR)
+    };
+    darkRgb = {
+      r: Math.round(rgb.r * DARKEN_FACTOR),
+      g: Math.round(rgb.g * DARKEN_FACTOR),
+      b: Math.round(rgb.b * DARKEN_FACTOR)
+    };
+  }
+
+  function lerpRgb(c1, c2, t) {
+    return {
+      r: Math.round(c1.r + (c2.r - c1.r) * t),
+      g: Math.round(c1.g + (c2.g - c1.g) * t),
+      b: Math.round(c1.b + (c2.b - c1.b) * t)
+    };
+  }
+
+  function toRgba(c, a) {
+    return 'rgba(' + c.r + ',' + c.g + ',' + c.b + ',' + a + ')';
+  }
+
+  function easeOutCubic(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function easeInOutQuad(t) {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function buildGrid(width, height) {
+    dots = [];
+    for (var y = SPACING / 2; y < height; y += SPACING) {
+      var rowAlpha = MIN_ROW_ALPHA + (1 - MIN_ROW_ALPHA) * (y / height);
+      for (var x = SPACING / 2; x < width; x += SPACING) {
+        dots.push({ x: x, y: y, rowAlpha: rowAlpha, intensity: 0 });
+      }
+    }
+  }
+
+  function resize() {
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+    buildGrid(rect.width, rect.height);
+    draw();
+  }
+
+  function draw() {
+    var stillEasing = false;
+    var idleX = null, idleY = null;
+    if (idleGesture) {
+      var elapsed = performance.now() - idleGesture.start;
+      if (elapsed < idleGesture.duration) {
+        var gt = easeInOutQuad(Math.min(1, elapsed / idleGesture.duration));
+        idleX = idleGesture.x1 + (idleGesture.x2 - idleGesture.x1) * gt;
+        idleY = idleGesture.y1 + (idleGesture.y2 - idleGesture.y1) * gt;
+      } else {
+        idleGesture = null;
+      }
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < dots.length; i++) {
+      var dot = dots[i];
+      var dx = dot.x - mouseX;
+      var dy = dot.y - mouseY;
+      var dist = Math.sqrt(dx * dx + dy * dy);
+      var target = dist < PROXIMITY ? easeOutCubic(1 - dist / PROXIMITY) : 0;
+
+      if (idleX !== null) {
+        var idx = dot.x - idleX;
+        var idy = dot.y - idleY;
+        var idist = Math.sqrt(idx * idx + idy * idy);
+        if (idist < IDLE_RADIUS) {
+          var idleTarget = easeOutCubic(1 - idist / IDLE_RADIUS);
+          if (idleTarget > target) target = idleTarget;
+        }
+      }
+
+      dot.intensity += (target - dot.intensity) * INTENSITY_EASE;
+      if (Math.abs(target - dot.intensity) > INTENSITY_EPSILON) stillEasing = true;
+
+      var rgb = dot.intensity > INTENSITY_EPSILON ? lerpRgb(lightRgb, darkRgb, dot.intensity) : lightRgb;
+      ctx.beginPath();
+      ctx.arc(dot.x, dot.y, BASE_RADIUS, 0, Math.PI * 2);
+      ctx.fillStyle = toRgba(rgb, dot.rowAlpha);
+      ctx.fill();
+    }
+    return stillEasing;
+  }
+
+  function loop() {
+    var stillEasing = draw();
+    if (stillEasing) {
+      rafId = requestAnimationFrame(loop);
+    } else {
+      rafId = null;
+    }
+  }
+
+  function startLoop() {
+    if (rafId === null) loop();
+  }
+
+  function scheduleIdle() {
+    if (idleTimerId !== null) clearTimeout(idleTimerId);
+    var delay = IDLE_MIN_DELAY_MS + Math.random() * (IDLE_MAX_DELAY_MS - IDLE_MIN_DELAY_MS);
+    idleTimerId = setTimeout(triggerIdlePulse, delay);
+  }
+
+  function stopIdle() {
+    if (idleTimerId !== null) {
+      clearTimeout(idleTimerId);
+      idleTimerId = null;
+    }
+    idleGesture = null;
+  }
+
+  function triggerIdlePulse() {
+    if (dots.length > 0) {
+      var start = dots[Math.floor(Math.random() * dots.length)];
+      var angle = Math.random() * Math.PI * 2;
+      var dist = IDLE_GESTURE_MIN_DIST + Math.random() * (IDLE_GESTURE_MAX_DIST - IDLE_GESTURE_MIN_DIST);
+      idleGesture = {
+        x1: start.x, y1: start.y,
+        x2: start.x + Math.cos(angle) * dist,
+        y2: start.y + Math.sin(angle) * dist,
+        start: performance.now(),
+        duration: IDLE_GESTURE_MS
+      };
+      startLoop();
+    }
+    scheduleIdle();
+  }
+
+  readColors();
+  resize();
+  window.addEventListener('resize', resize);
+
+  if (!reduceMotion) {
+    scheduleIdle();
+    hero.addEventListener('mouseleave', function() {
+      if (stillTimerId !== null) {
+        clearTimeout(stillTimerId);
+        stillTimerId = null;
+      }
+      mouseX = -9999;
+      mouseY = -9999;
+      scheduleIdle();
+      startLoop();
+    });
+    hero.addEventListener('mousemove', function(e) {
+      var rect = canvas.getBoundingClientRect();
+      mouseX = e.clientX - rect.left;
+      mouseY = e.clientY - rect.top;
+      stopIdle();
+      startLoop();
+
+      if (stillTimerId !== null) clearTimeout(stillTimerId);
+      stillTimerId = setTimeout(function() {
+        mouseX = -9999;
+        mouseY = -9999;
+        stillTimerId = null;
+        startLoop();
+      }, STILL_DELAY_MS);
+    });
+  }
+
+  var themeObserver = new MutationObserver(function() {
+    readColors();
+    draw();
+  });
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+</script>
 
 <div id="source-status" class="source-status"></div>
 <div id="loading" class="notice" style="display: none">
@@ -409,30 +638,6 @@ container_class %}container{% endblock %} {% block content %}
 
     const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
 
-    async function setVerdictInline(value) {
-      const jobId = getCurrentJobId();
-      if (!jobId) return;
-      const badge = document.getElementById('result-badge');
-      const labels = {rejected:'User rejected', rejected_soft:'AI rejected', warning:'Needs review', worth_considering:'Worth considering', applied:'Applied'};
-      try {
-        const fd = new FormData();
-        let url;
-        if (value === 'applied') {
-          fd.append('status', 'applied');
-          url = `/job/${jobId}/status`;
-        } else {
-          fd.append('verdict', value);
-          url = `/job/${jobId}/verdict`;
-        }
-        const resp = await fetch(url, {method:'POST', body:fd, headers:{'X-CSRFToken': csrfToken()}});
-        const data = await resp.json();
-        if (data.ok && badge) {
-          badge.className = 'badge badge-' + value;
-          badge.textContent = labels[value] || value;
-        }
-      } catch(e) { console.error(e); }
-    }
-
     async function checkSource(url, text) {
       const statusEl = document.getElementById('source-status');
       try {
@@ -464,6 +669,19 @@ container_class %}container{% endblock %} {% block content %}
         if (url) checkSource(url, '');
       }, 0);
     });
+
+    // blur the history table/cards while the search field has focus
+    (function() {
+      var cmdInput = document.getElementById('cmd-input');
+      if (!cmdInput) return;
+      var targets = document.querySelectorAll('.table-wrap, .job-cards, .history-search-wrap, .filter-bar');
+      cmdInput.addEventListener('focus', function() {
+        targets.forEach(function(el) { el.classList.add('is-blurred'); });
+      });
+      cmdInput.addEventListener('blur', function() {
+        targets.forEach(function(el) { el.classList.remove('is-blurred'); });
+      });
+    })();
 
     async function runAnalysis(force = false) {
       const url = document.getElementById('cmd-input').value.trim();
@@ -708,16 +926,6 @@ container_class %}container{% endblock %} {% block content %}
       return { status, verdict };
     }
 
-    // ── Layer accordions ──────────────────────────────────────────────────────
-
-    function tog(id) {
-      const lb = document.getElementById('lb-' + id);
-      const ch = document.getElementById('lc-' + id);
-      if (!lb || !ch) return;
-      const open = lb.classList.toggle('open');
-      ch.classList.toggle('open', open);
-    }
-
     function switchJobTab(btn, tabId) {
       var card = btn.closest('.card');
       card.querySelectorAll('.job-tab').forEach(function(t) { t.classList.remove('active'); });
@@ -807,7 +1015,7 @@ container_class %}container{% endblock %} {% block content %}
       const statusEl = document.getElementById('url-status');
       const url = urlInput ? urlInput.value.trim() : '';
       if (!url.startsWith('http')) {
-        if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Please enter a valid URL.'; }
+        if (statusEl) { statusEl.className='text-red'; statusEl.style.display='block'; statusEl.textContent='Please enter a valid URL.'; }
         return;
       }
       try {
@@ -816,13 +1024,13 @@ container_class %}container{% endblock %} {% block content %}
         const resp = await fetch(`/job/${jobId}/url`, { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
         const data = await resp.json();
         if (data.ok) {
-          if (statusEl) { statusEl.style.color='#3dba73'; statusEl.style.display='block'; statusEl.textContent='URL saved.'; }
+          if (statusEl) { statusEl.className='text-green'; statusEl.style.display='block'; statusEl.textContent='URL saved.'; }
           setTimeout(() => loadModalJob(jobId), 900);
         } else {
-          if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent=data.error||'Save error.'; }
+          if (statusEl) { statusEl.className='text-red'; statusEl.style.display='block'; statusEl.textContent=data.error||'Save error.'; }
         }
       } catch(e) {
-        if (statusEl) { statusEl.style.color='#e74c3c'; statusEl.style.display='block'; statusEl.textContent='Connection error.'; }
+        if (statusEl) { statusEl.className='text-red'; statusEl.style.display='block'; statusEl.textContent='Connection error.'; }
       }
     }
 

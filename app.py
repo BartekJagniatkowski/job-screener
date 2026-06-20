@@ -21,7 +21,7 @@ from database import (
     update_user_profile, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
-    create_analysis, update_analysis_status, get_analysis, count_active_analyses, get_active_analyses_labels,
+    create_analysis, update_analysis_status, get_analysis, get_active_analyses_labels,
     save_interview_prep, get_interview_prep,
     save_cv_tailoring, get_cv_tailoring,
     add_feed, get_feeds, delete_feed, save_feed_items, get_feed_items, get_feed_item,

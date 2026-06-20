@@ -450,15 +450,6 @@ def update_analysis_status(
             raise ValueError(f"analysis_id not found: {analysis_id}")
 
 
-def count_active_analyses(user_id: int) -> int:
-    with get_conn() as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM analyses WHERE user_id=? AND status IN ('pending', 'running')",
-            (user_id,),
-        ).fetchone()
-        return row[0] if row else 0
-
-
 def get_active_analyses_labels(user_id: int) -> list:
     with get_conn() as conn:
         rows = conn.execute(
@@ -814,7 +805,8 @@ def update_job_status(job_id: int, user_id: int, status: str) -> bool:
     elif status == "interview":
         sql = (
             "UPDATE jobs SET interview_scheduled=1, interview_at=date('now'),"
-            " applied=1, company_rejected=0, company_rejected_at=NULL"
+            " applied=1, applied_at=COALESCE(applied_at, date('now')),"
+            " company_rejected=0, company_rejected_at=NULL"
             " WHERE id=? AND user_id=?"
         )
         params = (job_id, user_id)

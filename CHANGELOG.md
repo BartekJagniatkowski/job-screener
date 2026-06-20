@@ -4,6 +4,15 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.36 — Dashboard hero, fixes
+
+- **Dashboard hero** — the main screen now opens with an animated dotted-grid background that reacts to your cursor
+- **Fix** — applying to a job and then marking it as "Interview" now correctly records the application date
+- **Fix** — the registration page now correctly says passwords need at least 10 characters
+- **Cleanup** — removed unused leftover code from the recent redesign
+
+---
+
 ## v0.35 — Visual redesign, job modal rebuild
 
 - **New look** — refreshed the visual design across the app

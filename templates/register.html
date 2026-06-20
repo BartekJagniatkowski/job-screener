@@ -2,12 +2,12 @@
 {% block title %}Register — Job Screener{% endblock %}
 {% block content %}
 <div class="auth-wrap">
-  <div style="margin-bottom:32px;">
+  <div class="auth-header">
     <div class="auth-brand">Job Screener</div>
     <div class="auth-sub">Ethical job offer analysis</div>
   </div>
   <div class="card">
-    <form method="POST" style="padding:24px;">
+    <form method="POST" class="auth-form">
       {% if token %}<input type="hidden" name="token" value="{{ token }}">{% endif %}
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <div class="field">
@@ -16,13 +16,13 @@
       </div>
       <div class="field">
         <label>Password</label>
-        <input type="password" name="password" autocomplete="new-password" required placeholder="at least 6 characters">
+        <input type="password" name="password" autocomplete="new-password" required placeholder="at least 10 characters">
       </div>
       <div class="field">
         <label>Repeat password</label>
         <input type="password" name="password2" autocomplete="new-password" required>
       </div>
-      <button type="submit" class="btn btn-primary" style="width:100%">Create account →</button>
+      <button type="submit" class="btn btn-primary">Create account →</button>
     </form>
   </div>
   <div class="auth-hint">After registration, complete your CV and Zero Rule in Settings.</div>

@@ -519,14 +519,11 @@ Hover on table rows: `box-shadow: inset 0 0 0 9999px var(--hover-overlay)`.
 `.card-badges` — flex row wrapping verdict/archetype/fit badges in `.card-header--vertical`
 `.modal-action-delete` — `margin-left: auto`, right-aligns Delete button in `.modal-actions`
 `.btn-theme-toggle` — ☀/☾ button that toggles light/dark mode; also bound to the `d` key globally (`base.html`)
-`.btn-applied`, `.btn-applied.is-applied` — "Applied" button (green when active)
-`.btn-company-rejected.is-rejected` — rejection button (blue when active)
 `.dot`, `.dot-ok`, `.dot-warning`, `.dot-flag`, `.dot-unknown` — coloured layer status dots
 `.dot-row` — flex wrapper for a row of dots inside `.td-layers` (keeps `<td>` as normal table cell)
 `.spinner` — animated loading indicator
 `.source-status` — source validation result (duplicate / ok / scraper error)
 `.source-url-section` — listing URL section wrapper
-`.source-preview-text`, `.source-preview-label-gap` — source content preview
 `.grid2` — two-column grid layout (becomes 1-column on mobile)
 `.link-accent` — link in accent colour (gold)
 `.auth-hint` — supplementary text below login/register form
@@ -534,23 +531,22 @@ Hover on table rows: `box-shadow: inset 0 0 0 9999px var(--hover-overlay)`.
 `.td-date`, `.td-role`, `.td-mono`, `.fw-500`
 `.company-note` — "(?)" marker after a shortened company name; `title` attribute holds the full name with parenthetical explanation
 `.td-dim`, `.td-red`, `.td-green`, `.td-orange`, `.td-blue`
-`.card-body`, `.card-mb`, `.card-header-body`
+`.card-body`
 `.card-sub`, `.card-meta` — card header subtitle and metadata
 `.card-header--vertical` — vertical card header layout: badges → role → company → analyzed date (summary/link moved into the Overview tab, not the header, in v0.35)
 `.card-company` — company name below role title in vertical card header
-`.card-source-url` — listing link in card header, below summary; truncated with ellipsis
 `.duplicate-notice`, `.duplicate-label`, `.duplicate-title`, `.duplicate-meta`, `.duplicate-actions`
 `.evidence`, `.evidence-label`, `.evidence-text` — `.evidence-text` is regular body font (`--fs-md`, muted, 1.65 line-height), not bold/mono
 `.source-text`, `.source-url-label`, `.source-url-link`, `.source-url-hint`
 `.source-url-input-row`, `.source-url-input`, `.source-inline-link`
 `.btn-inline`, `.source-old-text`, `.source-old-hint`, `.source-none`
-`.detail-nav`, `.detail-nav-back`, `.detail-nav-actions`
+`.dashboard-hero`, `.hero-title`, `.hero-sub`, `.hero-dots` — dashboard hero band wrapping the command bar; `.hero-dots` is a `<canvas>` driven by an inline IIFE in `dashboard.html` (animated dotted-grid background, cursor-reactive, idle gesture, respects `prefers-reduced-motion`)
+`.is-blurred` — applied to `.table-wrap`/`.job-cards`/`.history-search-wrap`/`.filter-bar` while `#cmd-input` has focus
 `.cmd-zone`, `.cmd-bar`, `.cmd-input`, `.cmd-btn`, `.cmd-hint`, `.cmd-key`, `.cmd-text-toggle`, `.cmd-text-zone`, `.cmd-text-area` — command bar on dashboard
 `.job-tabs`, `.job-tab`, `.job-tab.active`, `.job-tab-content`, `.job-tab-content.active`, `.job-tab-empty`, `.job-tab-empty-hint` — five-tab nav in job modal
 `.tab-section`, `.tab-section-label`, `.tab-section-status`, `.tab-section-body` — always-visible section within a tab
 `.verdict-select-wrap`, `.verdict-select`, `.verdict-select-label`
-`.changelog`, `.auth-wrap`, `.auth-brand`, `.auth-sub`
-`.recent-more`, `.dashboard-recent`, `.export-section`
+`.changelog`, `.auth-wrap`, `.auth-header`, `.auth-form`, `.auth-brand`, `.auth-sub`
 `.notice`, `.notice.warn`, `.notice.ok`
 `.clickable` — clickable table row (cursor:pointer + hover)
 `.modal-overlay`, `.modal-container`, `.modal-header`, `.modal-nav-btn`, `.modal-counter`, `.modal-close`, `.modal-body`, `.modal-actions`, `.modal-loading`
