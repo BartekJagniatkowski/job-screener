@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.39 — Experimental terminal interface
+
+- **New** — an experimental terminal-based interface for browsing and analyzing listings, separate from the web app. A side project for exploring new ways to interact with the tool.
+
+---
+
 ## v0.38 — Dark-mode fix
 
 - **Fix** — the dashboard's animated dot background now brightens on hover in dark mode instead of fading out
