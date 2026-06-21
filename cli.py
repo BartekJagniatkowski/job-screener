@@ -1,12 +1,12 @@
 import os
 
 from textual import on, work
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.containers import Container, VerticalScroll
-from textual.screen import ModalScreen, Screen
+from textual.screen import Screen
 from textual.theme import Theme
-from textual.widgets import Button, DataTable, Footer, Input, Label, Static
+from textual.widgets import DataTable, Footer, Input, Label, Static, TextArea
 
 import analyzer
 import database
@@ -24,6 +24,20 @@ JOB_SCREENER_THEME = Theme(
     error="#f07178",
     foreground="#d5d8da",
     dark=True,
+)
+
+JOB_SCREENER_LIGHT_THEME = Theme(
+    name="job-screener-light",
+    primary="#0084b4",
+    secondary="#a86200",
+    background="#fafafa",
+    surface="#ffffff",
+    panel="#f0f0f0",
+    success="#4a8f3c",
+    warning="#a86200",
+    error="#c0392b",
+    foreground="#1a1a1a",
+    dark=False,
 )
 
 LAYER_COLUMNS = [
@@ -111,61 +125,53 @@ class LoginScreen(Screen):
             event.input.value = ""
             return
         self.app.user = user
-        self.app.switch_screen(BrowseScreen())
+        self.app.switch_screen(MainScreen())
 
 
-class HelpScreen(ModalScreen):
+class MainScreen(Screen):
     CSS = """
-    HelpScreen {
-        align: center middle;
-    }
-    #help-box {
-        width: 60;
-        height: auto;
-        border: round $primary;
-        padding: 1 2;
-        background: $panel;
+    .hidden {
+        display: none;
     }
     """
 
-    def compose(self) -> ComposeResult:
-        with Container(id="help-box"):
-            yield Label(
-                "Keybindings\n\n"
-                "  up/down, j/k   move selection\n"
-                "  enter          open job detail\n"
-                "  f              cycle status filter\n"
-                "  a              analyze a new listing\n"
-                "  ?              this help\n"
-                "  q / escape     quit\n\n"
-                "Press any key to close."
-            )
-
-    def on_key(self, event) -> None:
-        self.app.pop_screen()
-
-
-class BrowseScreen(Screen):
     BINDINGS = [
-        Binding("f", "cycle_filter", "Filter"),
-        Binding("a", "analyze", "Analyze"),
-        Binding("question_mark", "show_help", "Help", key_display="?"),
+        Binding("f", "toggle_full", "Layers"),
         Binding("q", "quit_app", "Quit"),
-        Binding("escape", "quit_app", "Quit", show=False),
+        Binding("escape", "cancel_prompt_or_quit", "Back", show=False),
+        Binding("j", "cursor_down", "Down", show=False),
+        Binding("k", "cursor_up", "Up", show=False),
+        Binding("slash", "open_search", "Search", key_display="/"),
+        Binding("colon", "open_command", "Command", key_display=":"),
     ]
 
     def __init__(self):
         super().__init__()
         self.filter_index = 0
+        self.full = False
+        self.prompt_mode = None
+        self.search_term = ""
+        self.awaiting_duplicate_confirm = None
 
     def compose(self) -> ComposeResult:
-        yield DataTable(cursor_type="row", id="jobs-table")
+        table = DataTable(cursor_type="row", id="jobs-table")
+        table.styles.height = 9  # header + 7 visible data rows
+        yield table
+        with VerticalScroll(id="detail-body"):
+            yield Label("", id="detail-content")
+        yield Static("", id="legend-bar")
+        yield Input(id="prompt-input", classes="hidden")
+        yield Static("", id="status-line")
         yield Footer()
 
     def on_mount(self) -> None:
         table = self.query_one("#jobs-table", DataTable)
         table.add_columns("DATE", "ROLE · COMPANY", "VERDICT", "LAYERS", "FIT", "ID")
         self.refresh_jobs()
+        self.update_legend()
+
+    def truncate(self, text: str, max_len: int = 40) -> str:
+        return text if len(text) <= max_len else text[: max_len - 1] + "…"
 
     def refresh_jobs(self) -> None:
         table = self.query_one("#jobs-table", DataTable)
@@ -173,77 +179,218 @@ class BrowseScreen(Screen):
         status = FILTER_CYCLE[self.filter_index]
         self.sub_title = f"filter: {status}"
         rows = database.get_jobs(self.app.user["id"])
-        rows = [r for r in rows if job_matches_filter(r, status)]
+        term = self.search_term.lower()
+        rows = [
+            r for r in rows
+            if job_matches_filter(r, status)
+            and (not term or term in f"{r['role'] or ''} {r['company'] or ''}".lower())
+        ]
         for row in rows:
             verdict = row["verdict"] or ""
             color = VERDICT_COLOR.get(verdict, "")
             verdict_text = f"[{color}]{verdict.upper()}[/]" if color else verdict.upper()
             company = row["company"] or "Unknown"
             fit = f"{row['fit_score']:.1f}/5" if row["fit_score"] else "—"
+            role_company = self.truncate(f"{row['role'] or '—'} · {company}")
             table.add_row(
                 str(row["analyzed_at"] or "")[:10],
-                f"{row['role'] or '—'} · {company}",
+                role_company,
                 verdict_text,
                 layer_dots(row),
                 fit,
                 f"#{row['id']:03d}",
                 key=str(row["id"]),
             )
+        if table.row_count > 0:
+            table.move_cursor(row=0)
 
-    def action_cycle_filter(self) -> None:
-        self.filter_index = (self.filter_index + 1) % len(FILTER_CYCLE)
-        self.refresh_jobs()
-
-    def action_analyze(self) -> None:
-        self.app.push_screen(AnalyzeScreen())
-
-    def action_show_help(self) -> None:
-        self.app.push_screen(HelpScreen())
-
-    def action_quit_app(self) -> None:
-        self.app.exit()
-
-    @on(DataTable.RowSelected)
-    def on_row_selected(self, event: DataTable.RowSelected) -> None:
-        job_id = int(event.row_key.value)
-        self.app.push_screen(DetailScreen(job_id))
-
-    def on_screen_resume(self) -> None:
-        self.refresh_jobs()
-
-
-class DetailScreen(Screen):
-    # Namespaced "app.pop_screen" — Screen itself has no action_pop_screen,
-    # only App does; an unqualified "pop_screen" silently fails to dispatch.
-    BINDINGS = [
-        Binding("escape", "app.pop_screen", "Back"),
-        Binding("f", "toggle_full", "Full/Brief"),
-    ]
-
-    def __init__(self, job_id: int):
-        super().__init__()
-        self.job_id = job_id
-        self.full = False
-        self.job_row = None
-
-    def compose(self) -> ComposeResult:
-        with VerticalScroll(id="detail-body"):
-            yield Label("Loading...", id="detail-content")
-        yield Footer()
-
-    def on_mount(self) -> None:
-        self.job_row = database.get_job(self.job_id, self.app.user["id"])
-        self.render_detail()
+    def update_legend(self) -> None:
+        legend = self.query_one("#legend-bar", Static)
+        if self.prompt_mode == "search":
+            legend.update("[dim]enter apply · esc cancel[/dim]")
+        elif self.prompt_mode == "command":
+            legend.update("[dim]enter submit · esc cancel[/dim]")
+        else:
+            legend.update(
+                "[dim]j/k move · enter select · f layers · "
+                "/ search · : command · q quit[/dim]"
+            )
 
     def action_toggle_full(self) -> None:
         self.full = not self.full
         self.render_detail()
 
+    def action_quit_app(self) -> None:
+        self.app.exit()
+
+    def action_cursor_down(self) -> None:
+        self.query_one("#jobs-table", DataTable).action_cursor_down()
+
+    def action_cursor_up(self) -> None:
+        self.query_one("#jobs-table", DataTable).action_cursor_up()
+
+    def action_open_search(self) -> None:
+        self.prompt_mode = "search"
+        prompt = self.query_one("#prompt-input", Input)
+        prompt.remove_class("hidden")
+        prompt.value = self.search_term
+        prompt.focus()
+        self.update_legend()
+
+    def action_open_command(self) -> None:
+        self.prompt_mode = "command"
+        prompt = self.query_one("#prompt-input", Input)
+        prompt.remove_class("hidden")
+        prompt.value = ""
+        prompt.focus()
+        self.update_legend()
+
+    def close_prompt(self) -> None:
+        prompt = self.query_one("#prompt-input", Input)
+        prompt.add_class("hidden")
+        self.prompt_mode = None
+        self.query_one("#jobs-table", DataTable).focus()
+        self.update_legend()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if self.prompt_mode == "search":
+            self.search_term = event.value
+            self.refresh_jobs()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if self.prompt_mode == "search":
+            self.close_prompt()
+        elif self.prompt_mode == "command":
+            self.run_command(event.value.strip())
+            self.close_prompt()
+
+    def run_command(self, text: str) -> None:
+        status = self.query_one("#status-line", Static)
+        if self.awaiting_duplicate_confirm is not None:
+            pending = self.awaiting_duplicate_confirm
+            self.awaiting_duplicate_confirm = None
+            if text.strip().lower() == "yes":
+                self.run_pipeline(*pending)
+            else:
+                status.update("[dim]Skipped.[/dim]")
+            return
+        if not text:
+            return
+        if text in ("full", "brief"):
+            self.full = text == "full"
+            self.render_detail()
+            return
+        if text in ("quit", "q"):
+            self.app.exit()
+            return
+        if text.startswith("filter "):
+            value = text[len("filter "):].strip()
+            if value in FILTER_CYCLE:
+                self.filter_index = FILTER_CYCLE.index(value)
+                self.refresh_jobs()
+            else:
+                status.update(f"[#f07178]Unknown filter: {value}[/]")
+            return
+        if text == "analyze" or text.startswith("analyze "):
+            self.start_analysis(text[len("analyze"):].strip())
+            return
+        status.update(f"[#f07178]Unknown command: {text}[/]")
+
+    def start_analysis(self, raw: str) -> None:
+        status = self.query_one("#status-line", Static)
+        if not raw:
+            status.update("[#f07178]Usage: analyze <url|text>[/]")
+            return
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not api_key:
+            status.update("[#f07178]ANTHROPIC_API_KEY not set in environment.[/]")
+            return
+
+        source_url = ""
+        source_text = ""
+        if raw.startswith("http://") or raw.startswith("https://"):
+            source_url = scraper.normalize_url(raw)
+        else:
+            source_text = raw
+
+        existing = database.check_duplicate(self.app.user["id"], source_url or source_text)
+        if existing is not None:
+            self.awaiting_duplicate_confirm = (source_url, source_text or raw)
+            status.update(
+                f"[#ffb454]Duplicate of #{existing['id']:03d} ({existing['verdict']}). "
+                f"Type 'yes' to re-analyze, anything else cancels.[/]"
+            )
+            return
+
+        self.run_pipeline(source_url, source_text or raw)
+
+    def run_pipeline(self, source_url: str, source_text: str) -> None:
+        self.do_pipeline(source_url, source_text)
+
+    @work(thread=True, exclusive=True)
+    def do_pipeline(self, source_url: str, source_text: str) -> None:
+        api_key = os.environ.get("ANTHROPIC_API_KEY")
+        model = os.environ.get("ANTHROPIC_MODEL", analyzer.DEFAULT_MODEL)
+        status = self.query_one("#status-line", Static)
+
+        if source_url:
+            self.app.call_from_thread(status.update, "[dim]Fetching...[/dim]")
+            text, error_code, error_detail = scraper.fetch(source_url)
+            if text is None:
+                self.app.call_from_thread(
+                    status.update,
+                    f"[#f07178]Scrape failed ({error_code}): {error_detail}[/]",
+                )
+                return
+            source_text = text
+
+        self.app.call_from_thread(status.update, "[dim]Analyzing...[/dim]")
+        try:
+            result = analyzer.analyze(dict(self.app.user), source_text, "text", api_key, model)
+        except Exception as e:
+            self.app.call_from_thread(status.update, f"[#f07178]Analysis failed: {e}[/]")
+            return
+
+        try:
+            job_id = database.save_job(
+                self.app.user["id"], result, source_url=source_url, source_text=source_text
+            )
+        except Exception as e:
+            self.app.call_from_thread(
+                status.update,
+                f"[#f07178]Analysis succeeded but saving to the database failed: {e}[/]",
+            )
+            return
+
+        verdict = (result.get("verdict") or "").upper()
+        self.app.call_from_thread(self.finish_analysis, job_id, verdict)
+
+    def finish_analysis(self, job_id: int, verdict: str) -> None:
+        self.query_one("#status-line", Static).update(
+            f"[#7fd962]Saved #{job_id:03d} — {verdict}[/]"
+        )
+        self.refresh_jobs()
+
+    def action_cancel_prompt_or_quit(self) -> None:
+        if self.prompt_mode is not None:
+            if self.prompt_mode == "search":
+                self.search_term = ""
+                self.refresh_jobs()
+            self.close_prompt()
+        else:
+            self.app.exit()
+
     def render_detail(self) -> None:
         content = self.query_one("#detail-content", Label)
-        row = self.job_row
+        table = self.query_one("#jobs-table", DataTable)
+        if table.row_count == 0:
+            content.update("[dim]No jobs match this filter.[/dim]")
+            return
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        job_id = int(row_key.value)
+        row = database.get_job(job_id, self.app.user["id"])
         if row is None:
-            content.update(f"No job #{self.job_id} found.")
+            content.update(f"No job #{job_id} found.")
             return
 
         verdict = row["verdict"] or ""
@@ -284,156 +431,107 @@ class DetailScreen(Screen):
 
         content.update("\n".join(lines))
 
+    @on(DataTable.RowHighlighted)
+    def on_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        self.render_detail()
 
-class AnalyzeScreen(Screen):
-    CSS = """
-    AnalyzeScreen {
-        align: center middle;
-    }
-    #analyze-box {
-        width: 70;
-        height: auto;
-        border: round $primary;
-        padding: 1 2;
-    }
-    .hidden {
-        display: none;
-    }
-    """
+    def on_screen_resume(self) -> None:
+        self.refresh_jobs()
+        self.render_detail()
 
-    BINDINGS = [Binding("escape", "cancel", "Back")]
 
-    def __init__(self):
+class FieldEditorScreen(Screen):
+    BINDINGS = [
+        Binding("ctrl+s", "save", "Save"),
+        Binding("escape", "app.pop_screen", "Cancel"),
+    ]
+
+    def __init__(self, field_name: str, label: str):
         super().__init__()
-        self.pending_source_url = ""
-        self.pending_source_text = ""
-        self.busy = False
+        self.field_name = field_name
+        self.label_text = label
 
     def compose(self) -> ComposeResult:
-        with Container(id="analyze-box"):
-            yield Label("Analyze a listing — paste a URL or the listing text:")
-            yield Input(placeholder="https://... or pasted text", id="analyze-input")
-            yield Static("", id="analyze-status")
-            with Container(id="analyze-confirm", classes="hidden"):
-                yield Label("Duplicate found. Re-analyze anyway?", id="dup-label")
-                yield Button("Re-analyze", id="dup-yes", variant="warning")
-                yield Button("Cancel", id="dup-no")
-        yield Footer()
+        yield Label(f"Edit {self.label_text} — Ctrl+S to save, Esc to cancel")
+        yield TextArea(self.app.user[self.field_name] or "", id="field-editor")
+        yield Static("", id="editor-status")
 
-    def action_cancel(self) -> None:
-        if self.busy:
-            return
-        self.app.pop_screen()
+    def on_mount(self) -> None:
+        self.query_one("#field-editor", TextArea).focus()
 
-    def on_input_submitted(self, event: Input.Submitted) -> None:
-        raw = event.value.strip()
-        if not raw or self.busy:
-            return
-        self.start_analysis(raw)
-
-    def start_analysis(self, raw: str) -> None:
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            self.set_status("[#f07178]ANTHROPIC_API_KEY not set in environment.[/]")
-            return
-
-        source_url = ""
-        source_text = ""
-        if raw.startswith("http://") or raw.startswith("https://"):
-            source_url = scraper.normalize_url(raw)
-        else:
-            source_text = raw
-
-        existing = database.check_duplicate(
-            self.app.user["id"], source_url or source_text
+    def action_save(self) -> None:
+        new_value = self.query_one("#field-editor", TextArea).text
+        current = self.app.user
+        fields = {
+            "cv": current["cv"] or "",
+            "zero_list": current["zero_list"] or "",
+            "criteria": current["criteria"] or "",
+            "yellow_list": current["yellow_list"] or "",
+        }
+        fields[self.field_name] = new_value
+        database.update_user_profile(
+            current["id"], fields["cv"], fields["zero_list"],
+            fields["criteria"], fields["yellow_list"],
         )
-        if existing is not None:
-            self.pending_source_url = source_url
-            self.pending_source_text = source_text or raw
-            self.query_one("#analyze-confirm").remove_class("hidden")
-            self.query_one("#dup-label", Label).update(
-                f"Duplicate of #{existing['id']:03d} ({existing['verdict']}). "
-                f"Re-analyze anyway?"
-            )
-            return
-
-        self.run_pipeline(source_url, source_text or raw)
-
-    @on(Button.Pressed, "#dup-yes")
-    def on_dup_yes(self) -> None:
-        self.query_one("#analyze-confirm").add_class("hidden")
-        self.run_pipeline(self.pending_source_url, self.pending_source_text)
-
-    @on(Button.Pressed, "#dup-no")
-    def on_dup_no(self) -> None:
-        self.query_one("#analyze-confirm").add_class("hidden")
-        self.set_status("[dim]Skipped.[/dim]")
-
-    def run_pipeline(self, source_url: str, source_text: str) -> None:
-        self.busy = True
-        self.query_one("#analyze-input", Input).disabled = True
-        self.do_pipeline(source_url, source_text)
-
-    def set_status(self, text: str) -> None:
-        self.query_one("#analyze-status", Static).update(text)
-
-    @work(thread=True)
-    def do_pipeline(self, source_url: str, source_text: str) -> None:
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        model = os.environ.get("ANTHROPIC_MODEL", analyzer.DEFAULT_MODEL)
-
-        if source_url:
-            self.app.call_from_thread(self.set_status, "[dim]Fetching...[/dim]")
-            text, error_code, error_detail = scraper.fetch(source_url)
-            if text is None:
-                self.app.call_from_thread(
-                    self.finish_error,
-                    f"[#f07178]Scrape failed ({error_code}): {error_detail}[/]",
-                )
-                return
-            source_text = text
-
-        self.app.call_from_thread(self.set_status, "[dim]Analyzing...[/dim]")
-        try:
-            result = analyzer.analyze(
-                dict(self.app.user), source_text, "text", api_key, model
-            )
-        except Exception as e:
-            self.app.call_from_thread(self.finish_error, f"[#f07178]Analysis failed: {e}[/]")
-            return
-
-        try:
-            job_id = database.save_job(
-                self.app.user["id"], result, source_url=source_url, source_text=source_text
-            )
-        except Exception as e:
-            self.app.call_from_thread(
-                self.finish_error,
-                f"[#f07178]Analysis succeeded but saving to the database failed: {e}[/]",
-            )
-            return
-
-        verdict = (result.get("verdict") or "").upper()
-        self.app.call_from_thread(self.finish_success, job_id, verdict)
-
-    def finish_error(self, message: str) -> None:
-        self.busy = False
-        self.query_one("#analyze-input", Input).disabled = False
-        self.set_status(message)
-
-    def finish_success(self, job_id: int, verdict: str) -> None:
-        self.busy = False
-        self.set_status(f"[#7fd962]Saved #{job_id:03d} — {verdict}[/]")
-        self.app.pop_screen()
+        self.app.user = database.get_user(current["username"])
+        self.query_one("#editor-status", Static).update("[#7fd962]Saved.[/]")
 
 
 class JobScreenerApp(App):
     user: object = None
+    COMMAND_PALETTE_BINDING = "ctrl+s"
+
+    def check_action(self, action, parameters):
+        # The command-palette binding is a *priority* binding, which Textual
+        # always checks app-first regardless of focus — so without this, the
+        # palette would intercept every Ctrl+S press and FieldEditorScreen's
+        # own "ctrl+s -> save" binding would never fire. Disabling the action
+        # here (the standard Textual "dynamic actions" hook) lets the
+        # keypress fall through to the focused screen's own binding instead.
+        if action == "command_palette" and self.screen_stack and isinstance(self.screen, FieldEditorScreen):
+            return False
+        return True
 
     def on_mount(self) -> None:
         self.register_theme(JOB_SCREENER_THEME)
+        self.register_theme(JOB_SCREENER_LIGHT_THEME)
         self.theme = "job-screener"
         self.push_screen(LoginScreen())
+
+    def get_system_commands(self, screen):
+        yield SystemCommand("Edit CV", "Edit your CV text", lambda: self.push_screen(FieldEditorScreen("cv", "CV")))
+        yield SystemCommand("Edit Zero list", "Edit your zero-list", lambda: self.push_screen(FieldEditorScreen("zero_list", "Zero list")))
+        yield SystemCommand("Edit Yellow list", "Edit your yellow-list", lambda: self.push_screen(FieldEditorScreen("yellow_list", "Yellow list")))
+        yield SystemCommand("Edit criteria", "Edit your additional criteria", lambda: self.push_screen(FieldEditorScreen("criteria", "Criteria")))
+        yield SystemCommand("Change theme", "Toggle dark/light theme", self.action_toggle_app_theme)
+        yield SystemCommand("Show keys", "Show all keybindings", self.action_show_keys)
+        yield SystemCommand("Save screenshot", "Save a screenshot of the current screen", self.action_save_app_screenshot)
+        yield SystemCommand("Quit", "Quit the application", self.action_quit)
+
+    def action_toggle_app_theme(self) -> None:
+        self.theme = "job-screener-light" if self.theme == "job-screener" else "job-screener"
+
+    def action_show_keys(self) -> None:
+        screen = self.screen
+        if hasattr(screen, "query_one"):
+            try:
+                status = screen.query_one("#status-line", Static)
+                status.update(
+                    "[dim]j/k move · enter select · f layers · / search · "
+                    ": command · ctrl+s settings · q quit[/dim]"
+                )
+            except Exception:
+                pass
+
+    def action_save_app_screenshot(self) -> None:
+        path = self.save_screenshot(filename="screenshot.svg")
+        screen = self.screen
+        if hasattr(screen, "query_one"):
+            try:
+                status = screen.query_one("#status-line", Static)
+                status.update(f"[#7fd962]Saved screenshot to {path}[/]")
+            except Exception:
+                pass
 
 
 def main():
