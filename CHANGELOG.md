@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.41 — Terminal interface improvements
+
+- **Improved** — the terminal interface remembers your filter and view preferences between sessions, lets you jump between sections with the keyboard, and the experimental screenshot feature is more reliable.
+
+---
+
 ## v0.40 — Terminal interface redesign
 
 - **Redesigned** — the experimental terminal interface now shows the list and the selected listing's details together on one screen, supports quick search, and has a settings menu for editing your profile fields without leaving the terminal.

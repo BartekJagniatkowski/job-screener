@@ -1,12 +1,17 @@
+import json
 import os
 
 from textual import on, work
 from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
-from textual.containers import Container, VerticalScroll
+from textual.containers import Container, Horizontal, VerticalScroll
+from textual.css.query import NoMatches
 from textual.screen import Screen
 from textual.theme import Theme
-from textual.widgets import DataTable, Footer, Input, Label, Static, TextArea
+from textual.widgets import (
+    DataTable, Footer, HelpPanel, Input, Label, Static, TextArea,
+)
+from textual.widgets.data_table import CellDoesNotExist
 
 import analyzer
 import database
@@ -88,6 +93,30 @@ def job_matches_filter(row, status: str) -> bool:
     return (row["verdict"] or "").lower() == status
 
 
+CLI_STATE_DIR = "data"  # already gitignored as a whole directory
+
+
+def cli_state_path(username: str) -> str:
+    return os.path.join(CLI_STATE_DIR, f"cli_state_{username}.json")
+
+
+def load_cli_state(username: str) -> dict:
+    try:
+        with open(cli_state_path(username), "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def save_cli_state(username: str, state: dict) -> None:
+    try:
+        os.makedirs(CLI_STATE_DIR, exist_ok=True)
+        with open(cli_state_path(username), "w", encoding="utf-8") as f:
+            json.dump(state, f)
+    except OSError:
+        pass  # best-effort -- losing remembered state isn't worth crashing over
+
+
 class LoginScreen(Screen):
     CSS = """
     LoginScreen {
@@ -128,10 +157,232 @@ class LoginScreen(Screen):
         self.app.switch_screen(MainScreen())
 
 
+class FilterBar(Horizontal):
+    """Persistent horizontal filter row between the list and detail panel.
+
+    Tab-focusable; left/right moves the selection and applies it
+    immediately (no separate confirm step -- this isn't a modal).
+    """
+
+    can_focus = True
+
+    # Quick-select: one letter per status, jumps directly there instead of
+    # cycling. Mnemonics aren't all first-letter since several statuses
+    # collide on first letter (warning/worth_considering/offer all start
+    # differently enough, but "a"pplied vs "a"ll would clash) -- this
+    # exact set was specified directly rather than derived.
+    QUICK_SELECT_KEYS = {
+        "a": "all",
+        "r": "rejected",
+        "g": "warning",
+        "w": "worth_considering",
+        "p": "applied",
+        "i": "interview",
+        "o": "offer",
+        "c": "company_rejected",
+    }
+
+    BINDINGS = [
+        Binding("left", "prev_filter", "Prev filter", show=False),
+        Binding("right", "next_filter", "Next filter", show=False),
+    ] + [
+        Binding(key, f"quick_select_{status}", status, show=False)
+        for key, status in QUICK_SELECT_KEYS.items()
+    ]
+
+    def __init__(self, main_screen: "MainScreen"):
+        super().__init__(id="filter-bar")
+        self.main_screen = main_screen
+
+    def compose(self) -> ComposeResult:
+        status_to_key = {status: key for key, status in self.QUICK_SELECT_KEYS.items()}
+        for status in FILTER_CYCLE:
+            key = status_to_key.get(status, "")
+            yield Static(f"[reverse] {key} [/]{status}", classes="filter-chip")
+
+    def on_mount(self) -> None:
+        self.refresh_chips()
+
+    def refresh_chips(self) -> None:
+        chips = list(self.query(".filter-chip"))
+        for i, chip in enumerate(chips):
+            chip.set_class(i == self.main_screen.filter_index, "selected")
+        # Without this, moving left/right past the edge of a narrow
+        # terminal selects a chip that's scrolled out of view -- the
+        # highlight changes but you can't see which one is now active,
+        # and the bar just sits there overflowed with no visual link
+        # between "you pressed right" and "this is what's now selected."
+        if 0 <= self.main_screen.filter_index < len(chips):
+            chips[self.main_screen.filter_index].scroll_visible(
+                animate=False, immediate=True
+            )
+
+    def select_filter(self, status: str) -> None:
+        self.main_screen.filter_index = FILTER_CYCLE.index(status)
+        self.main_screen.refresh_jobs()
+        self.main_screen.save_state()
+        self.refresh_chips()
+
+    def action_prev_filter(self) -> None:
+        self.select_filter(FILTER_CYCLE[(self.main_screen.filter_index - 1) % len(FILTER_CYCLE)])
+
+    def action_next_filter(self) -> None:
+        self.select_filter(FILTER_CYCLE[(self.main_screen.filter_index + 1) % len(FILTER_CYCLE)])
+
+
+# Textual resolves a binding's action by looking up a literal
+# "action_<name>" method on the widget, so each quick-select status needs
+# its own real method -- generated here instead of typed out by hand to
+# avoid 8 near-identical one-liners. `status=status` binds each closure's
+# value at definition time, avoiding the classic late-binding bug where
+# every closure would otherwise share the loop variable's final value.
+for _status in FilterBar.QUICK_SELECT_KEYS.values():
+    setattr(
+        FilterBar,
+        f"action_quick_select_{_status}",
+        lambda self, status=_status: self.select_filter(status),
+    )
+del _status
+
+
+class JobsTable(DataTable):
+    """DataTable that re-truncates its own columns when ITS width changes.
+
+    events.Resize doesn't bubble (confirmed: events.Resize.bubble is
+    False), so MainScreen never sees this table's own resize -- only the
+    screen's own size change (an actual terminal resize), not a sibling
+    widget (e.g. the help panel) taking some of the available width.
+    Overriding on_resize directly on the table itself is the only
+    reliable way to catch that.
+    """
+
+    def __init__(self, main_screen: "MainScreen", **kwargs):
+        super().__init__(**kwargs)
+        self.main_screen = main_screen
+
+    def on_resize(self, event) -> None:
+        self.main_screen.refresh_jobs()
+
+
+class LayerNavPanel(VerticalScroll):
+    """The detail panel, focusable to navigate between its layer sections."""
+
+    can_focus = True
+
+    BINDINGS = [
+        Binding("j", "next_layer", "Next layer", show=False),
+        Binding("k", "prev_layer", "Prev layer", show=False),
+        Binding("down", "next_layer", "Next layer", show=False),
+        Binding("up", "prev_layer", "Prev layer", show=False),
+    ]
+
+    def __init__(self, main_screen: "MainScreen"):
+        super().__init__(id="detail-body")
+        self.main_screen = main_screen
+
+    def on_focus(self, event) -> None:
+        # Brief mode only shows 3 sections (Triage/Product/Business), so
+        # j/k cycling through them wraps back to Triage every 3rd press --
+        # easy to mistake for "stuck and can't scroll further." Tabbing
+        # into the panel to browse layers implies wanting to see all of
+        # them, so expand automatically rather than requiring a separate
+        # 'f' press first.
+        if not self.main_screen.full:
+            self.main_screen.full = True
+            self.main_screen.render_detail()
+            self.main_screen.save_state()
+
+    def action_next_layer(self) -> None:
+        self.main_screen.move_layer(1)
+
+    def action_prev_layer(self) -> None:
+        self.main_screen.move_layer(-1)
+
+
 class MainScreen(Screen):
     CSS = """
     .hidden {
         display: none;
+    }
+    #list-frame {
+        height: 1fr;
+        border: round $border-blurred;
+        padding: 1;
+        margin: 1 1 0 1;
+    }
+    #list-frame.focused-frame {
+        border: round $primary;
+    }
+    #jobs-table {
+        height: 100%;
+    }
+    #detail-frame {
+        height: 1fr;
+        border: round $border-blurred;
+        padding: 1;
+        margin: 1;
+    }
+    #detail-frame.focused-frame {
+        border: round $primary;
+    }
+    #detail-header {
+        margin-bottom: 1;
+        padding: 0 1;
+    }
+    #detail-header.current {
+        background: $primary 15%;
+        border-left: thick $primary;
+    }
+    .layer-section {
+        margin-bottom: 1;
+        padding: 0 1;
+    }
+    .layer-section.current {
+        background: $primary 15%;
+        border-left: thick $primary;
+    }
+    #filter-bar {
+        height: 3;
+        margin: 0 1;
+        border: round $border-blurred;
+        align: center middle;
+        /* Horizontal's default is "overflow: hidden hidden" -- structurally
+           not scrollable, just clips. With 8 chips this overflows on
+           anything narrower than ~120 cols, and selecting an off-screen
+           chip via left/right had no way to bring it into view: scroll_x
+           stayed 0 because the container couldn't scroll at all, despite
+           calling scroll_visible() on the selected chip every time.
+           scrollbar-size-horizontal: 0 keeps scrolling functional
+           (scroll_visible() now works) without reserving a visible
+           scrollbar row -- a visible bar at height:3 had no room and
+           squished the chip text down to nothing. */
+        overflow-x: auto;
+        overflow-y: hidden;
+        scrollbar-size-horizontal: 0;
+    }
+    #filter-bar:focus {
+        border: round $border;
+    }
+    .filter-chip {
+        width: auto;
+        margin: 0 1;
+        padding: 0 1;
+        color: $foreground 60%;
+    }
+    .filter-chip.selected {
+        color: $primary;
+        text-style: bold underline;
+    }
+    #legend-bar {
+        margin: 0 1;
+        height: 1;
+    }
+    #prompt-input {
+        margin: 0 1;
+    }
+    #status-line {
+        margin: 0 1 1 1;
+        height: 1;
     }
     """
 
@@ -143,39 +394,119 @@ class MainScreen(Screen):
         Binding("k", "cursor_up", "Up", show=False),
         Binding("slash", "open_search", "Search", key_display="/"),
         Binding("colon", "open_command", "Command", key_display=":"),
+        Binding("question_mark", "app.show_keys", "Help", key_display="?"),
     ]
 
     def __init__(self):
         super().__init__()
-        self.filter_index = 0
-        self.full = False
+        saved = load_cli_state(self.app.user["username"]) if self.app.user else {}
+        self.filter_index = saved.get("filter_index", 0)
+        self.full = saved.get("full", False)
         self.prompt_mode = None
         self.search_term = ""
         self.awaiting_duplicate_confirm = None
+        self.layer_index = -1  # -1 = summary/header, the default landing spot
+        self.current_job_id = None
+
+    def save_state(self) -> None:
+        state = load_cli_state(self.app.user["username"])
+        state["filter_index"] = self.filter_index
+        state["full"] = self.full
+        save_cli_state(self.app.user["username"], state)
 
     def compose(self) -> ComposeResult:
-        table = DataTable(cursor_type="row", id="jobs-table")
-        table.styles.height = 9  # header + 7 visible data rows
-        yield table
-        with VerticalScroll(id="detail-body"):
-            yield Label("", id="detail-content")
+        with Container(id="list-frame"):
+            yield JobsTable(self, cursor_type="row", id="jobs-table")
+        yield FilterBar(self)
+        with Container(id="detail-frame"):
+            with LayerNavPanel(self):
+                yield Static("", id="detail-header")
+                for i in range(7):
+                    yield Static("", id=f"layer-section-{i}", classes="layer-section")
         yield Static("", id="legend-bar")
         yield Input(id="prompt-input", classes="hidden")
         yield Static("", id="status-line")
         yield Footer()
 
     def on_mount(self) -> None:
-        table = self.query_one("#jobs-table", DataTable)
-        table.add_columns("DATE", "ROLE · COMPANY", "VERDICT", "LAYERS", "FIT", "ID")
         self.refresh_jobs()
         self.update_legend()
+        self.update_focus_frames()
+        saved = load_cli_state(self.app.user["username"])
+        if saved.get("help_panel_visible"):
+            self.app.action_show_help_panel()
 
-    def truncate(self, text: str, max_len: int = 40) -> str:
+    def on_descendant_focus(self, event) -> None:
+        self.update_focus_frames()
+
+    def on_descendant_blur(self, event) -> None:
+        self.update_focus_frames()
+
+    def update_focus_frames(self) -> None:
+        table = self.query_one("#jobs-table", DataTable)
+        detail = self.query_one("#detail-body")
+        self.query_one("#list-frame").set_class(self.focused is table, "focused-frame")
+        self.query_one("#detail-frame").set_class(self.focused is detail, "focused-frame")
+
+    def truncate(self, text: str, max_len: int) -> str:
         return text if len(text) <= max_len else text[: max_len - 1] + "…"
+
+    # Fixed widths for every column except ROLE · COMPANY, which gets
+    # whatever's left. DataTable's *auto*-width columns only ever grow to
+    # fit the widest content ever seen and never shrink back down even
+    # after table.clear(columns=True) + re-adding them -- empirically
+    # confirmed by querying Column.content_width before/after a resize.
+    # Explicit fixed widths sidestep that entirely: every refresh_jobs()
+    # call sets the exact same deterministic widths, so there's no
+    # stale/stuck sizing regardless of resize timing.
+    # DATE="2026-06-20"=10, VERDICT max "WORTH_CONSIDERING"=17,
+    # LAYERS="● ● ● ● ● ●"=11, FIT="x.x/5"=5, ID="#229"=4.
+    FIXED_COLUMN_WIDTHS = {"DATE": 10, "VERDICT": 17, "LAYERS": 11, "FIT": 5, "ID": 4}
+
+    def role_company_width(self) -> int:
+        # get_render_width() adds 2*cell_padding (default 1, so +2) per
+        # column, for all 6 columns including this one.
+        reserved = sum(self.FIXED_COLUMN_WIDTHS.values()) + 2 * 6
+        table = self.query_one("#jobs-table", DataTable)
+        table_width = table.size.width
+        # table.size.width is the table's OUTER size -- it does NOT
+        # subtract the vertical scrollbar's own gutter (confirmed live:
+        # scrollbar_size_vertical=2 while a 170-row list is shown, and
+        # the actual content area is 2 narrower than .size.width reports).
+        # Without this, the last column lost its final 1-2 characters
+        # even though the math otherwise summed exactly to table_width.
+        if table.show_vertical_scrollbar:
+            table_width -= table.scrollbar_size_vertical
+        # A floor higher than the genuinely available space (e.g. 30 when
+        # only 29 fits) forces the table 1 char past table_width every
+        # time -- exactly enough to clip the last column. 15 is still
+        # readable and low enough to never force that overflow at any
+        # realistic terminal width.
+        return max(15, table_width - reserved)
 
     def refresh_jobs(self) -> None:
         table = self.query_one("#jobs-table", DataTable)
-        table.clear()
+        # Preserve the current selection across refreshes triggered by
+        # something unrelated to the row set changing (e.g. on_resize,
+        # which calls this on every width change) -- unconditionally
+        # snapping back to row 0 fired RowHighlighted every time, which
+        # reset the detail panel's layer navigation back to the first
+        # layer on every resize (e.g. opening/closing the help panel).
+        previous_job_id = None
+        if table.row_count > 0:
+            try:
+                row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+                previous_job_id = row_key.value
+            except CellDoesNotExist:
+                pass
+        role_company_width = self.role_company_width()
+        table.clear(columns=True)
+        table.add_column("DATE", width=self.FIXED_COLUMN_WIDTHS["DATE"])
+        table.add_column("ROLE · COMPANY", width=role_company_width)
+        table.add_column("VERDICT", width=self.FIXED_COLUMN_WIDTHS["VERDICT"])
+        table.add_column("LAYERS", width=self.FIXED_COLUMN_WIDTHS["LAYERS"])
+        table.add_column("FIT", width=self.FIXED_COLUMN_WIDTHS["FIT"])
+        table.add_column("ID", width=self.FIXED_COLUMN_WIDTHS["ID"])
         status = FILTER_CYCLE[self.filter_index]
         self.sub_title = f"filter: {status}"
         rows = database.get_jobs(self.app.user["id"])
@@ -191,7 +522,9 @@ class MainScreen(Screen):
             verdict_text = f"[{color}]{verdict.upper()}[/]" if color else verdict.upper()
             company = row["company"] or "Unknown"
             fit = f"{row['fit_score']:.1f}/5" if row["fit_score"] else "—"
-            role_company = self.truncate(f"{row['role'] or '—'} · {company}")
+            role_company = self.truncate(
+                f"{row['role'] or '—'} · {company}", role_company_width
+            )
             table.add_row(
                 str(row["analyzed_at"] or "")[:10],
                 role_company,
@@ -202,7 +535,16 @@ class MainScreen(Screen):
                 key=str(row["id"]),
             )
         if table.row_count > 0:
-            table.move_cursor(row=0)
+            restored = False
+            if previous_job_id is not None:
+                for i, row_key in enumerate(table.rows.keys()):
+                    if row_key.value == previous_job_id:
+                        table.move_cursor(row=i)
+                        restored = True
+                        break
+            if not restored:
+                table.move_cursor(row=0)
+        self.query_one(FilterBar).refresh_chips()
 
     def update_legend(self) -> None:
         legend = self.query_one("#legend-bar", Static)
@@ -212,13 +554,17 @@ class MainScreen(Screen):
             legend.update("[dim]enter submit · esc cancel[/dim]")
         else:
             legend.update(
-                "[dim]j/k move · enter select · f layers · "
-                "/ search · : command · q quit[/dim]"
+                "[dim]j/k move · f layers · tab/←/→ filter · "
+                "/ search · : command · ? help · q quit[/dim]"
             )
+
+    def on_resize(self) -> None:
+        self.refresh_jobs()
 
     def action_toggle_full(self) -> None:
         self.full = not self.full
         self.render_detail()
+        self.save_state()
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -279,6 +625,7 @@ class MainScreen(Screen):
         if text in ("full", "brief"):
             self.full = text == "full"
             self.render_detail()
+            self.save_state()
             return
         if text in ("quit", "q"):
             self.app.exit()
@@ -288,6 +635,7 @@ class MainScreen(Screen):
             if value in FILTER_CYCLE:
                 self.filter_index = FILTER_CYCLE.index(value)
                 self.refresh_jobs()
+                self.save_state()
             else:
                 status.update(f"[#f07178]Unknown filter: {value}[/]")
             return
@@ -381,55 +729,130 @@ class MainScreen(Screen):
             self.app.exit()
 
     def render_detail(self) -> None:
-        content = self.query_one("#detail-content", Label)
+        header = self.query_one("#detail-header", Static)
         table = self.query_one("#jobs-table", DataTable)
         if table.row_count == 0:
-            content.update("[dim]No jobs match this filter.[/dim]")
+            header.update("[dim]No jobs match this filter.[/dim]")
+            for i in range(7):
+                self.query_one(f"#layer-section-{i}", Static).add_class("hidden")
             return
         row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
         job_id = int(row_key.value)
         row = database.get_job(job_id, self.app.user["id"])
         if row is None:
-            content.update(f"No job #{job_id} found.")
+            header.update(f"No job #{job_id} found.")
+            for i in range(7):
+                self.query_one(f"#layer-section-{i}", Static).add_class("hidden")
             return
 
         verdict = row["verdict"] or ""
         color = VERDICT_COLOR.get(verdict, "")
         verdict_text = f"[{color}]{verdict.upper()}[/]" if color else verdict.upper()
+        header.update(
+            f"#{row['id']:03d} {row['role'] or '—'} · {row['company'] or 'Unknown'}\n"
+            f"Verdict: {verdict_text}\n\n"
+            f"{row['verdict_summary'] or ''}"
+        )
 
-        lines = [
-            f"#{row['id']:03d} {row['role'] or '—'} · {row['company'] or 'Unknown'}",
-            f"Verdict: {verdict_text}",
-            "",
-            row["verdict_summary"] or "",
-            "",
-        ]
-
-        panels = LAYER_PANELS if self.full else LAYER_PANELS[:3]
-        for title, status_col, findings_col in panels:
+        # Slots 0-4 are the LAYER_PANELS entries (Triage/Product/Business/
+        # Reputation/Values), slot 5 is Fit, slot 6 is Gut feeling. Brief
+        # mode shows only slots 0-2; full mode shows everything that has
+        # content (Gut feeling hides itself if the row has none).
+        visible_count = len(LAYER_PANELS) if self.full else 3
+        for i, (title, status_col, findings_col) in enumerate(LAYER_PANELS):
+            section = self.query_one(f"#layer-section-{i}", Static)
+            if i >= visible_count:
+                section.add_class("hidden")
+                continue
+            section.remove_class("hidden")
             status = row[status_col] or "?"
             dot_color = STATUS_DOT_COLOR.get(status, "")
             status_text = f"[{dot_color}]{status.upper()}[/]" if dot_color else status.upper()
-            lines.append(f"[bold #39bae6]{title}[/] — {status_text}")
-            lines.append(row[findings_col] or "(no findings)")
-            lines.append("")
+            section.update(
+                f"[bold #39bae6]{title}[/] — {status_text}\n{row[findings_col] or '(no findings)'}"
+            )
 
+        fit_section = self.query_one("#layer-section-5", Static)
+        gut_section = self.query_one("#layer-section-6", Static)
         if self.full:
             fit_status = row["fit_status"] or "?"
             fit_color = STATUS_DOT_COLOR.get(fit_status, "")
             fit_score = f"{row['fit_score']:.1f}/5" if row["fit_score"] else "—"
             fit_text = f"[{fit_color}]{fit_status.upper()}[/]" if fit_color else fit_status.upper()
-            lines.append(f"[bold]Fit ({fit_score})[/] — {fit_text}")
-            lines.append(f"Strengths: {row['fit_strengths'] or '—'}")
-            lines.append(f"Gaps: {row['fit_gaps'] or '—'}")
-            lines.append(f"Improve: {row['fit_improve'] or '—'}")
-            lines.append("")
+            fit_section.remove_class("hidden")
+            fit_section.update(
+                f"[bold #39bae6]Fit ({fit_score})[/] — {fit_text}\n"
+                f"Strengths: {row['fit_strengths'] or '—'}\n"
+                f"Gaps: {row['fit_gaps'] or '—'}\n"
+                f"Improve: {row['fit_improve'] or '—'}"
+            )
             if row["gut_feeling"]:
-                lines.append(f"[bold]Gut feeling[/]\n{row['gut_feeling']}")
+                gut_section.remove_class("hidden")
+                gut_section.update(f"[bold #39bae6]Gut feeling[/]\n{row['gut_feeling']}")
+            else:
+                gut_section.add_class("hidden")
         else:
-            lines.append("[dim]Press 'f' for all 6 layers[/dim]")
+            fit_section.add_class("hidden")
+            gut_section.add_class("hidden")
 
-        content.update("\n".join(lines))
+        # Only reset to the first layer when this is actually a different
+        # job. DataTable's cursor_coordinate is always_update=True, so
+        # RowHighlighted (and this render) fires even when the cursor
+        # lands back on the SAME row -- e.g. refresh_jobs() re-selecting
+        # the previously-selected row after a resize. Without this check,
+        # opening/closing the help panel (or any width change) snapped
+        # layer navigation back to the first layer every time.
+        if row["id"] != self.current_job_id:
+            self.current_job_id = row["id"]
+            self.layer_index = -1  # land on the summary, not Triage
+        self.apply_layer_highlight()
+
+    def visible_layer_sections(self) -> list:
+        return [
+            s for s in self.query(".layer-section")
+            if "hidden" not in s.classes
+        ]
+
+    def apply_layer_highlight(self) -> None:
+        sections = self.visible_layer_sections()
+        if sections and self.layer_index >= len(sections):
+            # e.g. toggling from full to brief shrinks the visible set;
+            # without this, an index past the new end highlights nothing.
+            self.layer_index = len(sections) - 1
+        for i, section in enumerate(sections):
+            section.set_class(i == self.layer_index, "current")
+        self.query_one("#detail-header").set_class(self.layer_index == -1, "current")
+        if self.layer_index == -1:
+            # -1 is the header/summary above Triage -- not one of the
+            # indexed sections. Without this state, there was no keyboard
+            # way back to the summary once you'd moved into the layers:
+            # k/up at Triage just wrapped to the LAST layer, never up to
+            # the header, leaving mouse-scroll as the only way there.
+            # immediate=True -- scroll_to()'s default defers until the next
+            # screen refresh, so reading scroll_y right after this call
+            # (e.g. in a test, or a fast double-press) would still see the
+            # pre-scroll position. Also: this method lives on MainScreen,
+            # not LayerNavPanel -- self.scroll_home() was scrolling the
+            # SCREEN, not the #detail-body panel, so it silently did
+            # nothing useful. Must target the panel explicitly.
+            self.query_one("#detail-body").scroll_home(animate=False, immediate=True)
+        elif sections and 0 <= self.layer_index < len(sections):
+            # animate=False -- an in-flight smooth-scroll animation from a
+            # rapid previous keypress could still be resolving when the
+            # next one lands, which was producing flaky/lost layer moves
+            # under fast repeated j/k (confirmed via repeated headless runs
+            # of the same input sequence giving different results).
+            sections[self.layer_index].scroll_visible(animate=False, immediate=True)
+
+    def move_layer(self, delta: int) -> None:
+        sections = self.visible_layer_sections()
+        if not sections:
+            return
+        # Full cycle includes the header as position -1: header -> Triage
+        # -> ... -> last layer -> header -> ... in both directions, so
+        # the header is always reachable by keyboard alone.
+        self.layer_index = ((self.layer_index + 1 + delta) % (len(sections) + 1)) - 1
+        self.apply_layer_highlight()
 
     @on(DataTable.RowHighlighted)
     def on_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -480,6 +903,30 @@ class FieldEditorScreen(Screen):
 class JobScreenerApp(App):
     user: object = None
     COMMAND_PALETTE_BINDING = "ctrl+s"
+    # Textual's default focus/blur border style for Input/TextArea is
+    # "tall", which uses partial-block glyphs (▊ ▔ ▎ ▁ -- the same
+    # Unicode range as the scrollbar thumb) that render inconsistently
+    # across SVG-screenshot viewers. Override to "round" everywhere, which
+    # uses plain box-drawing characters already confirmed to render
+    # correctly. Applies globally so every screen's Input/TextArea is
+    # covered without repeating this in each screen's CSS.
+    CSS = """
+    Input, TextArea {
+        border: round $border-blurred;
+    }
+    Input:focus, TextArea:focus {
+        border: round $border;
+    }
+    CommandPalette #--input {
+        border: round black 50%;
+    }
+    """
+    # priority=True so this fires even inside a ModalScreen (e.g. the
+    # Settings command palette) -- ModalScreen blocks ordinary App-level
+    # by design, but priority bindings are checked first regardless.
+    BINDINGS = [
+        Binding("ctrl+p", "save_app_screenshot", "Screenshot", show=False, priority=True),
+    ]
 
     def check_action(self, action, parameters):
         # The command-palette binding is a *priority* binding, which Textual
@@ -512,25 +959,53 @@ class JobScreenerApp(App):
         self.theme = "job-screener-light" if self.theme == "job-screener" else "job-screener"
 
     def action_show_keys(self) -> None:
-        screen = self.screen
-        if hasattr(screen, "query_one"):
-            try:
-                status = screen.query_one("#status-line", Static)
-                status.update(
-                    "[dim]j/k move · enter select · f layers · / search · "
-                    ": command · ctrl+s settings · q quit[/dim]"
-                )
-            except Exception:
-                pass
+        # Use Textual's own dockable HelpPanel (auto-built from every
+        # active BINDINGS list) instead of a one-line status message --
+        # this is the side panel with full key/description listing.
+        try:
+            self.screen.query_one(HelpPanel)
+            self.action_hide_help_panel()
+            visible = False
+        except NoMatches:
+            self.action_show_help_panel()
+            visible = True
+        if self.user:
+            state = load_cli_state(self.user["username"])
+            state["help_panel_visible"] = visible
+            save_cli_state(self.user["username"], state)
 
     def action_save_app_screenshot(self) -> None:
-        path = self.save_screenshot(filename="screenshot.svg")
+        # Root cause of the garbled glyphs: export_screenshot()'s SVG has no
+        # <?xml ... encoding="UTF-8"?> declaration, even though its actual
+        # bytes are correctly UTF-8 (confirmed: the bullet char's bytes are
+        # the right \xe2\x97\x8f for U+25CF). Without an explicit encoding
+        # declaration, some SVG viewers guess a different encoding (e.g.
+        # Latin-1/CP1252) and misread every multi-byte character -- box
+        # borders and layer dots -- as mojibake.
+        #
+        # An earlier version of this fix ALSO swapped the hardcoded
+        # CDN-loaded "Fira Code" web font for a local stack (JetBrains
+        # Mono/SF Mono/Menlo/Consolas), to drop the network dependency.
+        # That swap was reverted: it introduced a regression -- visible
+        # gaps between stacked "thick" left-border block characters
+        # across consecutive lines. Rich's SVG template's line-height/
+        # char-height CSS values are tuned for Fira Code's specific
+        # metrics; the substituted fonts don't share them, so multi-line
+        # block glyphs stopped tiling seamlessly. Confirmed directly:
+        # re-rendering with Fira Code restored seamless borders with the
+        # encoding fix alone, no glyph corruption either, so the font
+        # swap was solving nothing the encoding fix didn't already cover.
+        svg = self.export_screenshot()
+        svg = '<?xml version="1.0" encoding="UTF-8"?>\n' + svg
+        path = os.path.join(".", "screenshot.svg")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(svg)
         screen = self.screen
         if hasattr(screen, "query_one"):
             try:
                 status = screen.query_one("#status-line", Static)
                 status.update(f"[#7fd962]Saved screenshot to {path}[/]")
-            except Exception:
+            except NoMatches:
                 pass
 
 
