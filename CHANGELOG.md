@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.43 — Instant theme preview in the terminal interface
+
+- **Improved** — picking a theme in the terminal interface's Settings now applies it the moment you highlight it, instead of needing an extra confirmation step.
+
+---
+
 ## v0.42 — Terminal interface polish
 
 - **Improved** — the experimental terminal interface shows all analysis layers at once instead of requiring a toggle, search and command typing now share one simpler box, the theme picker works properly again, and several small visual cleanups (key bar, help panel, modal sizing) make it easier to read.

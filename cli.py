@@ -5,10 +5,11 @@ import os
 from textual import on, work
 from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
+from textual.command import Command, CommandPalette
 from textual.containers import Container, Horizontal, VerticalScroll
 from textual.css.query import NoMatches
 from textual.screen import Screen
-from textual.theme import Theme
+from textual.theme import Theme, ThemeProvider
 from textual.widgets import (
     DataTable, Footer, HelpPanel, Input, Label, Static, TextArea,
 )
@@ -1043,6 +1044,28 @@ class JobScreenerApp(App):
         yield SystemCommand("Edit criteria", "Edit your additional criteria", lambda: self.push_screen(FieldEditorScreen("criteria", "Criteria")))
         yield SystemCommand("Show keys", "Show all keybindings", self.action_show_keys)
         yield SystemCommand("Save screenshot", "Save a screenshot of the current screen", self.action_save_app_screenshot)
+
+    def action_change_theme(self) -> None:
+        # Base App.search_themes() requires Enter to apply a theme -- here
+        # the theme switches the instant a different one is highlighted
+        # (arrowing through the list), since trying themes is the whole
+        # point of this picker and "preview" is really just "select".
+        self._previewing_theme = True
+
+        def _done(_=None) -> None:
+            self._previewing_theme = False
+
+        self.push_screen(
+            CommandPalette(providers=[ThemeProvider], placeholder="Search for themes…"),
+            _done,
+        )
+
+    def on_command_palette_option_highlighted(self, event: CommandPalette.OptionHighlighted) -> None:
+        if not getattr(self, "_previewing_theme", False):
+            return
+        option = event.highlighted_event.option
+        if isinstance(option, Command):
+            option.hit.command()
 
     def action_show_keys(self) -> None:
         # Use Textual's own dockable HelpPanel (auto-built from every
