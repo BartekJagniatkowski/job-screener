@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import os
 
@@ -16,6 +17,20 @@ from textual.widgets.data_table import CellDoesNotExist
 import analyzer
 import database
 import scraper
+
+# Input's built-in "right" binding description is the longest line shown
+# anywhere in the help panel ("...accept the completion suggestion") --
+# shortened here so the panel doesn't need to be sized for it. Mutating the
+# class's BINDINGS list alone isn't enough: _merged_bindings is computed
+# once at class-creation time (DOMNode.__init_subclass__), so it has to be
+# explicitly recomputed for the edit to actually take effect.
+Input.BINDINGS = [
+    dataclasses.replace(b, description="Move cursor right or accept suggestion")
+    if isinstance(b, Binding) and b.key == "right" and b.action == "cursor_right"
+    else b
+    for b in Input.BINDINGS
+]
+Input._merged_bindings = Input._merge_bindings()
 
 JOB_SCREENER_THEME = Theme(
     name="job-screener",
@@ -198,7 +213,12 @@ class FilterBar(Horizontal):
         status_to_key = {status: key for key, status in self.QUICK_SELECT_KEYS.items()}
         for status in FILTER_CYCLE:
             key = status_to_key.get(status, "")
-            yield Static(f"[reverse] {key} [/]{status}", classes="filter-chip")
+            idx = status.lower().find(key) if key else -1
+            if idx == -1:
+                label = status
+            else:
+                label = f"{status[:idx]}[reverse]{status[idx]}[/]{status[idx + 1:]}"
+            yield Static(label, classes="filter-chip")
 
     def on_mount(self) -> None:
         self.refresh_chips()
@@ -279,18 +299,6 @@ class LayerNavPanel(VerticalScroll):
     def __init__(self, main_screen: "MainScreen"):
         super().__init__(id="detail-body")
         self.main_screen = main_screen
-
-    def on_focus(self, event) -> None:
-        # Brief mode only shows 3 sections (Triage/Product/Business), so
-        # j/k cycling through them wraps back to Triage every 3rd press --
-        # easy to mistake for "stuck and can't scroll further." Tabbing
-        # into the panel to browse layers implies wanting to see all of
-        # them, so expand automatically rather than requiring a separate
-        # 'f' press first.
-        if not self.main_screen.full:
-            self.main_screen.full = True
-            self.main_screen.render_detail()
-            self.main_screen.save_state()
 
     def action_next_layer(self) -> None:
         self.main_screen.move_layer(1)
@@ -373,10 +381,6 @@ class MainScreen(Screen):
         color: $primary;
         text-style: bold underline;
     }
-    #legend-bar {
-        margin: 0 1;
-        height: 1;
-    }
     #prompt-input {
         margin: 0 1;
     }
@@ -387,13 +391,16 @@ class MainScreen(Screen):
     """
 
     BINDINGS = [
-        Binding("f", "toggle_full", "Layers"),
         Binding("q", "quit_app", "Quit"),
         Binding("escape", "cancel_prompt_or_quit", "Back", show=False),
-        Binding("j", "cursor_down", "Down", show=False),
+        Binding("j", "cursor_down", "Move", key_display="j/k"),
         Binding("k", "cursor_up", "Up", show=False),
-        Binding("slash", "open_search", "Search", key_display="/"),
-        Binding("colon", "open_command", "Command", key_display=":"),
+        Binding("tab", "cycle_focus", "Focus"),
+        # Footer groups footer chips by action name and only shows one chip
+        # per action -- distinct action names keep both "/" and ":" visible
+        # even though they now open the same merged prompt.
+        Binding("slash", "open_prompt_search", "Search", key_display="/"),
+        Binding("colon", "open_prompt_command", "Command", key_display=":"),
         Binding("question_mark", "app.show_keys", "Help", key_display="?"),
     ]
 
@@ -401,8 +408,7 @@ class MainScreen(Screen):
         super().__init__()
         saved = load_cli_state(self.app.user["username"]) if self.app.user else {}
         self.filter_index = saved.get("filter_index", 0)
-        self.full = saved.get("full", False)
-        self.prompt_mode = None
+        self.prompt_open = False
         self.search_term = ""
         self.awaiting_duplicate_confirm = None
         self.layer_index = -1  # -1 = summary/header, the default landing spot
@@ -411,7 +417,6 @@ class MainScreen(Screen):
     def save_state(self) -> None:
         state = load_cli_state(self.app.user["username"])
         state["filter_index"] = self.filter_index
-        state["full"] = self.full
         save_cli_state(self.app.user["username"], state)
 
     def compose(self) -> ComposeResult:
@@ -423,14 +428,12 @@ class MainScreen(Screen):
                 yield Static("", id="detail-header")
                 for i in range(7):
                     yield Static("", id=f"layer-section-{i}", classes="layer-section")
-        yield Static("", id="legend-bar")
         yield Input(id="prompt-input", classes="hidden")
         yield Static("", id="status-line")
         yield Footer()
 
     def on_mount(self) -> None:
         self.refresh_jobs()
-        self.update_legend()
         self.update_focus_frames()
         saved = load_cli_state(self.app.user["username"])
         if saved.get("help_panel_visible"):
@@ -546,25 +549,11 @@ class MainScreen(Screen):
                 table.move_cursor(row=0)
         self.query_one(FilterBar).refresh_chips()
 
-    def update_legend(self) -> None:
-        legend = self.query_one("#legend-bar", Static)
-        if self.prompt_mode == "search":
-            legend.update("[dim]enter apply · esc cancel[/dim]")
-        elif self.prompt_mode == "command":
-            legend.update("[dim]enter submit · esc cancel[/dim]")
-        else:
-            legend.update(
-                "[dim]j/k move · f layers · tab/←/→ filter · "
-                "/ search · : command · ? help · q quit[/dim]"
-            )
-
     def on_resize(self) -> None:
         self.refresh_jobs()
 
-    def action_toggle_full(self) -> None:
-        self.full = not self.full
-        self.render_detail()
-        self.save_state()
+    def action_cycle_focus(self) -> None:
+        self.focus_next()
 
     def action_quit_app(self) -> None:
         self.app.exit()
@@ -575,39 +564,61 @@ class MainScreen(Screen):
     def action_cursor_up(self) -> None:
         self.query_one("#jobs-table", DataTable).action_cursor_up()
 
-    def action_open_search(self) -> None:
-        self.prompt_mode = "search"
+    # Recognized command prefixes/literals -- anything else typed into the
+    # prompt is treated as a list filter, not a command. Checked against
+    # the raw submitted text, case as typed (filter/analyze values are
+    # case-sensitive against FILTER_CYCLE; "quit"/"q" are not).
+    def is_command(self, text: str) -> bool:
+        return (
+            text in ("quit", "q")
+            or text.startswith("filter ")
+            or text == "analyze"
+            or text.startswith("analyze ")
+        )
+
+    def action_open_prompt_search(self) -> None:
+        self.action_open_prompt()
+
+    def action_open_prompt_command(self) -> None:
+        self.action_open_prompt()
+
+    def action_open_prompt(self) -> None:
+        self.prompt_open = True
         prompt = self.query_one("#prompt-input", Input)
         prompt.remove_class("hidden")
         prompt.value = self.search_term
         prompt.focus()
-        self.update_legend()
-
-    def action_open_command(self) -> None:
-        self.prompt_mode = "command"
-        prompt = self.query_one("#prompt-input", Input)
-        prompt.remove_class("hidden")
-        prompt.value = ""
-        prompt.focus()
-        self.update_legend()
+        self.query_one("#status-line", Static).update(
+            "[dim]enter filter/command · esc cancel[/dim]"
+        )
 
     def close_prompt(self) -> None:
         prompt = self.query_one("#prompt-input", Input)
         prompt.add_class("hidden")
-        self.prompt_mode = None
+        self.prompt_open = False
         self.query_one("#jobs-table", DataTable).focus()
-        self.update_legend()
+        self.query_one("#status-line", Static).update("")
 
     def on_input_changed(self, event: Input.Changed) -> None:
-        if self.prompt_mode == "search":
+        if self.prompt_open:
             self.search_term = event.value
             self.refresh_jobs()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if self.prompt_mode == "search":
+        if not self.prompt_open:
+            return
+        text = event.value.strip()
+        if self.awaiting_duplicate_confirm is not None or self.is_command(text):
+            # A recognized command was the point of opening the prompt, not
+            # a lingering filter -- clear search_term so it doesn't keep
+            # filtering the list after the prompt closes.
+            self.search_term = ""
             self.close_prompt()
-        elif self.prompt_mode == "command":
-            self.run_command(event.value.strip())
+            self.run_command(text)
+            self.refresh_jobs()
+        else:
+            # Not a command -- the live filter applied via on_input_changed
+            # is the whole point, just leave it in place.
             self.close_prompt()
 
     def run_command(self, text: str) -> None:
@@ -622,11 +633,6 @@ class MainScreen(Screen):
             return
         if not text:
             return
-        if text in ("full", "brief"):
-            self.full = text == "full"
-            self.render_detail()
-            self.save_state()
-            return
         if text in ("quit", "q"):
             self.app.exit()
             return
@@ -634,7 +640,6 @@ class MainScreen(Screen):
             value = text[len("filter "):].strip()
             if value in FILTER_CYCLE:
                 self.filter_index = FILTER_CYCLE.index(value)
-                self.refresh_jobs()
                 self.save_state()
             else:
                 status.update(f"[#f07178]Unknown filter: {value}[/]")
@@ -720,10 +725,9 @@ class MainScreen(Screen):
         self.refresh_jobs()
 
     def action_cancel_prompt_or_quit(self) -> None:
-        if self.prompt_mode is not None:
-            if self.prompt_mode == "search":
-                self.search_term = ""
-                self.refresh_jobs()
+        if self.prompt_open:
+            self.search_term = ""
+            self.refresh_jobs()
             self.close_prompt()
         else:
             self.app.exit()
@@ -755,15 +759,10 @@ class MainScreen(Screen):
         )
 
         # Slots 0-4 are the LAYER_PANELS entries (Triage/Product/Business/
-        # Reputation/Values), slot 5 is Fit, slot 6 is Gut feeling. Brief
-        # mode shows only slots 0-2; full mode shows everything that has
-        # content (Gut feeling hides itself if the row has none).
-        visible_count = len(LAYER_PANELS) if self.full else 3
+        # Reputation/Values), slot 5 is Fit, slot 6 is Gut feeling -- all
+        # always visible (Gut feeling hides itself if the row has none).
         for i, (title, status_col, findings_col) in enumerate(LAYER_PANELS):
             section = self.query_one(f"#layer-section-{i}", Static)
-            if i >= visible_count:
-                section.add_class("hidden")
-                continue
             section.remove_class("hidden")
             status = row[status_col] or "?"
             dot_color = STATUS_DOT_COLOR.get(status, "")
@@ -774,25 +773,21 @@ class MainScreen(Screen):
 
         fit_section = self.query_one("#layer-section-5", Static)
         gut_section = self.query_one("#layer-section-6", Static)
-        if self.full:
-            fit_status = row["fit_status"] or "?"
-            fit_color = STATUS_DOT_COLOR.get(fit_status, "")
-            fit_score = f"{row['fit_score']:.1f}/5" if row["fit_score"] else "—"
-            fit_text = f"[{fit_color}]{fit_status.upper()}[/]" if fit_color else fit_status.upper()
-            fit_section.remove_class("hidden")
-            fit_section.update(
-                f"[bold #39bae6]Fit ({fit_score})[/] — {fit_text}\n"
-                f"Strengths: {row['fit_strengths'] or '—'}\n"
-                f"Gaps: {row['fit_gaps'] or '—'}\n"
-                f"Improve: {row['fit_improve'] or '—'}"
-            )
-            if row["gut_feeling"]:
-                gut_section.remove_class("hidden")
-                gut_section.update(f"[bold #39bae6]Gut feeling[/]\n{row['gut_feeling']}")
-            else:
-                gut_section.add_class("hidden")
+        fit_status = row["fit_status"] or "?"
+        fit_color = STATUS_DOT_COLOR.get(fit_status, "")
+        fit_score = f"{row['fit_score']:.1f}/5" if row["fit_score"] else "—"
+        fit_text = f"[{fit_color}]{fit_status.upper()}[/]" if fit_color else fit_status.upper()
+        fit_section.remove_class("hidden")
+        fit_section.update(
+            f"[bold #39bae6]Fit ({fit_score})[/] — {fit_text}\n"
+            f"Strengths: {row['fit_strengths'] or '—'}\n"
+            f"Gaps: {row['fit_gaps'] or '—'}\n"
+            f"Improve: {row['fit_improve'] or '—'}"
+        )
+        if row["gut_feeling"]:
+            gut_section.remove_class("hidden")
+            gut_section.update(f"[bold #39bae6]Gut feeling[/]\n{row['gut_feeling']}")
         else:
-            fit_section.add_class("hidden")
             gut_section.add_class("hidden")
 
         # Only reset to the first layer when this is actually a different
@@ -816,8 +811,9 @@ class MainScreen(Screen):
     def apply_layer_highlight(self) -> None:
         sections = self.visible_layer_sections()
         if sections and self.layer_index >= len(sections):
-            # e.g. toggling from full to brief shrinks the visible set;
-            # without this, an index past the new end highlights nothing.
+            # e.g. switching to a job with no gut feeling shrinks the
+            # visible set; without this, an index past the new end
+            # highlights nothing.
             self.layer_index = len(sections) - 1
         for i, section in enumerate(sections):
             section.set_class(i == self.layer_index, "current")
@@ -917,15 +913,93 @@ class JobScreenerApp(App):
     Input:focus, TextArea:focus {
         border: round $border;
     }
+    /* The Settings command palette's search bar (#--input, a Horizontal
+       container -- not itself an Input, so the rule above doesn't reach
+       it) gets the exact same round-border treatment as every other text
+       box in the app instead of a hardcoded "black 50%" -- there's no
+       real difference between typing in this search and typing in our
+       own / search or : command prompt, so they should look identical. */
     CommandPalette #--input {
-        border: round black 50%;
+        border: round $border;
+    }
+    /* Textual's CommandPalette is otherwise just a translucent overlay
+       with no box of its own -- give its content area the same round
+       $primary frame as #login-box, so "Settings" reads as the same kind
+       of modal as the rest of the app instead of a bare floating list. */
+    CommandPalette > Vertical {
+        border: round $primary;
+        width: 80%;
+        max-width: 100;
+    }
+    /* Match the filter bar's reverse-block key letters (FilterBar.compose())
+       in the Footer too, instead of Footer's default themed-background
+       pill -- same "letter in block reverse" treatment everywhere a
+       single key is called out. */
+    .footer-key--key {
+        background: $foreground;
+        color: $background;
+        /* Footer defaults to non-compact (padding: 0 1), which pads the
+           reverse block with a blank cell on each side -- the filter
+           chips' reverse letters have no such padding, so trim it here
+           to match: the block should cover exactly the key glyph(s). */
+        padding: 0;
+    }
+    /* Space between the key block and its description ("tab" then a gap
+       before "Focus"), instead of the two running together. */
+    .footer-key--description {
+        padding: 0 1 0 1;
+    }
+    /* "ascii" is the one border style whose middle-row glyph is a literal
+       "|" -- gives each footer entry a real " | " separator from the one
+       before it (margin-left supplies the leading space, the description's
+       own right padding above supplies the trailing one). */
+    FooterKey {
+        border-left: ascii $border-blurred;
+        margin-left: 1;
+    }
+    /* HelpPanel defaults to width:33% (capped 30-60), and KeyPanel centers
+       its (auto-width) bindings table inside that box -- on a wide
+       terminal this leaves a big dead gap before the text. Size the panel
+       to its content instead of a fraction of screen width, and left-align
+       so the table sits flush against the left edge of the panel. */
+    /* Sized for the worst-case line across every screen, not just
+       MainScreen's own bindings -- any Input (our prompt, CommandPalette's
+       own search box) carries a built-in arrow-key description ("Move
+       cursor right or accept suggestion", shortened above) that shows up
+       in the panel whenever that Input has focus. Narrower wraps that line. */
+    HelpPanel {
+        width: auto;
+        min-width: 61;
+        max-width: 61;
+    }
+    KeyPanel#keys-help {
+        align: left top;
+        /* KeyPanel's own plain-class DEFAULT_CSS (_key_panel.py) sets
+           max-width: 60 -- nothing in HelpPanel's nested override of this
+           same #keys-help selector touches max-width, so that cap survives
+           untouched no matter how wide HelpPanel itself is sized, silently
+           clipping content to 60 cols regardless of our width settings above. */
+        max-width: 100%;
     }
     """
-    # priority=True so this fires even inside a ModalScreen (e.g. the
-    # Settings command palette) -- ModalScreen blocks ordinary App-level
-    # by design, but priority bindings are checked first regardless.
+    # priority=True so the screenshot binding fires even inside a ModalScreen
+    # (e.g. the Settings command palette) -- ModalScreen blocks ordinary
+    # App-level bindings by design, but priority bindings are checked first
+    # regardless. The "Settings" binding here pre-empts App.__init__'s own
+    # auto-added "ctrl+s -> command_palette" binding (description hardcoded
+    # to "palette") -- it only auto-adds when no existing binding already
+    # targets the command_palette action. show=False because Footer always
+    # renders its own dedicated command-palette chip on the right
+    # (Footer.show_command_palette, reads this binding's .description) --
+    # show=True here would draw the same "^s Settings" a second time in
+    # the regular key list.
     BINDINGS = [
         Binding("ctrl+p", "save_app_screenshot", "Screenshot", show=False, priority=True),
+        Binding("ctrl+s", "command_palette", "Settings", show=False),
+        # Base App's own ctrl+q binding has a stock tooltip ("...and return
+        # to the command prompt") that doesn't describe what actually
+        # happens here -- it exits the whole app, not "returns" anywhere.
+        Binding("ctrl+q", "quit", "Quit", tooltip="Quit the app.", show=False, priority=True),
     ]
 
     def check_action(self, action, parameters):
@@ -945,18 +1019,30 @@ class JobScreenerApp(App):
         self.theme = "job-screener"
         self.push_screen(LoginScreen())
 
+    # Titles from the base App's own get_system_commands() that we replace
+    # with our own version below (state-persisting "Show keys", XML-fixed
+    # "Save screenshot") -- yielding both would show two near-identical
+    # entries in the picker for the same action.
+    _OVERRIDDEN_SYSTEM_COMMANDS = {
+        "Show keys and help panel", "Hide keys and help panel", "Save screenshot",
+    }
+
     def get_system_commands(self, screen):
+        # super()'s own commands include "Change theme", which opens
+        # Textual's full theme picker -- every built-in Textual theme
+        # (nord, gruvbox, dracula, etc.) plus our two registered ones.
+        # Overriding get_system_commands() without this would silently
+        # drop that picker down to nothing, since this method *replaces*
+        # the base list rather than extending it.
+        for command in super().get_system_commands(screen):
+            if command.title not in self._OVERRIDDEN_SYSTEM_COMMANDS:
+                yield command
         yield SystemCommand("Edit CV", "Edit your CV text", lambda: self.push_screen(FieldEditorScreen("cv", "CV")))
         yield SystemCommand("Edit Zero list", "Edit your zero-list", lambda: self.push_screen(FieldEditorScreen("zero_list", "Zero list")))
         yield SystemCommand("Edit Yellow list", "Edit your yellow-list", lambda: self.push_screen(FieldEditorScreen("yellow_list", "Yellow list")))
         yield SystemCommand("Edit criteria", "Edit your additional criteria", lambda: self.push_screen(FieldEditorScreen("criteria", "Criteria")))
-        yield SystemCommand("Change theme", "Toggle dark/light theme", self.action_toggle_app_theme)
         yield SystemCommand("Show keys", "Show all keybindings", self.action_show_keys)
         yield SystemCommand("Save screenshot", "Save a screenshot of the current screen", self.action_save_app_screenshot)
-        yield SystemCommand("Quit", "Quit the application", self.action_quit)
-
-    def action_toggle_app_theme(self) -> None:
-        self.theme = "job-screener-light" if self.theme == "job-screener" else "job-screener"
 
     def action_show_keys(self) -> None:
         # Use Textual's own dockable HelpPanel (auto-built from every

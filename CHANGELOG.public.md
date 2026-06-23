@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.42 — Terminal interface polish
+
+- **Improved** — the experimental terminal interface shows all analysis layers at once instead of requiring a toggle, search and command typing now share one simpler box, the theme picker works properly again, and several small visual cleanups (key bar, help panel, modal sizing) make it easier to read.
+
+---
+
 ## v0.41 — Terminal interface improvements
 
 - **Improved** — the terminal interface remembers your filter and view preferences between sessions, lets you jump between sections with the keyboard, and the experimental screenshot feature is more reliable.
