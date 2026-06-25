@@ -4,15 +4,13 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
-## v0.44 — Instant results, better loading indicator, duplicate links
-
-- **Improved** — the "already analyzed" notice now links directly to the previous analysis instead of just showing the date.
-
-## v0.44 — Instant results, better loading indicator
+## v0.44 — Instant results, UX polish
 
 - **New** — a completed analysis now appears directly in the dashboard table without needing to refresh the page.
 - **Fixed** — the loading spinner is now clearly visible in both light and dark themes.
 - **Improved** — the app now limits simultaneous analyses to 3 per user and shows a clear message if that's exceeded.
+- **Improved** — the "already analyzed" notice now links directly to the previous analysis instead of just showing the date.
+- **Fixed** — clearing the URL field after a duplicate warning now hides the notice immediately.
 
 ---
 

@@ -681,6 +681,15 @@ container_class %}container{% endblock %} {% block content %}
       }, 0);
     });
 
+    // hide source-status when the field is cleared
+    document.getElementById('cmd-input').addEventListener('input', function() {
+      if (!this.value.trim()) {
+        const statusEl = document.getElementById('source-status');
+        statusEl.style.display = 'none';
+        statusEl.className = 'source-status';
+      }
+    });
+
     // blur the history table/cards while the search field has focus
     (function() {
       var cmdInput = document.getElementById('cmd-input');
