@@ -1213,5 +1213,107 @@ container_class %}container{% endblock %} {% block content %}
       var fb = document.querySelector('.filter-bar');
       if (fb) document.documentElement.style.setProperty('--filter-bar-h', fb.offsetHeight + 'px');
     })();
+
+    function _esc(s) {
+      return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function _companyHtml(c) {
+      c = c || '';
+      var pi = c.indexOf('(');
+      if (pi > 0) return _esc(c.slice(0, pi).trim()) + ' <span class="company-note" title="' + _esc(c) + '">(?)</span>';
+      return _esc(c);
+    }
+
+    function insertJobRow(j) {
+      var cat = j.verdict || 'unknown', rowCls = '';
+      if (j.offer_received)                               { cat='offer';            rowCls='row-offer'; }
+      else if (j.interview_scheduled)                     { cat='interview';        rowCls='row-interview'; }
+      else if (j.verdict==='rejected' && j.verdict_confirmed) { cat='rejected';    rowCls='row-rejected'; }
+      else if (j.company_rejected)                        { cat='company_rejected'; rowCls='row-company-rejected'; }
+      else if (j.applied)                                 { cat='applied';          rowCls='row-applied'; }
+      else if (j.verdict==='rejected')                    { cat='rejected_soft';    rowCls='row-rejected-soft'; }
+      else if (j.verdict==='worth_considering')           { cat='worth_considering';rowCls='row-worth-considering'; }
+      else if (j.verdict==='warning')                     { cat='warning';          rowCls='row-warning'; }
+
+      var bClass, bText;
+      if (j.offer_received)                               { bClass='badge-offer';            bText='Offer received'; }
+      else if (j.interview_scheduled)                     { bClass='badge-interview';        bText='Interview'; }
+      else if (j.company_rejected)                        { bClass='badge-company_rejected'; bText='Rejected by company'; }
+      else if (j.applied)                                 { bClass='badge-applied';          bText='Applied'; }
+      else if (j.verdict==='rejected' && j.verdict_confirmed) { bClass='badge-rejected';    bText='User rejected'; }
+      else if (j.verdict==='rejected')                    { bClass='badge-rejected';         bText='AI rejected'; }
+      else {
+        bClass = 'badge-'+(j.verdict||'');
+        bText = {'warning':'Needs review','worth_considering':'Worth considering'}[j.verdict] || j.verdict || '';
+      }
+
+      var layers = ['triage','product','business','reputation','values'];
+      var dots = layers.map(function(l) {
+        var s = j[l+'_status'] || 'unknown';
+        return '<span class="dot dot-'+s+'" title="'+l.charAt(0).toUpperCase()+l.slice(1)+': '+s+'"></span>';
+      }).join('');
+
+      var fitScore = j.fit_score;
+      var fitTxt = (fitScore !== null && fitScore !== undefined) ? fitScore.toFixed(1)+'/5' : '—';
+      var fitCls = 'td-dim';
+      if (fitScore !== null && fitScore !== undefined) {
+        if (j.fit_status==='ok') fitCls='td-green';
+        else if (j.fit_status==='warning') fitCls='td-warning';
+        else if (j.fit_status==='flag') fitCls='td-red';
+      }
+
+      var tbody = document.querySelector('#jobs-table tbody');
+      if (tbody) {
+        var tr = document.createElement('tr');
+        tr.className = 'clickable'+(rowCls?' '+rowCls:'');
+        tr.dataset.jobId = j.id;
+        tr.dataset.category = cat;
+        tr.onclick = function() { openModal(j.id); };
+        tr.innerHTML =
+          '<td class="td-date">'+_esc(j.analyzed_at||'')+'</td>'+
+          '<td class="td-role">'+_esc(j.role||'—')+'</td>'+
+          '<td class="fw-500">'+_companyHtml(j.company)+'</td>'+
+          '<td class="td-nowrap"><span class="badge '+bClass+'" data-verdict="'+_esc(j.verdict||'')+'">'+_esc(bText)+'</span></td>'+
+          '<td class="td-mono '+(j.zero_list_hit?'td-red':'td-dim')+'">'+(j.zero_list_hit?'YES':'—')+'</td>'+
+          '<td class="td-layers"><span class="dot-row">'+dots+'</span></td>'+
+          '<td class="td-mono '+fitCls+'">'+fitTxt+'</td>';
+        tbody.prepend(tr);
+      }
+
+      var cards = document.querySelector('.job-cards');
+      if (cards) {
+        var statusText = j.offer_received?'Offer':j.interview_scheduled?'Interview':j.applied?'Applied':j.company_rejected?'Rejected by co.':'—';
+        var card = document.createElement('div');
+        card.className = 'job-card'+(rowCls?' '+rowCls:'');
+        card.dataset.jobId = j.id;
+        card.dataset.category = cat;
+        card.tabIndex = 0;
+        card.onclick = function() { openModal(j.id); };
+        card.innerHTML =
+          '<div class="job-card-header">'+
+          '<div class="job-card-title">'+
+          '<div class="job-card-company">'+_companyHtml(j.company)+'</div>'+
+          '<div class="job-card-role">'+_esc(j.role||'—')+'</div>'+
+          '</div>'+
+          '<span class="badge '+bClass+'" data-verdict="'+_esc(j.verdict||'')+'">'+_esc(bText)+'</span>'+
+          '</div>'+
+          '<div class="job-card-meta">'+
+          '<span class="td-date">'+_esc((j.analyzed_at||'').slice(0,10))+'</span>'+
+          '<span data-status-text>'+statusText+'</span>'+
+          '</div>';
+        cards.prepend(card);
+      }
+
+      JOB_IDS.unshift(j.id);
+      applyFilters();
+    }
+
+    window.addEventListener('analysisDone', function(e) {
+      var d = e.detail;
+      if (!d || !d.job_data) return;
+      if (JOB_IDS.length === 0) { location.reload(); return; }
+      insertJobRow(d.job_data);
+    });
 </script>
 {% endblock %}

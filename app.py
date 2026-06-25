@@ -21,7 +21,7 @@ from database import (
     update_user_profile, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
-    create_analysis, update_analysis_status, get_analysis, get_active_analyses_labels,
+    create_analysis, update_analysis_status, get_analysis, get_active_analyses_labels, count_active_analyses,
     save_interview_prep, get_interview_prep,
     save_cv_tailoring, get_cv_tailoring,
     add_feed, get_feeds, delete_feed, save_feed_items, get_feed_items, get_feed_item,
@@ -269,6 +269,11 @@ def run_analyze():
     if not API_KEY:
         return jsonify({"error": "No API key configured. Contact the administrator."}), 400
 
+    MAX_CONCURRENT = 3
+    active = count_active_analyses(user["id"])
+    if active >= MAX_CONCURRENT:
+        return jsonify({"error": f"Too many analyses running ({active}/{MAX_CONCURRENT}). Wait for one to finish."}), 429
+
     url = normalize_url(request.form.get("url", "").strip())
     text = request.form.get("text", "").strip()
     force = request.form.get("force", "0")
@@ -329,6 +334,11 @@ def analysis_status(analysis_id: str):
     row = get_analysis(analysis_id, user["id"])
     if row is None:
         return jsonify({"error": "Not found"}), 404
+    job_data = None
+    if row["status"] == "done" and row["result_job_id"]:
+        job = get_job(row["result_job_id"], user["id"])
+        if job:
+            job_data = dict(job)
     return jsonify({
         "status": row["status"],
         "source_label": row["source_label"],
@@ -338,6 +348,8 @@ def analysis_status(analysis_id: str):
         "verdict": row["verdict"],
         "error": row["error"],
         "active_labels": get_active_analyses_labels(user["id"]),
+        "active_count": count_active_analyses(user["id"]),
+        "job_data": job_data,
     })
 
 

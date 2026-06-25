@@ -213,10 +213,10 @@ Strips fragment `#...`.
 GET/POST /login
 GET/POST /register              — token via ?token=INVITE_TOKEN
 GET      /dashboard
-POST     /analyze               — url + text (both optional, at least one required)
+POST     /analyze               — url + text (both optional, at least one required); rejects with 429 if user already has 3 pending/running analyses
 POST     /check_source          — url or text, checks for duplicate
 POST     /reanalyze/<id>
-GET      /analysis_status/<id>    — background analysis status poll (pending/running/done/error); also returns `active_labels` (ordered list of source labels for all pending/running analyses for the user)
+GET      /analysis_status/<id>    — background analysis status poll (pending/running/done/error); returns `active_labels`, `active_count`, and when done: full `job_data` dict (all jobs columns) for live table injection
 GET      /history_latest        — returns {id} of the most recent entry
 GET      /history               — 301 redirect to /dashboard
 GET      /job/<id>              — 301 redirect to /dashboard?job=<id> (modal auto-opens)

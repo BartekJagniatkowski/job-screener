@@ -197,6 +197,7 @@
 
                 function showDone(d) {
                     document.title = "✓ Done — Job Screener";
+                    window.dispatchEvent(new CustomEvent("analysisDone", { detail: d }));
                     if (cycleTimer) {
                         clearInterval(cycleTimer);
                         cycleTimer = null;

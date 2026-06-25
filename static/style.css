@@ -195,8 +195,8 @@ nav {
     flex-shrink: 0;
     width: 10px;
     height: 10px;
-    border: 1.5px solid var(--accent);
-    border-top-color: transparent;
+    border: 1.5px solid rgba(255,255,255,0.25);
+    border-top-color: rgba(255,255,255,0.9);
     border-radius: 50%;
     animation: spin-banner 0.8s linear infinite;
     display: inline-block;
@@ -826,8 +826,8 @@ tr.row-rejected-soft:hover td {
     display: inline-block;
     width: 14px;
     height: 14px;
-    border: 2px solid var(--dim);
-    border-top-color: var(--text);
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
     vertical-align: middle;
