@@ -184,7 +184,6 @@ nav {
     background: #0f1a12;
     border-bottom-color: #1a2e1c;
     color: var(--muted);
-    cursor: pointer;
 }
 .analysis-banner.is-error {
     background: #1a0f0f;
