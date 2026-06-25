@@ -364,7 +364,7 @@ def check_source():
         return jsonify({"exists": False}), 200
     duplicate = check_duplicate(user["id"], key)
     if duplicate:
-        return jsonify({"exists": True, "analyzed_at": duplicate["analyzed_at"]})
+        return jsonify({"exists": True, "analyzed_at": duplicate["analyzed_at"], "id": duplicate["id"]})
     return jsonify({"exists": False})
 
 

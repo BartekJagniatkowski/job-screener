@@ -4,6 +4,10 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.44 — Instant results, better loading indicator, duplicate links
+
+- **Improved** — the "already analyzed" notice now links directly to the previous analysis instead of just showing the date.
+
 ## v0.44 — Instant results, better loading indicator
 
 - **New** — a completed analysis now appears directly in the dashboard table without needing to refresh the page.

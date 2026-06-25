@@ -660,7 +660,7 @@ container_class %}container{% endblock %} {% block content %}
         if (chkData.exists) {
           statusEl.className = 'source-status notice warn';
           statusEl.style.display = 'block';
-          statusEl.textContent = `⚠ This listing was already analyzed (${chkData.analyzed_at}). Analysis will run again.`;
+          statusEl.innerHTML = `⚠ This listing was already analyzed (${chkData.analyzed_at}). <a class="link-accent" href="#" onclick="event.preventDefault(); openModal(${chkData.id})">View →</a> Analysis will run again.`;
         } else {
           statusEl.className = 'source-status notice ok';
           statusEl.style.display = 'block';
@@ -734,7 +734,7 @@ container_class %}container{% endblock %} {% block content %}
           document.getElementById('result-box').innerHTML = `
             <div class="notice warn duplicate-notice">
               <div class="td-mono duplicate-label">⚠ This listing was already analyzed</div>
-              <div class="duplicate-title">${p.company||'—'} — ${p.role||'—'}</div>
+              <div class="duplicate-title"><a class="link-accent" href="#" onclick="event.preventDefault(); openModal(${p.id})">${p.company||'—'} — ${p.role||'—'}</a></div>
               <div class="td-mono duplicate-meta">
                 Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
               </div>
