@@ -338,7 +338,12 @@ def analysis_status(analysis_id: str):
     if row["status"] == "done" and row["result_job_id"]:
         job = get_job(row["result_job_id"], user["id"])
         if job:
-            job_data = dict(job)
+            _ROW_COLS = ("id", "company", "role", "verdict", "verdict_confirmed",
+                         "analyzed_at", "zero_list_hit", "applied", "company_rejected",
+                         "interview_scheduled", "offer_received",
+                         "triage_status", "product_status", "business_status",
+                         "reputation_status", "values_status", "fit_status", "fit_score")
+            job_data = {k: job[k] for k in _ROW_COLS}
     return jsonify({
         "status": row["status"],
         "source_label": row["source_label"],
@@ -375,6 +380,9 @@ def reanalyze(job_id):
     user = current_user()
     if not API_KEY:
         return jsonify({"error": "No API key configured."}), 400
+    active = count_active_analyses(user["id"])
+    if active >= 3:
+        return jsonify({"error": f"Too many analyses running ({active}/3). Wait for one to finish."}), 429
     job = get_job(job_id, user["id"])
     if not job:
         return jsonify({"error": "Analysis not found."}), 404
@@ -870,6 +878,9 @@ def discover_analyze(item_id):
     user = current_user()
     if not API_KEY:
         return jsonify({"error": "No API key configured."}), 400
+    active = count_active_analyses(user["id"])
+    if active >= 3:
+        return jsonify({"error": f"Too many analyses running ({active}/3). Wait for one to finish."}), 429
 
     item = get_feed_item(item_id, user["id"])
     if not item:

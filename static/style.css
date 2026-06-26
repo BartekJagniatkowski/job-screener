@@ -2498,3 +2498,6 @@ tr.row-rejected-soft:hover td {
     color: var(--text);
     line-height: 1.65;
 }
+.gut-feeling .tab-section-body {
+    font-size: var(--fs-md);
+}

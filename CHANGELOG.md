@@ -4,6 +4,21 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.46 — UI tweaks
+
+- **Fixed** — resizing the job text box no longer stretches the dot-grid background.
+- **Improved** — gut feeling text is now the same size as the verdict summary.
+- **Improved** — the job text box is twice as tall by default.
+
+---
+
+## v0.45 — Bug fixes
+
+- **Fixed** — re-analyzing a listing or analyzing from the Discover page now correctly enforces the 3-analysis concurrent limit, the same as the main analyze flow.
+- **Fixed** — navigating between listings while a new one was being injected into the table could open the wrong job in the modal. Corrected.
+
+---
+
 ## v0.44 — Instant results, UX polish
 
 - **New** — a completed analysis now appears directly in the dashboard table without needing to refresh the page.

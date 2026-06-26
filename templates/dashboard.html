@@ -90,7 +90,7 @@ container_class %}container{% endblock %} {% block content %}
         <textarea
             id="cmd-text"
             class="cmd-text-area"
-            rows="6"
+            rows="12"
             placeholder="Paste job description here — used when the URL is inaccessible (LinkedIn, Indeed, etc.)"
         ></textarea>
     </div>
@@ -293,7 +293,11 @@ container_class %}container{% endblock %} {% block content %}
 
   readColors();
   resize();
-  window.addEventListener('resize', resize);
+  if (window.ResizeObserver) {
+    new ResizeObserver(resize).observe(hero);
+  } else {
+    window.addEventListener('resize', resize);
+  }
 
   if (!reduceMotion) {
     scheduleIdle();
@@ -1315,6 +1319,7 @@ container_class %}container{% endblock %} {% block content %}
       }
 
       JOB_IDS.unshift(j.id);
+      if (modalIdx >= 0) modalIdx++;
       applyFilters();
     }
 
