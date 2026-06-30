@@ -53,7 +53,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 1_000_000))  # 1MB
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -386,6 +386,10 @@ def reanalyze(job_id):
     job = get_job(job_id, user["id"])
     if not job:
         return jsonify({"error": "Analysis not found."}), 404
+    if job["analyzed_at"]:
+        analyzed = datetime.fromisoformat(job["analyzed_at"]).replace(tzinfo=timezone.utc)
+        if (datetime.now(timezone.utc) - analyzed).total_seconds() < 3600:
+            return jsonify({"error": "This job was analyzed recently. Please wait 1 hour before re-analyzing."}), 429
     source = (job["source_full"] or job["source"] or "").strip()
     if not source:
         return jsonify({"error": "No saved listing content — cannot re-analyze."}), 400
@@ -438,6 +442,8 @@ def generate_interview_prep(job_id):
     )
     if not eligible:
         return jsonify({"error": "Interview prep not available for this job status."}), 400
+    if job["interview_prep"]:
+        return jsonify({"ok": True, "content": job["interview_prep"]})
     source = (job["source_full"] or "").strip()
     if not source or source.startswith("http"):
         return jsonify({"error": "No job description text saved — cannot generate interview prep."}), 400
@@ -452,7 +458,8 @@ def generate_interview_prep(job_id):
         save_interview_prep(job_id, user["id"], content)
         return jsonify({"ok": True, "content": content})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("interview_prep failed: %s", e)
+        return jsonify({"error": "Failed to generate interview prep. Try again later."}), 500
 
 
 @app.route("/job/<int:job_id>/cv_tailoring", methods=["POST"])
@@ -473,6 +480,8 @@ def generate_cv_tailoring(job_id):
     )
     if not eligible:
         return jsonify({"error": "CV tailoring not available for this job status."}), 400
+    if job["cv_tailoring"]:
+        return jsonify({"ok": True, "content": job["cv_tailoring"]})
     source = (job["source_full"] or "").strip()
     if not source or source.startswith("http"):
         return jsonify({"error": "No job description text saved — cannot generate CV tailoring."}), 400
@@ -487,7 +496,8 @@ def generate_cv_tailoring(job_id):
         save_cv_tailoring(job_id, user["id"], content)
         return jsonify({"ok": True, "content": content})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        app.logger.error("cv_tailoring failed: %s", e)
+        return jsonify({"error": "Failed to generate CV tailoring. Try again later."}), 500
 
 
 @app.route("/job/<int:job_id>/verdict", methods=["POST"])

@@ -4,6 +4,20 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.48 — Auth page refresh
+
+- Login and register pages updated with consistent branding and new tagline.
+- Registration reminder about CV and Zero Rule is now prominently displayed.
+
+---
+
+## v0.47 — Usage limits
+
+- **Interview prep and CV tailoring** are now generated once per listing. If already generated, the saved result is shown immediately — no repeat API calls.
+- **Re-analysis** is limited to once per hour per listing.
+
+---
+
 ## v0.46 — UI tweaks
 
 - **Fixed** — resizing the job text box no longer stretches the dot-grid background.

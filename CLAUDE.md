@@ -159,7 +159,7 @@ GET/POST /register              — token via ?token=INVITE_TOKEN
 GET      /dashboard
 POST     /analyze               — url + text (both optional, at least one required); rejects with 429 if user already has 3 pending/running analyses
 POST     /check_source          — url or text, checks for duplicate
-POST     /reanalyze/<id>
+POST     /reanalyze/<id>            — blocked with 429 if analyzed_at < 1 hour ago
 GET      /analysis_status/<id>    — background analysis status poll (pending/running/done/error); returns `active_labels`, `active_count`, and when done: full `job_data` dict (all jobs columns) for live table injection
 GET      /history_latest        — returns {id} of the most recent entry
 GET      /history               — 301 redirect to /dashboard
@@ -171,8 +171,8 @@ POST     /job/<id>/url          — add/change URL
 POST     /job/<id>/applied      — application status
 POST     /job/<id>/company_rejected — company rejection
 POST     /job/<id>/notes
-POST     /job/<id>/interview_prep — generate AI interview prep brief (5/hr rate limit)
-POST     /job/<id>/cv_tailoring     — generate AI CV tailoring guidance (5/hr rate limit)
+POST     /job/<id>/interview_prep — generate AI interview prep brief; once per job (cached thereafter), 5/hr rate limit
+POST     /job/<id>/cv_tailoring   — generate AI CV tailoring guidance; once per job (cached thereafter), 5/hr rate limit
 POST     /job/<id>/delete
 GET      /discover              — fetches stale feeds (>1h) on load; shows unanalyzed items pre-filtered by Zero Rule
 POST     /feeds/refresh        — force-fetch all active feeds; returns {new, errors}
