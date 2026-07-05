@@ -388,8 +388,8 @@ select {
 input:focus,
 textarea:focus {
     border-color: var(--accent);
-    outline: 2px solid var(--accent-dim);
-    outline-offset: 1px;
+    box-shadow: 0 0 0 1px var(--accent);
+    outline: none;
 }
 ::placeholder {
     color: var(--dim);
@@ -1939,10 +1939,6 @@ tr.row-rejected-soft:hover td {
     font-size: var(--fs-sm);
     box-sizing: border-box;
 }
-.notes-textarea:focus {
-    border-color: var(--accent);
-    outline: none;
-}
 .notes-save-btn {
     margin-top: 8px;
 }
@@ -2036,7 +2032,6 @@ tr.row-rejected-soft:hover td {
 }
 .history-search:focus {
     border-color: var(--accent);
-    outline: none;
 }
 
 /* ── Sortable table headers ──────────────────────────────────── */
@@ -2121,12 +2116,8 @@ tr.row-rejected-soft:hover td {
     font-size: var(--fs-base);
     color: var(--text);
     padding: 0 16px;
-    outline: none;
     min-width: 0;
     transition: border-color 0.15s;
-}
-.cmd-input:focus {
-    border-color: var(--border-light);
 }
 .cmd-input:invalid {
     box-shadow: none;
@@ -2205,10 +2196,6 @@ tr.row-rejected-soft:hover td {
     padding: 12px 14px;
     resize: vertical;
     line-height: 1.5;
-}
-.cmd-text-area:focus {
-    outline: none;
-    border-color: var(--accent);
 }
 .cmd-text-area::placeholder {
     color: var(--dim);
