@@ -84,7 +84,7 @@ job-screener/
 
 ### Table `users`
 ```
-id, username, password_hash, cv, zero_list, criteria, yellow_list, created_at
+id, username, password_hash, cv, zero_list, criteria, yellow_list, language, created_at
 ```
 
 ### Table `jobs`

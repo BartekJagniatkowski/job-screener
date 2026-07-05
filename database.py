@@ -156,6 +156,7 @@ def init_db() -> None:
             ("cv_tailoring TEXT", "jobs"),
             # kept for migration chain: old DBs may not have this yet before rename
             ("lista_zolta TEXT DEFAULT ''", "users"),
+            ("language TEXT DEFAULT 'english'", "users"),
             ("keywords TEXT DEFAULT ''", "feeds"),
         ]:
             try:
@@ -368,6 +369,14 @@ def update_user_profile(user_id: int, cv: str, zero_list: str, criteria: str, ye
             "UPDATE users SET cv=?, zero_list=?, criteria=?, yellow_list=? WHERE id=?",
             (cv.strip(), zero_list.strip(), criteria.strip(), yellow_list.strip(), user_id)
         )
+
+
+def update_user_language(user_id: int, language: str) -> None:
+    allowed = {"english", "polish", "original"}
+    if language not in allowed:
+        language = "english"
+    with get_conn() as conn:
+        conn.execute("UPDATE users SET language=? WHERE id=?", (language, user_id))
 
 
 def update_password(user_id: int, new_password: str) -> None:

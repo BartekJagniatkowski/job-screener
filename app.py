@@ -18,7 +18,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from database import (
     init_db, get_user, create_user, get_user_by_id,
-    update_user_profile, update_password, save_job, get_jobs, get_job,
+    update_user_profile, update_user_language, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
     update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
     create_analysis, update_analysis_status, get_analysis, get_active_analyses_labels, count_active_analyses,
@@ -669,6 +669,11 @@ def settings():
             if section == "criteria":
                 criteria = request.form.get("criteria", "").strip()
                 update_user_profile(user["id"], user["cv"] or "", user["zero_list"] or "", criteria, user["yellow_list"] or "")
+                return jsonify({"ok": True})
+
+            if section == "language":
+                language = request.form.get("language", "english").strip()
+                update_user_language(user["id"], language)
                 return jsonify({"ok": True})
 
             return jsonify({"ok": False, "error": "Unknown section"}), 400

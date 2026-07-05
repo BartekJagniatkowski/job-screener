@@ -8,6 +8,19 @@
 
 <div class="settings-section">
     <div class="field">
+        <label>Analysis language</label>
+        <div class="field-hint">Language used in all six analysis layers and summaries.</div>
+        <select id="s-language" class="settings-select" onchange="saveLanguage(this)">
+            <option value="english" {% if (user.language or 'english') == 'english' %}selected{% endif %}>English</option>
+            <option value="polish" {% if user.language == 'polish' %}selected{% endif %}>Polish</option>
+            <option value="original" {% if user.language == 'original' %}selected{% endif %}>Original — match the listing's language</option>
+        </select>
+        <span id="st-language" class="settings-save-status"></span>
+    </div>
+</div>
+
+<div class="settings-section">
+    <div class="field">
         <label>CV — experience and skills</label>
         <div class="field-hint">
             Write as continuous text or bullet points. More context = better job
@@ -231,6 +244,25 @@
     })();
 </script>
 <script>
+    async function saveLanguage(sel) {
+        var st = document.getElementById('st-language');
+        var fd = new FormData();
+        fd.append('section', 'language');
+        fd.append('language', sel.value);
+        st.textContent = '';
+        st.className = 'settings-save-status';
+        try {
+            var r = await fetch('/settings', { method: 'POST', headers: { 'X-CSRFToken': csrfToken() }, body: fd });
+            var d = await r.json();
+            st.textContent = d.ok ? 'Saved' : (d.error || 'Error');
+            st.className = 'settings-save-status ' + (d.ok ? 'ok' : 'err');
+        } catch(e) {
+            st.textContent = 'Error saving';
+            st.className = 'settings-save-status err';
+        }
+        setTimeout(function() { if (st.className.indexOf('err') === -1) st.textContent = ''; }, 3000);
+    }
+
     async function saveSection(section, textareaId, btn, statusId) {
         var ta = document.getElementById(textareaId);
         var st = document.getElementById(statusId);

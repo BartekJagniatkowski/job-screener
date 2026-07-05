@@ -1012,6 +1012,17 @@ tr.row-rejected-soft:hover td {
 .settings-save-status.err {
     color: var(--red);
 }
+.settings-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--fb);
+    font-size: var(--fs-base);
+    padding: 8px 14px;
+    margin-top: 8px;
+    cursor: pointer;
+}
 
 /* ── changelog ──────────────────────────────────────────────────────────── */
 .changelog {

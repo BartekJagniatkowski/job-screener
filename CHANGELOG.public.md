@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.50 — Analysis language
+
+- **Language setting in Settings** — choose whether analyses are written in English, Polish, or the listing's own language. The setting applies to all six layers and summaries and never mixes languages within a response.
+
+---
+
 ## v0.49 — Paste-first input
 
 - **How you submit a listing changed** — the job description text field is now the primary input. Paste the listing text there; the URL field below it is optional and used only as a saved reference link so you can get back to the original posting.
