@@ -29,7 +29,7 @@ from database import (
 )
 from fetcher import fetch_feed
 from analyzer import analyze, interview_prep, cv_tailoring
-from scraper import fetch as scrape_url, normalize_url
+from scraper import normalize_url
 
 app: Flask = Flask(__name__)
 _secret_key = os.environ.get("SECRET_KEY")
@@ -278,32 +278,11 @@ def run_analyze():
     text = request.form.get("text", "").strip()
     force = request.form.get("force", "0")
 
-    if not url and not text:
-        return jsonify({"error": "Provide a URL or job description text."}), 400
+    if not text:
+        return jsonify({"error": "Paste the job description to analyze."}), 400
 
-    input_text = None
-    scraped = False
-
-    if text:
-        # user provided text — use directly
-        input_text = text
-    elif url:
-        # URL only — attempt scraping
-        scraped_text, err_code, err_detail = scrape_url(url)
-        if scraped_text:
-            input_text = scraped_text
-            scraped = True
-        else:
-            return jsonify({
-                "scrape_error": True,
-                "error_code": err_code,
-                "error_detail": err_detail,
-            })
-
-    # deduplicate by URL if available, otherwise by text
-    dedup_key = url or text
     if force != "1":
-        duplicate = check_duplicate(user["id"], dedup_key)
+        duplicate = check_duplicate(user["id"], text, url=url)
         if duplicate:
             return jsonify({
                 "duplicate": True,
@@ -316,11 +295,11 @@ def run_analyze():
                 }
             })
 
-    source_label = url or (input_text or "")[:60].replace("\n", " ")
+    source_label = url or text[:60].replace("\n", " ")
     analysis_id = create_analysis(user["id"], source_label)
     t = threading.Thread(
         target=_run_analysis_bg,
-        args=(analysis_id, {k: user[k] for k in user.keys()}, input_text, url),
+        args=(analysis_id, {k: user[k] for k in user.keys()}, text, url),
         daemon=True,
     )
     t.start()
@@ -364,10 +343,10 @@ def check_source():
     user = current_user()
     url = normalize_url(request.form.get("url", "").strip())
     text = request.form.get("text", "").strip()
-    key = url or text
-    if not key:
+    source = text or url
+    if not source:
         return jsonify({"exists": False}), 200
-    duplicate = check_duplicate(user["id"], key)
+    duplicate = check_duplicate(user["id"], source, url=url)
     if duplicate:
         return jsonify({"exists": True, "analyzed_at": duplicate["analyzed_at"], "id": duplicate["id"]})
     return jsonify({"exists": False})
@@ -390,29 +369,13 @@ def reanalyze(job_id):
         analyzed = datetime.fromisoformat(job["analyzed_at"]).replace(tzinfo=timezone.utc)
         if (datetime.now(timezone.utc) - analyzed).total_seconds() < 3600:
             return jsonify({"error": "This job was analyzed recently. Please wait 1 hour before re-analyzing."}), 429
-    source = (job["source_full"] or job["source"] or "").strip()
-    if not source:
-        return jsonify({"error": "No saved listing content — cannot re-analyze."}), 400
-    # re-analyze: source is URL, source_full is text
-    saved_url = job["job_url"] or (source if source.startswith("http") else "")
-    saved_text = job["source_full"] or ""
-    if saved_text and not saved_text.startswith("http"):
-        input_text = saved_text
-    elif saved_url:
-        scraped_text, err_code, err_detail = scrape_url(saved_url)
-        if scraped_text:
-            input_text = scraped_text
-        else:
-            return jsonify({
-                "scrape_error": True,
-                "error_code": err_code,
-                "error_detail": err_detail,
-            })
-    else:
-        input_text = saved_text or source
+    input_text = (job["source_full"] or "").strip()
+    if not input_text:
+        return jsonify({"error": "No listing text saved — cannot re-analyze."}), 400
+    saved_url = job["job_url"] or ""
     job_label = " · ".join(p for p in (job["company"], job["role"]) if p)
     source_label = f"Re-analysis: {job_label}" if job_label else (
-        saved_url or (saved_text or "")[:60].replace("\n", " ") or "Re-analysis"
+        saved_url or input_text[:60].replace("\n", " ") or "Re-analysis"
     )
     analysis_id = create_analysis(user["id"], source_label)
     t = threading.Thread(
@@ -900,8 +863,8 @@ def discover_analyze(item_id):
     url = item["url"]
     text = item.get("description", "") or ""
 
-    dedup_key = url or text
-    duplicate = check_duplicate(user["id"], dedup_key)
+    dedup_key = text or url
+    duplicate = check_duplicate(user["id"], dedup_key, url=url)
     if duplicate:
         mark_feed_item_analyzed(item_id, duplicate["id"])
         return jsonify({

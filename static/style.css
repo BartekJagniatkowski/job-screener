@@ -1975,6 +1975,12 @@ tr.row-rejected-soft:hover td {
     color: var(--muted);
     line-height: 1.6;
 }
+.about-prose {
+    font-size: var(--fs-base);
+    color: var(--muted);
+    line-height: 1.7;
+    margin-top: 20px;
+}
 .about-verdict-row {
     display: flex;
     gap: 12px;
@@ -1993,7 +1999,7 @@ tr.row-rejected-soft:hover td {
     flex-shrink: 0;
 }
 .about-verdict-desc {
-    font-size: var(--fs-sm);
+    font-size: var(--fs-base);
     color: var(--muted);
 }
 .about-changelog {
@@ -2094,11 +2100,6 @@ tr.row-rejected-soft:hover td {
 .cmd-zone {
     margin-bottom: 28px;
 }
-.cmd-bar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
 .cmd-input {
     flex: 1;
     height: 44px;
@@ -2174,25 +2175,16 @@ tr.row-rejected-soft:hover td {
     align-items: center;
     gap: 5px;
 }
-.cmd-text-toggle {
-    font-family: var(--fm);
-    font-size: var(--fs-2xs);
-    color: var(--muted);
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    margin-left: auto;
-    letter-spacing: 0.04em;
-}
-.cmd-text-toggle:hover {
-    color: var(--text);
-}
-.cmd-text-zone {
+.cmd-url-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-top: 8px;
 }
 .cmd-text-area {
     width: 100%;
+    appearance: none;
+    box-shadow: none;
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -2205,7 +2197,7 @@ tr.row-rejected-soft:hover td {
 }
 .cmd-text-area:focus {
     outline: none;
-    border-color: var(--border-light);
+    border-color: var(--accent);
 }
 .cmd-text-area::placeholder {
     color: var(--dim);

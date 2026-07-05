@@ -6,6 +6,12 @@
 
 <p class="about-lead">Most job search tools optimise for more applications. This one optimises for fewer, better ones. Every listing is evaluated across six layers before the question "is it worth applying?" is even asked — surfacing what the listing language reveals about the company and the role.</p>
 
+<p class="about-prose"><strong>Job Screener never fetches content from job boards on your behalf.</strong> There is no scraping, no automated access to LinkedIn, Indeed, Glassdoor, or any other platform. You paste the listing text yourself — you've already read it in your own browser, authenticated as yourself, on your own terms.</p>
+
+<p class="about-prose"><strong>This is a deliberate design choice.</strong> Automated scraping of job boards sits in a legal and ethical grey zone even for personal use, and the grey zone shrinks considerably once money is involved. The paste-first approach is slower by one copy-paste, and completely unambiguous in every other dimension.</p>
+
+<p class="about-prose">The URL field is <strong>optional</strong>. If provided, it is stored as a reference link in your personal history — so you can get back to the original posting — and nothing more. The tool never makes a network request to that address.</p>
+
 <div class="about-section-label">Six analysis layers</div>
 <div class="grid2">
   <div class="card card-body">
@@ -34,10 +40,7 @@
   </div>
 </div>
 
-<div class="about-section-label">Reality check</div>
-<div class="card card-body">
-  <p class="about-layer-desc">Before the layer analysis the tool synthesises what the listing language actually signals about the role. Corpo-speak is decoded into plain English — phrases like "fast-paced environment" or "wear many hats" are translated to what they typically mean in practice. Purely informational; does not affect the verdict.</p>
-</div>
+<p class="about-prose">Before the layer analysis the tool decodes what the listing language actually signals about the role. Corpo-speak is translated to plain English — phrases like "fast-paced environment" or "wear many hats" are mapped to what they typically mean in practice. Purely informational; does not affect the verdict.</p>
 
 <div class="about-section-label">Verdicts &amp; states</div>
 <div class="card card-body">
@@ -62,13 +65,19 @@
     <span class="about-verdict-desc">You marked the application as submitted. Tracked in the statistics funnel.</span>
   </div>
   <div class="about-verdict-row">
+    <span class="about-verdict-label"><span class="badge badge-interview">Interview</span></span>
+    <span class="about-verdict-desc">Interview scheduled. Marks the application as active in the funnel.</span>
+  </div>
+  <div class="about-verdict-row">
+    <span class="about-verdict-label"><span class="badge badge-offer">Offer received</span></span>
+    <span class="about-verdict-desc">Offer stage reached.</span>
+  </div>
+  <div class="about-verdict-row">
     <span class="about-verdict-label"><span class="badge badge-company_rejected">Rejected by company</span></span>
     <span class="about-verdict-desc">Company declined after you applied. Closes the loop in the funnel.</span>
   </div>
 </div>
 
 <div class="about-section-label">Changelog</div>
-<div class="changelog about-changelog">
-  {{ changelog_html | safe }}
-</div>
+<div class="changelog about-changelog">{{ changelog_html | safe }}</div>
 {% endblock %}

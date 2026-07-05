@@ -99,7 +99,7 @@ business_findings, reputation_findings, values_findings,
 fit_strengths, fit_gaps, fit_improve,
 gut_feeling,
 source,                 — short identifier (URL or first 300 chars of content)
-source_full,            — full listing text (scraped or pasted)
+source_full,            — full listing text (pasted by user)
 source_hash,            — SHA-256 for deduplication
 job_url,                — listing URL (stored separately from content)
 applied,                — 0/1 application status
@@ -143,11 +143,9 @@ Four sources: `remoteok`, `lever`, `greenhouse`, `rss`. Returns `{external_id, t
 
 ## Scraper (scraper.py)
 
-Error codes: `timeout`, `notfound`, `blocked`, `network` (see scraper.py for fallback behaviour).
+`app.py` imports only `normalize_url` from scraper — the tool no longer fetches job board URLs on the user's behalf. Users paste listing text; URLs are stored as reference links only.
 
-**Domains blocked without attempting a connection:** LinkedIn, Indeed, Glassdoor, Pracuj.pl, NoFluffJobs, JustJoin.it
-
-`normalize_url()` strips tracking params (`utm_*`, `fbclid`, `gclid`, `ref`, `source`, `from`, `vjk`, …) and fragment before scraping/deduplication; preserves listing-specific params (`id`, `jobId`).
+`normalize_url()` strips tracking params (`utm_*`, `fbclid`, `gclid`, `ref`, `source`, `from`, `vjk`, …) and fragment; preserves listing-specific params (`id`, `jobId`). Used in `/analyze` and `/check_source` to normalise the reference URL before storage and dedup.
 
 ---
 
@@ -157,8 +155,8 @@ Error codes: `timeout`, `notfound`, `blocked`, `network` (see scraper.py for fal
 GET/POST /login
 GET/POST /register              — token via ?token=INVITE_TOKEN
 GET      /dashboard
-POST     /analyze               — url + text (both optional, at least one required); rejects with 429 if user already has 3 pending/running analyses
-POST     /check_source          — url or text, checks for duplicate
+POST     /analyze               — text required (pasted listing); url optional (stored as reference, never fetched); rejects with 429 if user already has 3 pending/running analyses
+POST     /check_source          — url or text, checks for duplicate by content hash and job_url
 POST     /reanalyze/<id>            — blocked with 429 if analyzed_at < 1 hour ago
 GET      /analysis_status/<id>    — background analysis status poll (pending/running/done/error); returns `active_labels`, `active_count`, and when done: full `job_data` dict (all jobs columns) for live table injection
 GET      /history_latest        — returns {id} of the most recent entry
@@ -302,7 +300,7 @@ Automatic rejection without analysis. Configured per user in Settings.
 Forces verdict "warning" but continues analysis. Configured per user.
 
 ### Prompt injection mitigation
-Job listing content (pasted or scraped) is wrapped in `<job_listing>` tags in the user message.
+Job listing content (pasted by user) is wrapped in `<job_listing>` tags in the user message.
 `SYSTEM_TEMPLATE` instructs the model to treat content inside those tags as data only,
 never as instructions — even if it contains text resembling commands or requests to
 change the verdict/output format.

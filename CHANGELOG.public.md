@@ -4,6 +4,15 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.49 — Paste-first input
+
+- **How you submit a listing changed** — the job description text field is now the primary input. Paste the listing text there; the URL field below it is optional and used only as a saved reference link so you can get back to the original posting.
+- The tool no longer fetches job board pages on your behalf. This is intentional — see the About page for the reasoning.
+- Duplicate detection now also checks against stored listing URLs, so re-submitting a known URL is caught even without matching text.
+- About page updated with an explanation of the paste-first design decision and the tool's ethics stance.
+
+---
+
 ## v0.48 — Auth page refresh
 
 - Login and register pages updated with consistent branding and new tagline.

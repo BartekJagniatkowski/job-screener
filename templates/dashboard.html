@@ -51,12 +51,18 @@ container_class %}container{% endblock %} {% block content %}
     <h1 class="hero-title">Screen an offer before you apply.</h1>
     <p class="hero-sub">Paste a listing. Six layers of analysis tell you if it's worth your time.</p>
     <div class="cmd-zone">
-    <div class="cmd-bar">
+    <textarea
+        id="cmd-text"
+        class="cmd-text-area"
+        rows="12"
+        placeholder="Paste the job description here…"
+    ></textarea>
+    <div class="cmd-url-row">
         <input
             type="url"
             id="cmd-input"
             class="cmd-input"
-            placeholder="Job listing URL…"
+            placeholder="Link to the listing (optional, saved as reference)"
             autocomplete="off"
         />
         <button
@@ -76,23 +82,7 @@ container_class %}container{% endblock %} {% block content %}
     </div>
     <div class="cmd-hint">
         <span><kbd class="cmd-key" id="hint-submit"></kbd> submit</span>
-        <span><kbd class="cmd-key" id="hint-paste"></kbd> focus input</span>
-        <button
-            class="cmd-text-toggle"
-            id="cmd-text-toggle"
-            onclick="toggleCmdText()"
-            type="button"
-        >
-            + paste job text
-        </button>
-    </div>
-    <div class="cmd-text-zone" id="cmd-text-zone" style="display: none">
-        <textarea
-            id="cmd-text"
-            class="cmd-text-area"
-            rows="12"
-            placeholder="Paste job description here — used when the URL is inaccessible (LinkedIn, Indeed, etc.)"
-        ></textarea>
+        <span><kbd class="cmd-key" id="hint-paste"></kbd> focus</span>
     </div>
 </div>
 </div>
@@ -630,26 +620,10 @@ container_class %}container{% endblock %} {% block content %}
 
     // ── Cmd-zone ──────────────────────────────────────────────────────────────
 
-    const SCRAPE_ERRORS = {
-      timeout:  { title: 'Server did not respond', fallback: true },
-      notfound: { title: 'Listing not found (404)', fallback: false },
-      blocked:  { title: 'Content inaccessible', fallback: true },
-      network:  { title: 'Network error', fallback: true },
-    };
-
     const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
     const modKey = isMac ? '⌘' : 'Ctrl';
     document.getElementById('hint-submit').textContent = modKey + ' Enter';
     document.getElementById('hint-paste').textContent = modKey + ' K';
-
-    function toggleCmdText(forceOpen) {
-      const zone = document.getElementById('cmd-text-zone');
-      const btn = document.getElementById('cmd-text-toggle');
-      const open = forceOpen !== undefined ? forceOpen : zone.style.display === 'none';
-      zone.style.display = open ? 'block' : 'none';
-      btn.textContent = open ? '− hide job text' : '+ paste job text';
-      if (open) document.getElementById('cmd-text').focus();
-    }
 
     const vLabel = v => ({rejected:'User rejected', warning:'Needs review', worth_considering:'Worth considering'}[v]||v);
 
@@ -677,16 +651,24 @@ container_class %}container{% endblock %} {% block content %}
       }
     }
 
-    // check duplicates as soon as a URL is pasted, before the text field is opened
+    // check duplicate when user leaves the description field
+    document.getElementById('cmd-text').addEventListener('blur', function() {
+      const text = this.value.trim();
+      const url = document.getElementById('cmd-input').value.trim();
+      if (text) checkSource(url, text);
+    });
+
+    // also check when a URL is pasted (reference dedup)
     document.getElementById('cmd-input').addEventListener('paste', function() {
       setTimeout(() => {
         const url = this.value.trim();
-        if (url) checkSource(url, '');
+        const text = document.getElementById('cmd-text').value.trim();
+        if (url || text) checkSource(url, text);
       }, 0);
     });
 
-    // hide source-status when the field is cleared
-    document.getElementById('cmd-input').addEventListener('input', function() {
+    // hide source-status when textarea is cleared
+    document.getElementById('cmd-text').addEventListener('input', function() {
       if (!this.value.trim()) {
         const statusEl = document.getElementById('source-status');
         statusEl.style.display = 'none';
@@ -694,15 +676,15 @@ container_class %}container{% endblock %} {% block content %}
       }
     });
 
-    // blur the history table/cards while the search field has focus
+    // blur the history table/cards while the textarea has focus
     (function() {
-      var cmdInput = document.getElementById('cmd-input');
-      if (!cmdInput) return;
+      var cmdText = document.getElementById('cmd-text');
+      if (!cmdText) return;
       var targets = document.querySelectorAll('.table-wrap, .job-cards, .history-search-wrap, .filter-bar');
-      cmdInput.addEventListener('focus', function() {
+      cmdText.addEventListener('focus', function() {
         targets.forEach(function(el) { el.classList.add('is-blurred'); });
       });
-      cmdInput.addEventListener('blur', function() {
+      cmdText.addEventListener('blur', function() {
         targets.forEach(function(el) { el.classList.remove('is-blurred'); });
       });
     })();
@@ -710,7 +692,13 @@ container_class %}container{% endblock %} {% block content %}
     async function runAnalysis(force = false) {
       const url = document.getElementById('cmd-input').value.trim();
       const text = document.getElementById('cmd-text').value.trim();
-      if (!url && !text) { document.getElementById('cmd-input').focus(); return; }
+      if (!text) {
+        document.getElementById('cmd-text').focus();
+        const errorBox = document.getElementById('error-box');
+        errorBox.textContent = 'Paste the job description to analyze.';
+        errorBox.style.display = 'block';
+        return;
+      }
 
       const statusEl = document.getElementById('source-status');
       await checkSource(url, text);
@@ -722,7 +710,7 @@ container_class %}container{% endblock %} {% block content %}
 
       const fd = new FormData();
       if (url) fd.append('url', url);
-      if (text) fd.append('text', text);
+      fd.append('text', text);
       if (force) fd.append('force', '1');
 
       try {
@@ -731,23 +719,12 @@ container_class %}container{% endblock %} {% block content %}
         document.getElementById('loading').style.display = 'none';
         statusEl.style.display = 'none';
 
-        if (data.scrape_error) {
-          const info = SCRAPE_ERRORS[data.error_code] || {title:'Error', fallback:true};
-          document.getElementById('error-box').innerHTML =
-            `<strong>${info.title}</strong><br>${data.error_detail || ''}` +
-            (info.fallback ? '<br><br>Paste the job description in the text field below and submit again.' : '');
-          document.getElementById('error-box').style.display = 'block';
-          if (info.fallback) toggleCmdText(true);
-          document.getElementById('analyze-btn').disabled = false;
-          return;
-        }
-
         if (data.duplicate) {
           const p = data.previous;
           document.getElementById('result-box').innerHTML = `
             <div class="notice warn duplicate-notice">
               <div class="td-mono duplicate-label">⚠ This listing was already analyzed</div>
-              <div class="duplicate-title"><a class="link-accent" href="#" onclick="event.preventDefault(); openModal(${p.id})">${p.company||'—'} — ${p.role||'—'}</a></div>
+              <div class="duplicate-title"><a class="link-accent" href="#" onclick="event.preventDefault(); openModal(${p.id})">${_esc(p.company||'—')} — ${_esc(p.role||'—')}</a></div>
               <div class="td-mono duplicate-meta">
                 Analyzed: ${p.analyzed_at} &nbsp;·&nbsp; <span class="badge badge-${p.verdict}">${vLabel(p.verdict)}</span>
               </div>
@@ -767,10 +744,9 @@ container_class %}container{% endblock %} {% block content %}
           };
           localStorage.setItem('activeAnalysis', JSON.stringify(active));
           window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
-          document.getElementById('cmd-input').value = '';
           document.getElementById('cmd-text').value = '';
-          toggleCmdText(false);
-          document.getElementById('cmd-input').focus();
+          document.getElementById('cmd-input').value = '';
+          document.getElementById('cmd-text').focus();
         } else if (data.error) {
           document.getElementById('error-box').textContent = 'Error: ' + data.error;
           document.getElementById('error-box').style.display = 'block';
@@ -851,9 +827,7 @@ container_class %}container{% endblock %} {% block content %}
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        var el = document.getElementById('cmd-input');
-        el.focus();
-        el.select();
+        document.getElementById('cmd-text').focus();
       }
     });
 

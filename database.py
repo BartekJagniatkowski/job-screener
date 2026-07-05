@@ -391,19 +391,7 @@ def compute_hash(text: str) -> str:
     return hashlib.sha256(text.strip().lower().encode()).hexdigest()
 
 
-def check_duplicate(user_id: int, source: str) -> Optional[sqlite3.Row]:
-    """
-    Check whether an analysis already exists for the same source.
-
-    source can be a URL or content text. Hash is computed after stripping whitespace.
-
-    Args:
-        user_id: User ID
-        source: URL or listing content
-
-    Returns:
-        Record from the database if a duplicate exists, None otherwise
-    """
+def check_duplicate(user_id: int, source: str, url: str = "") -> Optional[sqlite3.Row]:
     clean_source = source.strip() if source else ""
     h = compute_hash(clean_source)
     with get_conn() as conn:
@@ -411,6 +399,11 @@ def check_duplicate(user_id: int, source: str) -> Optional[sqlite3.Row]:
             "SELECT * FROM jobs WHERE user_id=? AND source_hash=? ORDER BY id DESC LIMIT 1",
             (user_id, h)
         ).fetchone()
+        if not row and url:
+            row = conn.execute(
+                "SELECT * FROM jobs WHERE user_id=? AND job_url=? ORDER BY id DESC LIMIT 1",
+                (user_id, url)
+            ).fetchone()
     return dict(row) if row else None
 
 
