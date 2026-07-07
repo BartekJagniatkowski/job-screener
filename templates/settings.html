@@ -43,6 +43,16 @@
         </button>
         <span id="st-cv" class="settings-save-status"></span>
     </div>
+    <div class="cv-upload-row">
+        <label class="btn btn-secondary btn-sm cv-upload-btn" id="cv-upload-btn">
+            Upload CV file (PDF, DOCX, TXT)
+            <input type="file" id="cv-file-input" accept=".pdf,.docx,.txt" hidden />
+        </label>
+        <span id="cv-upload-status" class="settings-save-status"></span>
+        <div class="field-hint cv-upload-hint">
+            Parsed in memory and never written to disk — replaces the text above; Save CV still required to persist.
+        </div>
+    </div>
 </div>
 
 <div class="settings-section">
@@ -262,6 +272,45 @@
         }
         setTimeout(function() { if (st.className.indexOf('err') === -1) st.textContent = ''; }, 3000);
     }
+
+    (function () {
+        var input = document.getElementById('cv-file-input');
+        var btn = document.getElementById('cv-upload-btn');
+        var st = document.getElementById('cv-upload-status');
+        if (!input) return;
+        input.addEventListener('change', async function () {
+            var file = input.files[0];
+            if (!file) return;
+            btn.classList.add('disabled');
+            input.disabled = true;
+            st.textContent = 'Parsing…';
+            st.className = 'settings-save-status';
+            var fd = new FormData();
+            fd.append('cv_file', file);
+            try {
+                var r = await fetch('/settings/cv_upload', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken() },
+                    body: fd,
+                });
+                var d = await r.json();
+                if (d.success) {
+                    document.getElementById('s-cv').value = d.text;
+                    st.textContent = 'CV text extracted — click Save CV to keep it';
+                    st.className = 'settings-save-status ok';
+                } else {
+                    st.textContent = d.error || 'Could not parse this file.';
+                    st.className = 'settings-save-status err';
+                }
+            } catch (e) {
+                st.textContent = 'Upload failed.';
+                st.className = 'settings-save-status err';
+            }
+            btn.classList.remove('disabled');
+            input.disabled = false;
+            input.value = '';
+        });
+    })();
 
     async function saveSection(section, textareaId, btn, statusId) {
         var ta = document.getElementById(textareaId);

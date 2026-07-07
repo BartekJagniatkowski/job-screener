@@ -150,10 +150,11 @@ def test_analyze_rate_limit(logged_in_client):
         assert 429 in responses, f"Expected a 429 response, got: {set(responses)}"
     finally:
         app_module.limiter.enabled = False
+        app_module.limiter.reset()
 
 
 def test_analyze_rejects_oversized_body(logged_in_client):
-    big_text = "a" * 2_000_000  # over the 1MB cap
+    big_text = "a" * 3_000_000  # over the 2MB cap
     resp = logged_in_client.post("/analyze", data={"text": big_text})
     assert resp.status_code == 413
 
@@ -162,7 +163,7 @@ def test_analyze_rejects_oversized_raw_body(logged_in_client):
     # Bypasses form-parsing entirely (no application/x-www-form-urlencoded body),
     # so only MAX_CONTENT_LENGTH can produce the 413 here — isolates the feature
     # from Werkzeug's pre-existing max_form_memory_size default (500KB).
-    big_body = b"a" * 2_000_000  # over the 1MB MAX_CONTENT_LENGTH cap
+    big_body = b"a" * 3_000_000  # over the 2MB MAX_CONTENT_LENGTH cap
     resp = logged_in_client.post("/analyze", data=big_body, content_type="application/octet-stream")
     assert resp.status_code == 413
 

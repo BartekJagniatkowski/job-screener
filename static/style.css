@@ -1043,6 +1043,24 @@ tr.row-rejected-soft:hover td {
 .settings-save-status.err {
     color: var(--red);
 }
+.cv-upload-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-top: 10px;
+}
+.cv-upload-btn {
+    cursor: pointer;
+}
+.cv-upload-btn.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+.cv-upload-hint {
+    flex-basis: 100%;
+    margin-top: 0;
+}
 .settings-select {
     background: var(--surface);
     border: 1px solid var(--border);

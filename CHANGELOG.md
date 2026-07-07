@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.52 — CV upload
+
+- **Upload your CV file** — add a PDF, DOCX, or TXT file in Settings and it's automatically converted to text for you, instead of copy-pasting.
+
+---
+
 ## v0.51 — Interview scheduling, interview prep formatting
 
 - **Interview date picker** — marking a listing as "Interview" now lets you pick the actual date instead of always using today's date.

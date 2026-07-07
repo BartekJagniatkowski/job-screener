@@ -30,6 +30,7 @@ from database import (
 from fetcher import fetch_feed
 from analyzer import analyze, interview_prep, cv_tailoring
 from scraper import normalize_url
+from cv_parser import parse_cv
 
 app: Flask = Flask(__name__)
 _secret_key = os.environ.get("SECRET_KEY")
@@ -51,7 +52,7 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE', 'True').lower() not in ('false', '0', 'no')
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 1_000_000))  # 1MB
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 2_000_000))  # 2MB — covers CV file uploads
 
 from datetime import datetime, timedelta, timezone
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
@@ -735,6 +736,24 @@ def settings():
         flash("Profile saved.")
         return redirect(url_for("settings"))
     return render_template("settings.html", user=current_user(), feeds=get_feeds(current_user()["id"]))
+
+
+@app.route("/settings/cv_upload", methods=["POST"])
+@limiter.limit("10 per hour")
+@login_required
+def cv_upload():
+    file = request.files.get("cv_file")
+    if not file or not file.filename:
+        return jsonify({"success": False, "error": "No file selected."}), 400
+    try:
+        text = parse_cv(file)
+    except ValueError as e:
+        app.logger.warning(
+            "cv_upload parse failed: filename=%s ext=%s size=%s",
+            file.filename, file.filename.rsplit(".", 1)[-1], request.content_length,
+        )
+        return jsonify({"success": False, "error": str(e)}), 400
+    return jsonify({"success": True, "text": text})
 
 
 @app.route("/settings/password", methods=["POST"])
