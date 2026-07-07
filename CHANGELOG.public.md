@@ -7,6 +7,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 ## v0.52 — CV upload
 
 - **Upload your CV file** — add a PDF, DOCX, or TXT file in Settings and it's automatically converted to text for you, instead of copy-pasting.
+- Small security hardening to the internal URL-safety check.
 
 ---
 

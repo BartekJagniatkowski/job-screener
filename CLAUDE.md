@@ -259,7 +259,7 @@ PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 - `Server: unknown` (suppresses gunicorn banner)
 
 ### SSRF protection (scraper.py)
-`_is_internal_host(url)` resolves the hostname and rejects private/loopback/link-local IPs before any HTTP connection is made. Covers `10.x`, `172.16–31.x`, `192.168.x`, `127.x`, `169.254.x`, IPv6 equivalents. Called in `fetch()` after the blocked-domain check.
+`_is_internal_host(url)` resolves the hostname and rejects private/loopback/link-local IPs before any HTTP connection is made. Covers `10.x`, `172.16–31.x`, `192.168.x`, `127.x`, `169.254.x`, IPv6 equivalents. Called in `fetch()` after the blocked-domain check. Fails **closed** on any unexpected error (treats the host as internal/blocked) — the only exception is `socket.gaierror` (hostname doesn't resolve), which is treated as "not internal" since the real fetch fails identically in that case.
 
 ### Username enumeration
 Failed login always calls `_record_failure(username)` regardless of whether the user exists. Prevents timing-based username probing via lockout state differences.

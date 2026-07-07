@@ -35,20 +35,20 @@ def _parse_pdf(data: bytes) -> str:
     try:
         reader = PdfReader(io.BytesIO(data))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
-    except Exception:
-        raise ValueError("Could not read this PDF file — it may be corrupt.")
+    except Exception as e:
+        raise ValueError("Could not read this PDF file — it may be corrupt.") from e
 
 
 def _parse_docx(data: bytes) -> str:
     try:
         document = docx.Document(io.BytesIO(data))
         return "\n".join(p.text for p in document.paragraphs)
-    except Exception:
-        raise ValueError("Could not read this DOCX file — it may be corrupt.")
+    except Exception as e:
+        raise ValueError("Could not read this DOCX file — it may be corrupt.") from e
 
 
 def _parse_txt(data: bytes) -> str:
     try:
         return data.decode("utf-8")
-    except UnicodeDecodeError:
-        raise ValueError("Could not decode this TXT file — expected UTF-8 text.")
+    except UnicodeDecodeError as e:
+        raise ValueError("Could not decode this TXT file — expected UTF-8 text.") from e

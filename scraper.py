@@ -43,10 +43,15 @@ _opener = urllib.request.build_opener(_NoRedirect)
 def _is_internal_host(url: str) -> bool:
     try:
         host = urlparse(url).hostname or ""
-        ip = ipaddress.ip_address(socket.gethostbyname(host))
-        return any(ip in net for net in _PRIVATE_NETWORKS)
     except Exception:
-        return False
+        return True  # malformed URL — fail closed
+    try:
+        ip = ipaddress.ip_address(socket.gethostbyname(host))
+    except socket.gaierror:
+        return False  # host doesn't resolve; the fetch will fail on its own
+    except Exception:
+        return True  # unexpected error — fail closed
+    return any(ip in net for net in _PRIVATE_NETWORKS)
 
 
 # Query string parameters to strip from URL (all lowercase — compared via k.lower())
