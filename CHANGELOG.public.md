@@ -4,6 +4,17 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.51 — Interview scheduling, interview prep formatting
+
+- **Interview date picker** — marking a listing as "Interview" now lets you pick the actual date instead of always using today's date.
+- **Interview prep reads properly now** — the AI-generated prep brief (headings, lists, comparison tables) displays as formatted text instead of raw markdown symbols.
+- **Copy / Save as file** — the interview prep tab has buttons to copy the text or download it as a file.
+- **The tab you were on stays open** — switching to Layers, Skills, CV, or Interview and then updating something (status, URL, re-analyzing) no longer jumps you back to the Overview tab. Also survives a page refresh.
+- **"Home" added to the navigation bar.**
+- Small fixes to scrollbar appearance and the focus-blur effect on the main input form.
+
+---
+
 ## v0.50 — Analysis language
 
 - **Language setting in Settings** — choose whether analyses are written in English, Polish, or the listing's own language. The setting applies to all six layers and summaries and never mixes languages within a response.

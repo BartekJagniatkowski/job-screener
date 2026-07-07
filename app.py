@@ -406,7 +406,7 @@ def generate_interview_prep(job_id):
     if not eligible:
         return jsonify({"error": "Interview prep not available for this job status."}), 400
     if job["interview_prep"]:
-        return jsonify({"ok": True, "content": job["interview_prep"]})
+        return jsonify({"ok": True, "content": job["interview_prep"], "content_html": _prep_to_html(job["interview_prep"])})
     source = (job["source_full"] or "").strip()
     if not source or source.startswith("http"):
         return jsonify({"error": "No job description text saved — cannot generate interview prep."}), 400
@@ -419,7 +419,7 @@ def generate_interview_prep(job_id):
             API_KEY,
         )
         save_interview_prep(job_id, user["id"], content)
-        return jsonify({"ok": True, "content": content})
+        return jsonify({"ok": True, "content": content, "content_html": _prep_to_html(content)})
     except Exception as e:
         app.logger.error("interview_prep failed: %s", e)
         return jsonify({"error": "Failed to generate interview prep. Try again later."}), 500
@@ -511,7 +511,10 @@ def set_applied(job_id):
 def set_job_status(job_id):
     user = current_user()
     status = request.form.get("status", "").strip()
-    if update_job_status(job_id, user["id"], status):
+    interview_at = request.form.get("interview_at", "").strip()
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", interview_at):
+        interview_at = None
+    if update_job_status(job_id, user["id"], status, interview_at):
         return jsonify({"ok": True})
     return jsonify({"error": "Invalid status or access denied."}), 400
 
@@ -541,37 +544,69 @@ def _inline_md(s: str) -> str:
     return s
 
 
+def _prep_to_html(text: str) -> str:
+    """Render interview-prep/CV-tailoring markdown, dropping the leading H1
+    title line — it duplicates the tab's own section label."""
+    lines = text.split("\n", 1)
+    if lines[0].strip().startswith("# "):
+        text = lines[1] if len(lines) > 1 else ""
+    return _md_to_html(text)
+
+
 def _md_to_html(text: str, skip_h1: bool = False) -> str:
     lines = text.split("\n")
     out = []
     in_ul = False
+    in_table = False
+    table_row_n = 0
     past_preamble = not skip_h1
+
+    def _close_blocks():
+        nonlocal in_ul, in_table, table_row_n
+        if in_ul: out.append("</ul>"); in_ul = False
+        if in_table: out.append("</table>"); in_table = False; table_row_n = 0
+
     for line in lines:
         line_esc = _html.escape(line)
+        stripped = line_esc.strip()
         if not past_preamble:
-            if re.match(r"^-{3,}$", line_esc.strip()):
+            if re.match(r"^-{3,}$", stripped):
                 past_preamble = True
             continue
-        if line_esc.startswith("## "):
+        is_table_row = stripped.startswith("|") and stripped.endswith("|") and stripped.count("|") >= 2
+        if is_table_row:
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if all(re.match(r"^:?-{2,}:?$", c) for c in cells):
+                continue  # header/body separator row — not rendered
             if in_ul: out.append("</ul>"); in_ul = False
-            out.append(f"<h2>{_inline_md(line_esc[3:])}</h2>")
-        elif line_esc.startswith("# "):
-            if in_ul: out.append("</ul>"); in_ul = False
-            out.append(f"<h1>{_inline_md(line_esc[2:])}</h1>")
-        elif re.match(r"^-{3,}$", line_esc.strip()):
-            if in_ul: out.append("</ul>"); in_ul = False
+            if not in_table:
+                out.append("<table>"); in_table = True
+            table_row_n += 1
+            tag = "th" if table_row_n == 1 else "td"
+            out.append("<tr>" + "".join(f"<{tag}>{_inline_md(c)}</{tag}>" for c in cells) + "</tr>")
+        elif stripped.startswith("### "):
+            _close_blocks()
+            out.append(f"<h3>{_inline_md(stripped[4:])}</h3>")
+        elif stripped.startswith("## "):
+            _close_blocks()
+            out.append(f"<h2>{_inline_md(stripped[3:])}</h2>")
+        elif stripped.startswith("# "):
+            _close_blocks()
+            out.append(f"<h1>{_inline_md(stripped[2:])}</h1>")
+        elif re.match(r"^-{3,}$", stripped):
+            _close_blocks()
             out.append("<hr>")
-        elif line_esc.startswith("- "):
+        elif stripped.startswith("- "):
+            if in_table: out.append("</table>"); in_table = False; table_row_n = 0
             if not in_ul: out.append("<ul>"); in_ul = True
-            out.append(f"<li>{_inline_md(line_esc[2:])}</li>")
-        elif line_esc.strip() == "":
-            if in_ul: out.append("</ul>"); in_ul = False
+            out.append(f"<li>{_inline_md(stripped[2:])}</li>")
+        elif stripped == "":
+            _close_blocks()
             out.append("")
         else:
-            if in_ul: out.append("</ul>"); in_ul = False
-            out.append(f"<p>{_inline_md(line_esc)}</p>")
-    if in_ul:
-        out.append("</ul>")
+            _close_blocks()
+            out.append(f"<p>{_inline_md(stripped)}</p>")
+    _close_blocks()
     return "\n".join(out)
 
 
@@ -624,8 +659,13 @@ def job_partial(job_id):
     except Exception:
         pass
     prep_content = get_interview_prep(job_id, user["id"])
+    prep_html = _prep_to_html(prep_content) if prep_content else None
     tailoring_content = get_cv_tailoring(job_id, user["id"])
-    return render_template("job_partial.html", job=job, raw=raw, prep_content=prep_content, tailoring_content=tailoring_content)
+    return render_template(
+        "job_partial.html", job=job, raw=raw,
+        prep_content=prep_content, prep_html=prep_html,
+        tailoring_content=tailoring_content,
+    )
 
 
 def _parse_settings_list(text):

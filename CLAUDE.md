@@ -164,7 +164,7 @@ GET      /history               — 301 redirect to /dashboard
 GET      /job/<id>              — 301 redirect to /dashboard?job=<id> (modal auto-opens)
 GET      /job/<id>/partial      — HTML without layout, loaded via AJAX into modal
 POST     /job/<id>/verdict      — change verdict
-POST     /job/<id>/status       — change status (all 6 values)
+POST     /job/<id>/status       — change status (all 6 values); optional `interview_at` (YYYY-MM-DD) when status=interview, defaults to today
 POST     /job/<id>/url          — add/change URL
 POST     /job/<id>/applied      — application status
 POST     /job/<id>/company_rejected — company rejection
@@ -198,7 +198,7 @@ Dropdown `#status-select` with `<optgroup>` groups:
 | `rejected` | Rejected (dropdown) / User rejected (badge) | verdict=rejected, confirmed=1 |
 | `applied` | Applied | applied=1 |
 | `company_rejected` | Rejected by company | company_rejected=1, applied=1 |
-| `interview` | Interview | interview_scheduled=1, interview_at=now, applied=1, clears company_rejected |
+| `interview` | Interview | interview_scheduled=1, interview_at=`interview_at` param or today, applied=1, clears company_rejected |
 | `offer` | Offer received | offer_received=1, offer_at=now, interview_scheduled=1, applied=1, clears company_rejected |
 
 Handled by `update_job_status()` in `database.py`.
@@ -208,6 +208,8 @@ Non-obvious gotchas:
 - JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in `dashboard.html`, not in the partial — `<script>` tags in AJAX-loaded partials do not execute
 - The `d` theme-toggle is a *separate* global `keydown` listener in `base.html` (not the dashboard-only handler) — works on every page, guarded against field focus
 - `.modal-body` has **zero** padding — every inner section manages its own (past bug: double 24px inset when both had it)
+- `#job-modal.modal-overlay` (fixed, `backdrop-filter` blur) and its inner `.modal-scroll` (the actual `overflow-y:auto` scroll container) are deliberately separate elements — combining blur + scroll on the same element makes Chromium fall back to the native OS scrollbar instead of the app's styled one. Backdrop-click-to-close checks for both `#job-modal` and `.modal-scroll` as `e.target`.
+- Active tab (Overview/Layers/Skills/CV/Interview) persists across modal refreshes and full page reloads via `sessionStorage['modalActiveTab']`, restored by `activateTab()` in `loadModalJob()`.
 
 ---
 
@@ -420,7 +422,10 @@ Hover on table rows: `box-shadow: inset 0 0 0 9999px var(--hover-overlay)`.
 `.stats-hfunnel-fill` — width set inline `style="width:N%"` (permitted exception to no-inline-styles rule)
 `.collapsible` — native `<details>`/`<summary>`, no JS; used for listing source section
 `.hero-dots` — `<canvas>` in dashboard hero; animated dotted-grid, cursor-reactive, `prefers-reduced-motion` aware
-`.is-blurred` — applied to table/cards/search/filter while `#cmd-input` has focus
+`.is-blurred` — applied to table/cards/search/filter while `#cmd-text` (textarea) or `#cmd-input` (URL field) has focus
+`.is-hidden` — generic `display:none` toggle class, JS-managed (permitted exception to no-inline-styles rule)
+`.changelog` — reused (not just for Changelog/About) to render interview-prep markdown via `_prep_to_html()`; scoped override `#prep-content-box .changelog` shrinks headings to match the modal's typography scale and removes the shared `max-width`
+`.modal-scroll` — wraps `.modal-container` inside `.modal-overlay`; holds the actual `overflow-y:auto` so it stays separate from the overlay's `backdrop-filter` (see Job detail modal gotchas)
 `.filter-btn` — filter state saved in `localStorage` under key `history_hidden_categories`
 `.nav-toggle` — hamburger, hidden by default; `display: flex` at ≤768px; `margin-left: auto` takes over from `.nav-links` (which hides) to push it right
 `.analysis-banner-counter` — "X of Y" cycling indicator; hidden when only 1 analysis active

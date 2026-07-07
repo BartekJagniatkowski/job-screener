@@ -45,6 +45,11 @@
             </button>
             <div class="nav-links">
                 <a
+                    href="{{ url_for('dashboard') }}"
+                    {% if request.endpoint == "dashboard" %}class="active"{% endif %}
+                    >Home</a
+                >
+                <a
                     href="{{ url_for('discover') }}"
                     {% if request.endpoint == "discover" %}class="active"{% endif %}
                     >Discover</a

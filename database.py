@@ -765,7 +765,7 @@ def get_cv_tailoring(job_id: int, user_id: int) -> Optional[str]:
     return row["cv_tailoring"] if row and row["cv_tailoring"] else None
 
 
-def update_job_status(job_id: int, user_id: int, status: str) -> bool:
+def update_job_status(job_id: int, user_id: int, status: str, interview_at: Optional[str] = None) -> bool:
     """
     Unified status update from the dropdown.
 
@@ -779,6 +779,8 @@ def update_job_status(job_id: int, user_id: int, status: str) -> bool:
         user_id: User ID
         status: New status (worth_considering, warning, rejected_soft, rejected,
                 applied, company_rejected)
+        interview_at: Optional ISO date (YYYY-MM-DD) for status == "interview";
+                defaults to today if not given.
 
     Returns:
         True if the record was updated
@@ -815,12 +817,12 @@ def update_job_status(job_id: int, user_id: int, status: str) -> bool:
         params = (job_id, user_id)
     elif status == "interview":
         sql = (
-            "UPDATE jobs SET interview_scheduled=1, interview_at=date('now'),"
+            "UPDATE jobs SET interview_scheduled=1, interview_at=COALESCE(?, date('now')),"
             " applied=1, applied_at=COALESCE(applied_at, date('now')),"
             " company_rejected=0, company_rejected_at=NULL"
             " WHERE id=? AND user_id=?"
         )
-        params = (job_id, user_id)
+        params = (interview_at, job_id, user_id)
     elif status == "offer":
         sql = (
             "UPDATE jobs SET offer_received=1, offer_at=date('now'),"

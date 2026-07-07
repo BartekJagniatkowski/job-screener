@@ -215,13 +215,15 @@
     <div class="tab-section">
       <div class="tab-section-label">Interview prep</div>
       <div class="tab-section-body">
-        <div id="prep-content-box"><div class="prep-content">{{ prep_content }}</div></div>
-        {% if show_prep_btn %}
-        <div class="tab-actions">
+        <div id="prep-content-box" data-raw="{{ prep_content }}"><div class="changelog">{{ prep_html|safe }}</div></div>
+        <div id="prep-actions" class="tab-actions">
+          <button class="btn btn-secondary btn-sm" onclick="copyPrep()">Copy</button>
+          <button class="btn btn-secondary btn-sm" onclick="saveMdPrep()">Save as .md file</button>
+          {% if show_prep_btn %}
           <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">Regenerate prep</button>
+          {% endif %}
           <span id="prep-status" class="notice" style="display:none;"></span>
         </div>
-        {% endif %}
       </div>
     </div>
     {% elif show_prep_btn %}
@@ -229,6 +231,10 @@
       <button id="prep-btn" class="btn btn-secondary btn-sm" onclick="generatePrep()">Generate interview prep →</button>
       <span id="prep-status" class="notice" style="display:none;"></span>
       <div id="prep-content-box"></div>
+      <div id="prep-actions" class="tab-actions is-hidden">
+        <button class="btn btn-secondary btn-sm" onclick="copyPrep()">Copy</button>
+        <button class="btn btn-secondary btn-sm" onclick="saveMdPrep()">Save as .md file</button>
+      </div>
     </div>
     {% else %}
     <div class="job-tab-empty">
@@ -256,6 +262,13 @@
           <option value="offer"             {% if cur_status == 'offer' %}selected{% endif %}>Offer received</option>
         </optgroup>
       </select>
+      <input
+        type="date"
+        id="interview-date-input"
+        class="interview-date-input {% if cur_status != 'interview' %}is-hidden{% endif %}"
+        value="{{ job.interview_at or '' }}"
+        onchange="setInterviewDate()"
+      />
     </div>
     {% if job.source_full or job.source %}
     <button id="reanalyze-btn" class="btn btn-secondary btn-sm" onclick="reanalyze()">Re-analyze <span class="btn-icon">↻</span></button>

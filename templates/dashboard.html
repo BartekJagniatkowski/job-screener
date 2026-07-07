@@ -10,6 +10,7 @@ container_class %}container{% endblock %} {% block content %}
 {% endmacro %}
 <!-- Job detail modal -->
 <div id="job-modal" class="modal-overlay" style="display: none">
+    <div class="modal-scroll">
     <div class="modal-container">
         <div class="modal-header">
             <button
@@ -30,6 +31,7 @@ container_class %}container{% endblock %} {% block content %}
             <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
         <div class="modal-body" id="modal-body"></div>
+    </div>
     </div>
 </div>
 
@@ -676,16 +678,17 @@ container_class %}container{% endblock %} {% block content %}
       }
     });
 
-    // blur the history table/cards while the textarea has focus
+    // blur the history table/cards while the textarea or URL input has focus
     (function() {
-      var cmdText = document.getElementById('cmd-text');
-      if (!cmdText) return;
       var targets = document.querySelectorAll('.table-wrap, .job-cards, .history-search-wrap, .filter-bar');
-      cmdText.addEventListener('focus', function() {
-        targets.forEach(function(el) { el.classList.add('is-blurred'); });
-      });
-      cmdText.addEventListener('blur', function() {
-        targets.forEach(function(el) { el.classList.remove('is-blurred'); });
+      [document.getElementById('cmd-text'), document.getElementById('cmd-input')].forEach(function(field) {
+        if (!field) return;
+        field.addEventListener('focus', function() {
+          targets.forEach(function(el) { el.classList.add('is-blurred'); });
+        });
+        field.addEventListener('blur', function() {
+          targets.forEach(function(el) { el.classList.remove('is-blurred'); });
+        });
       });
     })();
 
@@ -794,15 +797,32 @@ container_class %}container{% endblock %} {% block content %}
 
     async function loadModalJob(jobId) {
       const body = document.getElementById('modal-body');
+      const activeTab = body.querySelector('.job-tab-content.active');
+      let activeTabId = activeTab ? activeTab.id : null;
+      if (!activeTabId) {
+        try { activeTabId = sessionStorage.getItem('modalActiveTab'); } catch (e) {}
+      }
       body.innerHTML = '<div class="modal-loading">Loading…</div>';
       try {
         const resp = await fetch(`/job/${jobId}/partial`);
         if (!resp.ok) { body.innerHTML = '<div class="modal-loading">Loading error.</div>'; return; }
         body.innerHTML = await resp.text();
         body.scrollTop = 0;
+        if (activeTabId) activateTab(activeTabId);
       } catch(e) {
         body.innerHTML = '<div class="modal-loading">Connection error.</div>';
       }
+    }
+
+    function activateTab(tabId) {
+      const card = document.querySelector('#modal-body .card');
+      const btn = card && card.querySelector(`.job-tab[onclick*="'${tabId}'"]`);
+      const content = document.getElementById(tabId);
+      if (!card || !btn || !content) return;
+      card.querySelectorAll('.job-tab').forEach(function(t) { t.classList.remove('active'); });
+      card.querySelectorAll('.job-tab-content').forEach(function(c) { c.classList.remove('active'); });
+      btn.classList.add('active');
+      content.classList.add('active');
     }
 
     function updateModalNav() {
@@ -812,7 +832,7 @@ container_class %}container{% endblock %} {% block content %}
     }
 
     document.getElementById('job-modal').addEventListener('click', e => {
-      if (e.target === document.getElementById('job-modal')) closeModal();
+      if (e.target.id === 'job-modal' || e.target.classList.contains('modal-scroll')) closeModal();
     });
 
     // single keydown handler: modal shortcuts take priority; cmd-zone blocked when modal open
@@ -930,6 +950,7 @@ container_class %}container{% endblock %} {% block content %}
       card.querySelectorAll('.job-tab-content').forEach(function(c) { c.classList.remove('active'); });
       btn.classList.add('active');
       document.getElementById(tabId).classList.add('active');
+      try { sessionStorage.setItem('modalActiveTab', tabId); } catch (e) {}
     }
 
     // ── Job actions (called from job_partial.html) ────────────────────────────
@@ -938,9 +959,18 @@ container_class %}container{% endblock %} {% block content %}
 
     async function setStatus(status) {
       const jobId = getCurrentJobId();
+      const dateInput = document.getElementById('interview-date-input');
+      if (dateInput) {
+        const showDate = status === 'interview';
+        dateInput.classList.toggle('is-hidden', !showDate);
+        if (showDate && !dateInput.value) {
+          dateInput.value = new Date().toISOString().slice(0, 10);
+        }
+      }
       try {
         const fd = new FormData();
         fd.append('status', status);
+        if (status === 'interview' && dateInput) fd.append('interview_at', dateInput.value);
         const resp = await fetch(`/job/${jobId}/status`, { method: 'POST', body: fd, headers: {'X-CSRFToken': csrfToken()} });
         const data = await resp.json();
         if (data.ok) {
@@ -952,6 +982,10 @@ container_class %}container{% endblock %} {% block content %}
           if (el) { el.className='notice warn'; el.style.display='block'; el.textContent='Error: '+(data.error||'unknown'); }
         }
       } catch(e) { console.error(e); }
+    }
+
+    function setInterviewDate() {
+      setStatus('interview');
     }
 
     async function confirmDelete() {
@@ -1069,12 +1103,15 @@ container_class %}container{% endblock %} {% block content %}
         const data = await resp.json();
         if (data.ok) {
           if (contentBox) {
+            contentBox.dataset.raw = data.content;
             const div = document.createElement('div');
-            div.className = 'prep-content';
-            div.textContent = data.content;
+            div.className = 'changelog';
+            div.innerHTML = data.content_html;
             contentBox.innerHTML = '';
             contentBox.appendChild(div);
           }
+          const actions = document.getElementById('prep-actions');
+          if (actions) actions.classList.remove('is-hidden');
           if (statusEl) statusEl.style.display = 'none';
           if (btn) { btn.disabled = false; btn.textContent = 'Regenerate prep'; }
         } else {
@@ -1085,6 +1122,31 @@ container_class %}container{% endblock %} {% block content %}
         if (statusEl) { statusEl.className = 'notice warn'; statusEl.textContent = 'Connection error: ' + e.message; }
         if (btn) { btn.disabled = false; btn.textContent = btn.textContent.includes('Regen') ? 'Regenerate prep' : 'Generate interview prep'; }
       }
+    }
+
+    async function copyPrep() {
+      const box = document.getElementById('prep-content-box');
+      const statusEl = document.getElementById('prep-status');
+      if (!box) return;
+      try {
+        await navigator.clipboard.writeText(box.dataset.raw || '');
+        if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice'; statusEl.textContent = 'Copied.'; }
+      } catch (e) {
+        if (statusEl) { statusEl.style.display = 'inline'; statusEl.className = 'notice warn'; statusEl.textContent = 'Copy failed.'; }
+      }
+    }
+
+    function saveMdPrep() {
+      const box = document.getElementById('prep-content-box');
+      if (!box) return;
+      const jobId = getCurrentJobId();
+      const blob = new Blob([box.dataset.raw || ''], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `interview-prep-${jobId}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     async function generateCvTailoring() {
