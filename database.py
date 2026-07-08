@@ -967,6 +967,19 @@ def get_statistics(user_id: int) -> dict:
 
     fit_score_avg = round(sum(fit_scores) / len(fit_scores), 2) if fit_scores else None
 
+    analyzed_dates = [row['analyzed_at'] for row in rows if row['analyzed_at']]
+    if analyzed_dates:
+        first_analyzed = min(datetime.date.fromisoformat(d) for d in analyzed_dates)
+        weeks = max(1.0, (datetime.date.today() - first_analyzed).days / 7)
+        weekly_pace = {
+            'analyzed': round(funnel['total'] / weeks, 1),
+            'applied': round(funnel['applied'] / weeks, 1),
+            'interview': round(funnel['interview_scheduled'] / weeks, 1),
+            'offer': round(funnel['offer_received'] / weeks, 1),
+        }
+    else:
+        weekly_pace = None
+
     buckets = [('1.0–2.0', 0), ('2.0–3.0', 0), ('3.0–4.0', 0), ('4.0–5.0', 0)]
     for s in fit_scores:
         if s < 2.0:
@@ -988,6 +1001,7 @@ def get_statistics(user_id: int) -> dict:
         'fit_score_distribution': buckets,
         'archetype_distribution': dict(sorted(archetype_distribution.items(), key=lambda x: -x[1])),
         'zero_list_hits': zero_list_hits,
+        'weekly_pace': weekly_pace,
     }
 def add_feed(user_id: int, feed_type: str, source: str, label: str, keywords: str = "") -> int:
     with get_conn() as conn:

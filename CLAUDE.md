@@ -419,7 +419,7 @@ Hover on table rows: `box-shadow: inset 0 0 0 9999px var(--hover-overlay)`.
 `.company-note` — "(?)" after shortened company name; `title` holds full string
 `.badge` — 11px pill with `::before` dot; soft-tinted `--*-bg` + `--*-border` + `--*` text
 `.btn-danger` — theme-invariant `--danger` token (not a status colour triple)
-`.stats-hfunnel-fill` — width set inline `style="width:N%"` (permitted exception to no-inline-styles rule)
+`.bar-fill` — width set inline `style="width:N%"` (permitted exception to no-inline-styles rule); single thin bar component used by every chart on the Statistics page (funnel, verdict distribution, layer flags, fit score, archetypes) — color via modifier class (`.bar-qualifying`, `.bar-applied`, etc.), full-strength status-color tokens matching `.badge`, no opacity blending
 `.collapsible` — native `<details>`/`<summary>`, no JS; used for listing source section
 `.hero-dots` — `<canvas>` in dashboard hero; animated dotted-grid, cursor-reactive, `prefers-reduced-motion` aware
 `.is-blurred` — applied to table/cards/search/filter while `#cmd-text` (textarea) or `#cmd-input` (URL field) has focus

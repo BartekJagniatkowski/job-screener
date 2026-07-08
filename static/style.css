@@ -1686,7 +1686,7 @@ tr.row-rejected-soft:hover td {
     font-family: var(--fm);
     font-size: var(--fs-xs);
     color: var(--muted);
-    width: 140px;
+    width: 180px;
     flex-shrink: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -1705,7 +1705,6 @@ tr.row-rejected-soft:hover td {
     height: 100%;
     border-radius: 3px;
     background: var(--accent);
-    opacity: 0.8;
     transition: width 0.3s ease;
 }
 
@@ -1717,6 +1716,36 @@ tr.row-rejected-soft:hover td {
 }
 .bar-fill.bar-neutral {
     background: var(--muted);
+}
+.bar-fill.bar-total {
+    background: var(--muted);
+}
+.bar-fill.bar-qualifying {
+    background: var(--blue);
+}
+.bar-fill.bar-applied {
+    background: var(--green);
+}
+.bar-fill.bar-interview {
+    background: var(--violet);
+}
+.bar-fill.bar-offer {
+    background: var(--green);
+}
+.bar-fill.bar-corej {
+    background: var(--orange);
+}
+.bar-fill.bar-zero {
+    background: var(--red);
+}
+.bar-fill.bar-v-worth {
+    background: var(--blue);
+}
+.bar-fill.bar-v-warning {
+    background: var(--yellow);
+}
+.bar-fill.bar-v-rejected {
+    background: var(--red);
 }
 
 .bar-count {
@@ -1745,6 +1774,9 @@ tr.row-rejected-soft:hover td {
     grid-template-columns: repeat(3, 1fr);
     gap: 16px;
     margin-bottom: 32px;
+}
+.stat-cards-4 {
+    grid-template-columns: repeat(4, 1fr);
 }
 .stat-card {
     background: var(--surface);
@@ -1775,7 +1807,8 @@ tr.row-rejected-soft:hover td {
 }
 
 @media (max-width: 600px) {
-    .stat-cards {
+    .stat-cards,
+    .stat-cards-4 {
         grid-template-columns: 1fr;
     }
 }
@@ -1789,94 +1822,8 @@ tr.row-rejected-soft:hover td {
     margin-bottom: 12px;
 }
 
-.statistics-breakdown-card .bar-label {
-    width: 90px;
-}
 .bar-count-flag {
     color: var(--muted);
-}
-
-/* ── statistics horizontal funnel bars ─────────────────── */
-.stats-hfunnel {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-.stats-hfunnel-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.stats-hfunnel-label {
-    font-family: var(--fm);
-    font-size: var(--fs-xs);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--muted);
-    width: 200px;
-    flex-shrink: 0;
-}
-.stats-hfunnel-track {
-    flex: 1;
-    height: 28px;
-    background: var(--border);
-    border-radius: var(--radius-sm);
-    overflow: hidden;
-}
-.stats-hfunnel-fill {
-    height: 100%;
-    border-radius: var(--radius-sm);
-    background: var(--muted);
-    min-width: 2px;
-    opacity: 0.8;
-    transition: width 0.3s ease;
-}
-.stats-hfunnel-count {
-    font-family: var(--fm);
-    font-size: var(--fs-xs);
-    color: var(--text);
-    width: 36px;
-    text-align: right;
-    flex-shrink: 0;
-}
-
-/* fill colour modifiers — pipeline stages */
-.stats-hfunnel-fill.hf-qualifying {
-    background: var(--blue);
-}
-.stats-hfunnel-fill.hf-applied {
-    background: var(--green);
-}
-.stats-hfunnel-fill.hf-interview {
-    background: var(--violet);
-}
-.stats-hfunnel-fill.hf-offer {
-    background: var(--green);
-}
-.stats-hfunnel-fill.hf-corej {
-    background: var(--orange);
-}
-.stats-hfunnel-fill.hf-zero {
-    background: var(--red);
-}
-
-/* fill colour modifiers — verdict distribution */
-.stats-hfunnel-fill.hf-v-worth {
-    background: var(--blue);
-}
-.stats-hfunnel-fill.hf-v-warning {
-    background: var(--yellow);
-}
-.stats-hfunnel-fill.hf-v-rejected {
-    background: var(--red);
-}
-.stats-hfunnel-fill.hf-v-soft {
-    background: var(--muted);
-}
-
-[data-theme="light"] .stats-hfunnel-track {
-    background: var(--border-light);
 }
 
 .collapsible {

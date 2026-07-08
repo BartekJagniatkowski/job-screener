@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 import pytest
 import database
+import datetime
 
 
 @pytest.fixture(autouse=True)
@@ -159,3 +160,64 @@ if __name__ == '__main__':
             t(tmp)
             print(f"  PASS: {t.__name__}")
     print("All statistics tests passed.")
+
+
+def _seed_weekly_pace_db(tmp_path):
+    database.DB_PATH = Path(tmp_path) / "test.db"
+    database.init_db()
+    conn = database.get_conn()
+    conn.execute(
+        "INSERT INTO users (username, password_hash) VALUES (?, ?)",
+        ("u", "s:h")
+    )
+    conn.commit()
+    uid = conn.execute("SELECT id FROM users WHERE username='u'").fetchone()['id']
+    two_weeks_ago = (datetime.date.today() - datetime.timedelta(days=14)).isoformat()
+    # (applied, interview_scheduled, offer_received) per row, all analyzed exactly 2 weeks ago
+    rows = [
+        (1, 1, 1),
+        (1, 0, 0),
+        (0, 0, 0),
+        (0, 0, 0),
+    ]
+    for applied, interview, offer in rows:
+        conn.execute(
+            "INSERT INTO jobs (user_id, analyzed_at, verdict, verdict_confirmed, applied, interview_scheduled, offer_received, company, role) "
+            "VALUES (?, ?, 'worth_considering', 1, ?, ?, ?, 'Co', 'Role')",
+            (uid, two_weeks_ago, applied, interview, offer)
+        )
+    conn.commit()
+    conn.close()
+    return uid
+
+
+def test_weekly_pace_multi_week(tmp_path):
+    uid = _seed_weekly_pace_db(tmp_path)
+    data = database.get_statistics(uid)
+    wp = data['weekly_pace']
+    assert wp is not None
+    assert wp['analyzed'] == 2.0   # 4 total / 2 weeks
+    assert wp['applied'] == 1.0    # 2 applied / 2 weeks
+    assert wp['interview'] == 0.5  # 1 interview / 2 weeks
+    assert wp['offer'] == 0.5      # 1 offer / 2 weeks
+
+
+def test_weekly_pace_same_day_floors_to_one_week(tmp_path):
+    uid = _seed_db(tmp_path)  # 6 rows, all default to analyzed_at = today
+    data = database.get_statistics(uid)
+    wp = data['weekly_pace']
+    assert wp is not None
+    assert wp['analyzed'] == 6.0  # 6 total / max(1, 0/7) week
+    assert wp['applied'] == 2.0   # 2 applied / 1 week
+
+
+def test_weekly_pace_none_for_user_with_no_jobs(tmp_path):
+    database.DB_PATH = Path(tmp_path) / "test.db"
+    database.init_db()
+    conn = database.get_conn()
+    conn.execute("INSERT INTO users (username, password_hash) VALUES (?, ?)", ("empty", "s:h"))
+    conn.commit()
+    uid = conn.execute("SELECT id FROM users WHERE username='empty'").fetchone()['id']
+    conn.close()
+    data = database.get_statistics(uid)
+    assert data['weekly_pace'] is None

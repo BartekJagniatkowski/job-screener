@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.53 — Statistics page redesign
+
+- **Cleaner, more readable charts** — colors on the Statistics page now match the rest of the app instead of looking washed out.
+- **Consistent layout** — no more mismatched boxed/unboxed sections or inconsistent bar thickness.
+- **New "Weekly pace" stats** — see your average analyzed, applied, interviews, and offers per week.
+
+---
+
 ## v0.52 — CV upload
 
 - **Upload your CV file** — add a PDF, DOCX, or TXT file in Settings and it's automatically converted to text for you, instead of copy-pasting.
