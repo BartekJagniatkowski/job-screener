@@ -206,7 +206,7 @@ Handled by `update_job_status()` in `database.py`.
 ### Job detail modal
 Non-obvious gotchas:
 - JS functions (`tog`, `setStatus`, `confirmDelete`, `reanalyze`, `showUrlEdit`, `saveUrl`, `switchJobTab`) are globals defined in `dashboard.html`, not in the partial — `<script>` tags in AJAX-loaded partials do not execute
-- The `d` theme-toggle is a *separate* global `keydown` listener in `base.html` (not the dashboard-only handler) — works on every page, guarded against field focus
+- The keyboard-navigation/theme-toggle listener is a *separate* global `keydown` handler in `base.html` (not the dashboard-only handler) — works on every page (while logged in), guarded against field focus. `m` toggles theme; `h`/`d`/`s`/`t`/`a`/`l` navigate (see "Light / dark mode" below for the full key map).
 - `.modal-body` has **zero** padding — every inner section manages its own (past bug: double 24px inset when both had it)
 - `#job-modal.modal-overlay` (fixed, `backdrop-filter` blur) and its inner `.modal-scroll` (the actual `overflow-y:auto` scroll container) are deliberately separate elements — combining blur + scroll on the same element makes Chromium fall back to the native OS scrollbar instead of the app's styled one. Backdrop-click-to-close checks for both `#job-modal` and `.modal-scroll` as `e.target`.
 - Active tab (Overview/Layers/Skills/CV/Interview) persists across modal refreshes and full page reloads via `sessionStorage['modalActiveTab']`, restored by `activateTab()` in `loadModalJob()`.
@@ -389,9 +389,24 @@ reuse these tokens rather than inventing new hex values.
 
 ### Light / dark mode
 - `data-theme="light"` attribute on `<html>` activates the light palette (neutral `#fafafa` bg / white cards — not warm cream)
-- Toggle: `<button id="theme-toggle">` in navigation (`base.html`) — ☀/☾ icon
+- Toggle: `<button id="theme-toggle">` in navigation (`base.html`) — ☀/☾ icon, or the `m` keyboard shortcut
 - Preference saved in `localStorage`; loaded by IIFE in `<head>` before CSS (zero flash)
 - Per-component colour overrides are mostly gone now that status colours are theme-aware tokens (see Design tokens) — only a handful of genuinely one-off cases remain under `[data-theme="light"] .class { ... }`
+
+### Keyboard navigation
+Single-key shortcuts, active only while logged in (same `base.html` listener as the theme toggle), ignored while a text field has focus or a modifier key (Ctrl/Cmd/Alt) is held:
+
+| Key | Action |
+|---|---|
+| `h` | Home (dashboard) |
+| `d` | Discover |
+| `s` | Statistics |
+| `t` | Settings |
+| `a` | About |
+| `l` | Logout |
+| `m` | Toggle light/dark mode |
+
+Also documented for end users on the About page ("Keyboard shortcuts" section).
 
 ### Status colours (badges and filter pills)
 

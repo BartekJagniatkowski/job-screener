@@ -4,6 +4,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.54 — Keyboard navigation
+
+- **New keyboard shortcuts** — jump straight to a page by pressing a single key: `H` for Home, `D` for Discover, `S` for Statistics, `T` for Settings, `A` for About, `L` for Logout. Full list also shown on the About page.
+- **Theme toggle key changed** — switching between light and dark mode is now `M` instead of `D` (since `D` now takes you to Discover). If you were used to pressing `d` to change the theme, use `m` instead.
+- These shortcuts won't interfere with typing — they're automatically turned off while your cursor is in a text field, and only work while you're logged in.
+
+---
+
 ## v0.53 — Statistics page redesign
 
 - **Cleaner, more readable charts** — colors on the Statistics page now match the rest of the app instead of looking washed out.

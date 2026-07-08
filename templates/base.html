@@ -450,11 +450,20 @@
                 }
                 btn.addEventListener("click", toggleTheme);
                 document.addEventListener("keydown", function (e) {
-                    if (e.key !== "d" && e.key !== "D") return;
                     if (e.ctrlKey || e.metaKey || e.altKey) return;
                     var tag = (e.target.tagName || "").toLowerCase();
                     if (tag === "input" || tag === "textarea" || tag === "select" || e.target.isContentEditable) return;
-                    toggleTheme();
+                    var key = e.key.toLowerCase();
+                    if (key === "m") { toggleTheme(); return; }
+                    var routes = {
+                        h: "{{ url_for('dashboard') }}",
+                        d: "{{ url_for('discover') }}",
+                        s: "{{ url_for('statistics') }}",
+                        t: "{{ url_for('settings') }}",
+                        a: "{{ url_for('about') }}",
+                        l: "{{ url_for('logout') }}",
+                    };
+                    if (routes[key]) { window.location.href = routes[key]; }
                 });
             })();
         </script>

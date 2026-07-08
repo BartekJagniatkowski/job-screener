@@ -2064,6 +2064,38 @@ tr.row-rejected-soft:hover td {
     margin-top: 8px;
 }
 
+.about-shortcut-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 8px 0;
+}
+.about-shortcut-row:first-child {
+    padding-top: 0;
+}
+.about-shortcut-row:last-child {
+    padding-bottom: 0;
+}
+.about-shortcut-desc {
+    font-size: var(--fs-base);
+    color: var(--muted);
+}
+.kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+    font-family: var(--fm);
+    font-size: var(--fs-sm);
+    font-weight: var(--fw-medium);
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+}
+
 /* ── History search ──────────────────────────────────────────── */
 .history-search-wrap {
     margin-bottom: 12px;
