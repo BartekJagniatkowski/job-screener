@@ -88,6 +88,21 @@ FILTER_CYCLE = [
     "all", "rejected", "warning", "worth_considering",
     "applied", "interview", "offer", "company_rejected",
 ]
+# Human-readable name per status, with "^" marking the quick-select mnemonic
+# letter (must match FilterBar.QUICK_SELECT_KEYS) -- single source for both
+# the filter bar's Title Case chips and the VERDICT column's UPPER_SNAKE
+# text, so the two surfaces can't drift out of sync with each other.
+STATUS_DISPLAY_MARKED = {
+    "all": "^All",
+    "rejected": "User ^Rejected",
+    "warning": "Warnin^g",
+    "worth_considering": "^Worth Considering",
+    "applied": "A^pplied",
+    "interview": "^Interview",
+    "offer": "^Offer",
+    "company_rejected": "Rejected By ^Company",
+}
+STATUS_DISPLAY = {k: v.replace("^", "") for k, v in STATUS_DISPLAY_MARKED.items()}
 
 
 def layer_dots(row) -> str:
@@ -99,8 +114,8 @@ def layer_dots(row) -> str:
     return " ".join(parts)
 
 
-def status_label(row) -> tuple[str, str]:
-    """Return (label, color) for a job row's status column.
+def status_key(row) -> str:
+    """Return the FILTER_CYCLE status a job row currently belongs to.
 
     Application-stage flags (offer/interview/company_rejected/applied)
     override the underlying analysis verdict, mirroring the web app's
@@ -108,27 +123,33 @@ def status_label(row) -> tuple[str, str]:
     or been interviewed for looks identical to a fresh, untouched verdict.
     """
     if row["offer_received"]:
-        return "OFFER", VERDICT_COLOR["offer"]
+        return "offer"
     if row["interview_scheduled"]:
-        return "INTERVIEW", VERDICT_COLOR["interview"]
+        return "interview"
     if row["company_rejected"]:
-        return "COMPANY_REJECTED", VERDICT_COLOR["company_rejected"]
+        return "company_rejected"
     if row["applied"]:
-        return "APPLIED", VERDICT_COLOR["applied"]
-    verdict = row["verdict"] or ""
-    return verdict.upper(), VERDICT_COLOR.get(verdict, "")
+        return "applied"
+    return (row["verdict"] or "").lower()
+
+
+def status_label(row) -> tuple[str, str]:
+    """Return (VERDICT-column label, color) for a job row."""
+    key = status_key(row)
+    label = STATUS_DISPLAY.get(key, key).upper().replace(" ", "_")
+    return label, VERDICT_COLOR.get(key, "")
 
 
 def job_matches_filter(row, status: str) -> bool:
     if status == "all":
         return True
-    # Must reuse status_label's override priority (offer > interview >
+    # Must reuse status_key's override priority (offer > interview >
     # company_rejected > applied > verdict) instead of checking flags
     # independently -- otherwise a job with applied=1 but verdict
     # "worth_considering" matched BOTH the "applied" and
     # "worth_considering" filters, while displaying as APPLIED in the
-    # table. One label, one filter bucket.
-    return status_label(row)[0].lower() == status
+    # table. One key, one filter bucket.
+    return status_key(row) == status
 
 
 CLI_STATE_DIR = "data"  # already gitignored as a whole directory
@@ -229,14 +250,9 @@ class FilterBar(Horizontal):
         self.main_screen = main_screen
 
     def compose(self) -> ComposeResult:
-        status_to_key = {status: key for key, status in self.QUICK_SELECT_KEYS.items()}
         for status in FILTER_CYCLE:
-            key = status_to_key.get(status, "")
-            idx = status.lower().find(key) if key else -1
-            if idx == -1:
-                label = status
-            else:
-                label = f"{status[:idx]}[reverse]{status[idx]}[/]{status[idx + 1:]}"
+            before, _marker, rest = STATUS_DISPLAY_MARKED[status].partition("^")
+            label = f"{before}[reverse]{rest[0]}[/]{rest[1:]}"
             yield Static(label, classes="filter-chip")
 
     def on_mount(self) -> None:
@@ -463,9 +479,9 @@ class MainScreen(Screen):
     # Explicit fixed widths sidestep that entirely: every refresh_jobs()
     # call sets the exact same deterministic widths, so there's no
     # stale/stuck sizing regardless of resize timing.
-    # DATE="2026-06-20"=10, VERDICT max "WORTH_CONSIDERING"=17,
+    # DATE="2026-06-20"=10, VERDICT max "REJECTED_BY_COMPANY"=19,
     # LAYERS="● ● ● ● ● ●"=11, FIT="x.x/5"=5, ID="#229"=4.
-    FIXED_COLUMN_WIDTHS = {"DATE": 10, "VERDICT": 17, "LAYERS": 11, "FIT": 5, "ID": 4}
+    FIXED_COLUMN_WIDTHS = {"DATE": 10, "VERDICT": 19, "LAYERS": 11, "FIT": 5, "ID": 4}
 
     def role_company_width(self) -> int:
         # get_render_width() adds 2*cell_padding (default 1, so +2) per

@@ -12,6 +12,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **Fixed** — the shortcut labels on the About page overlapped their descriptions.
 - **Changed** — in the terminal interface, `Tab` now switches only between the job list and the detail panel; the filter bar no longer needs to be focused since its letter shortcuts already work from anywhere.
 - **Fixed** — terminal interface filters were showing listings that didn't actually belong to the selected category (e.g. an applied job still showing up under "Worth considering"). Filters now match exactly what's shown in the list.
+- **Improved** — terminal interface filter names and statuses now read as proper words ("User Rejected", "Rejected By Company") instead of raw lowercase codes.
 
 ---
 
