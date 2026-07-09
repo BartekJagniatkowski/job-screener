@@ -4,6 +4,12 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.56 — About page: AI disclosure
+
+- **Added a note to the About page** on which AI models power the analysis and that results can vary slightly between runs — this tool is an assistant, not an oracle, and the final call is always yours.
+
+---
+
 ## v0.55 — Filter keyboard shortcuts
 
 - **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `⌥+A` on Mac) to show all listings (or hide everything if all are already shown), or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `N` Needs review, `R` AI rejected, `U` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
