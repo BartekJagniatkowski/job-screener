@@ -42,4 +42,4 @@ def test_offer_overrides_everything():
 
 def test_company_rejected_overrides_applied():
     label, _ = status_label(_row(applied=1, company_rejected=1))
-    assert label == "REJECTED_BY_COMPANY"
+    assert label == "COMPANY_REJECTED"

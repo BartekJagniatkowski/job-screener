@@ -112,7 +112,7 @@ def status_label(row) -> tuple[str, str]:
     if row["interview_scheduled"]:
         return "INTERVIEW", VERDICT_COLOR["interview"]
     if row["company_rejected"]:
-        return "REJECTED_BY_COMPANY", VERDICT_COLOR["company_rejected"]
+        return "COMPANY_REJECTED", VERDICT_COLOR["company_rejected"]
     if row["applied"]:
         return "APPLIED", VERDICT_COLOR["applied"]
     verdict = row["verdict"] or ""
