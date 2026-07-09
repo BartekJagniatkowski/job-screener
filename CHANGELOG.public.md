@@ -7,6 +7,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 ## v0.56 — About page: AI disclosure
 
 - **Added a note to the About page** on which AI models power the analysis and that results can vary slightly between runs — this tool is an assistant, not an oracle, and the final call is always yours.
+- **Fixed** — the "Original" language setting (analyze in the listing's own language) was sometimes ignoring English listings and answering in Polish instead. It now reliably matches the listing.
 
 ---
 

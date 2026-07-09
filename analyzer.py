@@ -354,7 +354,12 @@ def build_system(user: User) -> str:
     language_directives = {
         "english":  "Write your entire response in English. Every text field must be in English.",
         "polish":   "Write your entire response in Polish. Every text field must be in Polish.",
-        "original": "Detect the language the job listing is written in and write your entire response in that same language. Every text field must use that language consistently.",
+        "original": (
+            "Detect the language of the <job_listing> content ONLY — ignore the language of the "
+            "CANDIDATE PROFILE, ZERO LIST, YELLOW LIST, and ADDITIONAL CRITERIA sections above, which "
+            "may be written in a different language than the listing itself. Write your entire response "
+            "in the listing's language. Every text field must use that language consistently."
+        ),
     }
     language_instruction = language_directives.get(language, language_directives["english"])
     base = SYSTEM_TEMPLATE.format(cv=cv, zero_list=zero_list, yellow_list=yellow_list, criteria=criteria)
