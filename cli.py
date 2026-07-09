@@ -196,13 +196,17 @@ class LoginScreen(Screen):
 
 
 class FilterBar(Horizontal):
-    """Persistent horizontal filter row between the list and detail panel.
+    """Persistent horizontal filter status row between the list and detail
+    panel.
 
-    Tab-focusable; left/right moves the selection and applies it
-    immediately (no separate confirm step -- this isn't a modal).
+    Not focusable -- quick-select letters (MainScreen's
+    action_quick_select_* methods, generated below from
+    QUICK_SELECT_KEYS) work screen-wide regardless of what's focused, so
+    Tab-ing into this bar to cycle filters manually is no longer needed.
+    Tab instead toggles only between the job list and the detail panel.
     """
 
-    can_focus = True
+    can_focus = False
 
     # Quick-select: one letter per status, jumps directly there instead of
     # cycling. Mnemonics aren't all first-letter since several statuses
@@ -219,14 +223,6 @@ class FilterBar(Horizontal):
         "o": "offer",
         "c": "company_rejected",
     }
-
-    BINDINGS = [
-        Binding("left", "prev_filter", "Prev filter", show=False),
-        Binding("right", "next_filter", "Next filter", show=False),
-    ] + [
-        Binding(key, f"quick_select_{status}", status, show=False)
-        for key, status in QUICK_SELECT_KEYS.items()
-    ]
 
     def __init__(self, main_screen: "MainScreen"):
         super().__init__(id="filter-bar")
@@ -265,27 +261,6 @@ class FilterBar(Horizontal):
         self.main_screen.refresh_jobs()
         self.main_screen.save_state()
         self.refresh_chips()
-
-    def action_prev_filter(self) -> None:
-        self.select_filter(FILTER_CYCLE[(self.main_screen.filter_index - 1) % len(FILTER_CYCLE)])
-
-    def action_next_filter(self) -> None:
-        self.select_filter(FILTER_CYCLE[(self.main_screen.filter_index + 1) % len(FILTER_CYCLE)])
-
-
-# Textual resolves a binding's action by looking up a literal
-# "action_<name>" method on the widget, so each quick-select status needs
-# its own real method -- generated here instead of typed out by hand to
-# avoid 8 near-identical one-liners. `status=status` binds each closure's
-# value at definition time, avoiding the classic late-binding bug where
-# every closure would otherwise share the loop variable's final value.
-for _status in FilterBar.QUICK_SELECT_KEYS.values():
-    setattr(
-        FilterBar,
-        f"action_quick_select_{_status}",
-        lambda self, status=_status: self.select_filter(status),
-    )
-del _status
 
 
 class JobsTable(DataTable):
@@ -390,9 +365,6 @@ class MainScreen(Screen):
         overflow-x: auto;
         overflow-y: hidden;
         scrollbar-size-horizontal: 0;
-    }
-    #filter-bar:focus {
-        border: round $border;
     }
     .filter-chip {
         width: auto;

@@ -2084,8 +2084,9 @@ tr.row-rejected-soft:hover td {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
+    min-width: 28px;
     height: 28px;
+    padding: 0 8px;
     flex-shrink: 0;
     font-family: var(--fm);
     font-size: var(--fs-sm);

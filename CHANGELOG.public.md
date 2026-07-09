@@ -9,6 +9,8 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `Option+A` on Mac) to show all listings, or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `G` Needs review, `S` AI rejected, `R` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
 - **Terminal interface** — the same filter quick-select letters now work while browsing the job list, not just when the filter bar itself is focused.
 - **Fixed** — the new Alt/Option filter shortcuts didn't actually work on Mac. They do now.
+- **Fixed** — the shortcut labels on the About page overlapped their descriptions.
+- **Changed** — in the terminal interface, `Tab` now switches only between the job list and the detail panel; the filter bar no longer needs to be focused since its letter shortcuts already work from anywhere.
 - **Fixed** — terminal interface filters were showing listings that didn't actually belong to the selected category (e.g. an applied job still showing up under "Worth considering"). Filters now match exactly what's shown in the list.
 
 ---
