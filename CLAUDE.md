@@ -51,7 +51,7 @@ job-screener/
 ├── scraper.py          — URL content fetching, normalize_url, blocked domains
 ├── fetcher.py          — job feed fetching: fetch_remoteok, fetch_lever, fetch_greenhouse, fetch_rss; SSRF guard on RSS URLs
 ├── delete_user.py      — CLI: delete a user account and all associated data (`uv run python delete_user.py <username>`, type-username confirmation, no UI)
-├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar + live detail panel with all six layers. `j`/`k` navigate list; Tab cycles list→filter bar→detail panel; `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py`. Not a production entry point.
+├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar (status-only display, not focusable) + live detail panel with all six layers. `j`/`k` navigate list; Tab toggles list↔detail panel only (filter bar isn't in the focus cycle — its quick-select letters already work screen-wide); `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. Filter quick-select: `a`=All, `u`=User Rejected, `r`=AI Rejected, `g`=Needs Review (warning), `w`=Worth Considering, `p`=Applied, `i`=Interview, `o`=Offer, `c`=Rejected By Company — works from anywhere in the list, not just when the filter bar is focused; `FILTER_CYCLE` in cli.py is append-only since `filter_index` is persisted per-user as a raw list index. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py`. Not a production entry point.
 ├── 11DESIGN.md         — ElevenLabs design system patterns (style reference, not committed)
 ├── CHANGELOG.md        — version history (edit as plain text, rendered by /changelog and embedded in /about)
 ├── CHANGELOG.public.md — user-facing changelog (strips dev-only details); used by push-public.sh
@@ -407,6 +407,23 @@ Single-key shortcuts, active only while logged in (same `base.html` listener as 
 | `m` | Toggle light/dark mode |
 
 Also documented for end users on the About page ("Keyboard shortcuts" section).
+
+### Filter shortcuts (Dashboard)
+`Alt`/`⌥`+letter, same `dashboard.html` keydown handler as the modal shortcuts. Reads `e.code` (physical key), not `e.key` — macOS remaps `e.key` to accented glyphs while Option is held (`Alt+A` → `å`), so matching on `e.key` silently never fires there. Disabled while a text field has focus or the job modal is open.
+
+| Key | Action |
+|---|---|
+| `Alt+A` | Show all / Hide all — shows all when anything's hidden, hides everything once every category is already active (`toggleShowAll()`) |
+| `Alt+W` | Worth considering |
+| `Alt+N` | Needs review |
+| `Alt+R` | AI rejected |
+| `Alt+U` | User rejected |
+| `Alt+P` | Applied |
+| `Alt+C` | Rejected by company |
+| `Alt+I` | Interview |
+| `Alt+O` | Offer |
+
+Also documented on the About page ("Filter shortcuts (Dashboard)" section, with the Apple Option glyph `⌥` alongside `Alt`).
 
 ### Status colours (badges and filter pills)
 
