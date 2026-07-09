@@ -79,7 +79,11 @@ LAYER_PANELS = [
 # and Static/Label content) — so these use the theme's literal hex values
 # instead of "$success"/"$warning"/"$error".
 STATUS_DOT_COLOR = {"ok": "#7fd962", "warning": "#ffb454", "flag": "#f07178"}
-VERDICT_COLOR = {"rejected": "#f07178", "warning": "#ffb454", "worth_considering": "#7fd962"}
+VERDICT_COLOR = {
+    "rejected": "#f07178", "warning": "#ffb454", "worth_considering": "#7fd962",
+    "applied": "#7fd962", "offer": "#7fd962",
+    "interview": "#d2a6ff", "company_rejected": "#ff8f40",
+}
 FILTER_CYCLE = [
     "all", "rejected", "warning", "worth_considering",
     "applied", "interview", "offer", "company_rejected",
@@ -93,6 +97,26 @@ def layer_dots(row) -> str:
         color = STATUS_DOT_COLOR.get(status, "")
         parts.append(f"[{color}]●[/]" if color else "○")
     return " ".join(parts)
+
+
+def status_label(row) -> tuple[str, str]:
+    """Return (label, color) for a job row's status column.
+
+    Application-stage flags (offer/interview/company_rejected/applied)
+    override the underlying analysis verdict, mirroring the web app's
+    badge priority (job_partial.html) -- otherwise a job you've applied to
+    or been interviewed for looks identical to a fresh, untouched verdict.
+    """
+    if row["offer_received"]:
+        return "OFFER", VERDICT_COLOR["offer"]
+    if row["interview_scheduled"]:
+        return "INTERVIEW", VERDICT_COLOR["interview"]
+    if row["company_rejected"]:
+        return "REJECTED_BY_COMPANY", VERDICT_COLOR["company_rejected"]
+    if row["applied"]:
+        return "APPLIED", VERDICT_COLOR["applied"]
+    verdict = row["verdict"] or ""
+    return verdict.upper(), VERDICT_COLOR.get(verdict, "")
 
 
 def job_matches_filter(row, status: str) -> bool:
@@ -521,9 +545,8 @@ class MainScreen(Screen):
             and (not term or term in f"{r['role'] or ''} {r['company'] or ''}".lower())
         ]
         for row in rows:
-            verdict = row["verdict"] or ""
-            color = VERDICT_COLOR.get(verdict, "")
-            verdict_text = f"[{color}]{verdict.upper()}[/]" if color else verdict.upper()
+            label, color = status_label(row)
+            verdict_text = f"[{color}]{label}[/]" if color else label
             company = row["company"] or "Unknown"
             fit = f"{row['fit_score']:.1f}/5" if row["fit_score"] else "—"
             role_company = self.truncate(
@@ -750,9 +773,8 @@ class MainScreen(Screen):
                 self.query_one(f"#layer-section-{i}", Static).add_class("hidden")
             return
 
-        verdict = row["verdict"] or ""
-        color = VERDICT_COLOR.get(verdict, "")
-        verdict_text = f"[{color}]{verdict.upper()}[/]" if color else verdict.upper()
+        label, color = status_label(row)
+        verdict_text = f"[{color}]{label}[/]" if color else label
         header.update(
             f"#{row['id']:03d} {row['role'] or '—'} · {row['company'] or 'Unknown'}\n"
             f"Verdict: {verdict_text}\n\n"

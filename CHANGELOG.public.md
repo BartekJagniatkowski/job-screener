@@ -9,6 +9,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **New keyboard shortcuts** — jump straight to a page by pressing a single key: `H` for Home, `D` for Discover, `S` for Statistics, `T` for Settings, `A` for About, `L` for Logout. Full list also shown on the About page.
 - **Theme toggle key changed** — switching between light and dark mode is now `M` instead of `D` (since `D` now takes you to Discover). If you were used to pressing `d` to change the theme, use `m` instead.
 - These shortcuts won't interfere with typing — they're automatically turned off while your cursor is in a text field, and only work while you're logged in.
+- **Fixed** — the experimental terminal interface now correctly shows Applied/Interview/Offer/Rejected by company status instead of always showing the original AI verdict.
 
 ---
 
