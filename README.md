@@ -119,6 +119,16 @@ Always use `server.sh` exclusively — never start gunicorn manually.
 
 ---
 
+## Terminal interface (experimental)
+
+```bash
+uv run --env-file config.env python cli.py
+```
+
+A Textual-based TUI for browsing and analyzing listings without the web app — job list, live detail panel, and a Settings menu, all from the terminal. `j`/`k` to navigate, `/` or `:` to search/run commands, `Ctrl+S` for settings. Experimental side project, not a production entry point — the web app (`app.py`) is the supported way to run Job Screener.
+
+---
+
 ## Deployment to a server
 
 ```bash
