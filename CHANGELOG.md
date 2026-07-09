@@ -6,7 +6,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ## v0.55 — Filter keyboard shortcuts
 
-- **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `Option+A` on Mac) to show all listings, or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `G` Needs review, `S` AI rejected, `R` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
+- **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `⌥+A` on Mac) to show all listings (or hide everything if all are already shown), or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `N` Needs review, `S` AI rejected, `U` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
 - **Terminal interface** — the same filter quick-select letters now work while browsing the job list, not just when the filter bar itself is focused.
 - **Fixed** — the new Alt/Option filter shortcuts didn't actually work on Mac. They do now.
 - **Fixed** — the shortcut labels on the About page overlapped their descriptions.

@@ -347,7 +347,7 @@ container_class %}container{% endblock %} {% block content %}
 </div>
 <div class="filter-bar">
     <span class="filter-label">Show:</span>
-    <button class="filter-btn fb-all" onclick="showAll()">Show all</button>
+    <button class="filter-btn fb-all" onclick="toggleShowAll()">Show all</button>
     <button
         class="filter-btn active fb-worth_considering"
         data-cat="worth_considering"
@@ -859,10 +859,10 @@ container_class %}container{% endblock %} {% block content %}
         var tag = (e.target.tagName || '').toLowerCase();
         if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
         var FILTER_KEYS = {
-          KeyR: 'rejected', KeyG: 'warning', KeyW: 'worth_considering', KeyP: 'applied',
+          KeyU: 'rejected', KeyN: 'warning', KeyW: 'worth_considering', KeyP: 'applied',
           KeyI: 'interview', KeyO: 'offer', KeyC: 'company_rejected', KeyS: 'rejected_soft',
         };
-        if (e.code === 'KeyA') { e.preventDefault(); showAll(); return; }
+        if (e.code === 'KeyA') { e.preventDefault(); toggleShowAll(); return; }
         if (FILTER_KEYS[e.code]) {
           e.preventDefault();
           var cat = FILTER_KEYS[e.code];
@@ -1262,6 +1262,14 @@ container_class %}container{% endblock %} {% block content %}
       else { hiddenCats.add(cat); btn.classList.remove('active'); }
       localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenCats]));
       applyFilters();
+      updateShowAllButton();
+    }
+
+    const ALL_CATS = ['worth_considering', 'warning', 'rejected_soft', 'rejected', 'applied', 'company_rejected', 'interview', 'offer'];
+
+    function updateShowAllButton() {
+      var btn = document.querySelector('.filter-btn.fb-all');
+      if (btn) btn.textContent = hiddenCats.size === 0 ? 'Hide all' : 'Show all';
     }
 
     function showAll() {
@@ -1271,6 +1279,22 @@ container_class %}container{% endblock %} {% block content %}
       var searchEl = document.getElementById('history-search');
       if (searchEl) searchEl.value = '';
       applyFilters();
+      updateShowAllButton();
+    }
+
+    function hideAll() {
+      hiddenCats = new Set(ALL_CATS);
+      localStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenCats]));
+      document.querySelectorAll('.filter-btn[data-cat]').forEach(function(b) { b.classList.remove('active'); });
+      applyFilters();
+      updateShowAllButton();
+    }
+
+    // "Show all" doubles as "Hide all" once every category is already
+    // active -- otherwise clicking it when nothing's hidden would do
+    // nothing, and there'd be no fast way to clear the whole board.
+    function toggleShowAll() {
+      if (hiddenCats.size === 0) hideAll(); else showAll();
     }
 
     (function() {
@@ -1278,6 +1302,7 @@ container_class %}container{% endblock %} {% block content %}
         var btn = document.querySelector('.filter-btn[data-cat="' + cat + '"]');
         if (btn) btn.classList.remove('active');
       });
+      updateShowAllButton();
       sortTable(0);
       applyFilters();
       var fb = document.querySelector('.filter-bar');
