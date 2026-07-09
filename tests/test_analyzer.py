@@ -52,3 +52,35 @@ def test_analyze_does_not_truncate_url():
 
     user_msg = captured["payload"]["messages"][0]["content"]
     assert url in user_msg
+
+
+def test_analyze_repairs_stray_quote_inside_string_value():
+    # Model quoted "eco-friendly" inline without escaping it -- breaks a
+    # naive json.loads with "Expecting ',' delimiter".
+    broken_json = (
+        '{"company_name": "Decathlon", '
+        '"verdict_summary": "To globalny retailer, ktory nazywa siebie "eco-friendly" pracodawca.", '
+        '"verdict": "rejected"}'
+    )
+
+    def fake_post_api(payload_bytes, api_key):
+        return {"content": [{"type": "text", "text": broken_json}]}
+
+    with patch("analyzer._post_api", side_effect=fake_post_api):
+        result = analyzer.analyze(_user(), "some listing", "text", "fake-key")
+
+    assert result["company_name"] == "Decathlon"
+    assert "eco-friendly" in result["verdict_summary"]
+    assert result["verdict"] == "rejected"
+
+
+def test_escape_json_string_controls_repairs_stray_quote():
+    broken = '{"a": "he said "hi" to me"}'
+    repaired = analyzer._escape_json_string_controls(broken)
+    assert json.loads(repaired) == {"a": 'he said "hi" to me'}
+
+
+def test_escape_json_string_controls_escapes_literal_newline():
+    broken = '{"a": "line one\nline two"}'
+    repaired = analyzer._escape_json_string_controls(broken)
+    assert json.loads(repaired) == {"a": "line one\nline two"}

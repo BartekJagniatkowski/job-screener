@@ -5,21 +5,39 @@ import urllib.error
 from typing import Any, Dict
 
 def _escape_json_string_controls(s: str) -> str:
-    """Escape unescaped control chars inside JSON string literals (state-machine scan)."""
+    """Escape unescaped control chars and stray quotes inside JSON string
+    literals (state-machine scan).
+
+    The model sometimes quotes a phrase inline inside a text field (e.g.
+    a Polish sentence like `...powiedzial "eco-friendly" pracodawca...`)
+    without escaping the nested quotes, which prematurely closes the JSON
+    string and breaks parsing. A bare '"' can't be told apart from a real
+    string terminator without look-ahead, so: only treat it as a real
+    closing quote if the next non-whitespace character is a JSON
+    structural character (',', '}', ']', ':') or end of input -- anything
+    else means the model meant it as a literal quote, so escape it instead.
+    """
     out = []
     i = 0
+    n = len(s)
     in_str = False
-    while i < len(s):
+    while i < n:
         c = s[i]
         if in_str:
             if c == "\\":
                 out.append(c)
                 i += 1
-                if i < len(s):
+                if i < n:
                     out.append(s[i])
             elif c == '"':
-                in_str = False
-                out.append(c)
+                j = i + 1
+                while j < n and s[j] in " \t\r\n":
+                    j += 1
+                if j >= n or s[j] in ",}]:":
+                    in_str = False
+                    out.append(c)
+                else:
+                    out.append('\\"')
             elif c == "\n":
                 out.append("\\n")
             elif c == "\r":
