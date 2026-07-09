@@ -849,6 +849,25 @@ container_class %}container{% endblock %} {% block content %}
         e.preventDefault();
         document.getElementById('cmd-text').focus();
       }
+      // Alt+letter filter shortcuts -- Alt (not Ctrl/Cmd) avoids fighting
+      // browser chrome shortcuts (Ctrl+A select-all, Ctrl+W close-tab, etc)
+      // and works identically across Windows/Linux/macOS (Option key).
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        var tag = (e.target.tagName || '').toLowerCase();
+        if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
+        var FILTER_KEYS = {
+          r: 'rejected', g: 'warning', w: 'worth_considering', p: 'applied',
+          i: 'interview', o: 'offer', c: 'company_rejected', s: 'rejected_soft',
+        };
+        var key = e.key.toLowerCase();
+        if (key === 'a') { e.preventDefault(); showAll(); return; }
+        if (FILTER_KEYS[key]) {
+          e.preventDefault();
+          var cat = FILTER_KEYS[key];
+          var btn = document.querySelector('.filter-btn[data-cat="' + cat + '"]');
+          if (btn) toggleFilter(cat, btn);
+        }
+      }
     });
 
     window.addEventListener('popstate', e => {

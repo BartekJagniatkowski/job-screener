@@ -4,6 +4,13 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.55 — Filter keyboard shortcuts
+
+- **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `Option+A` on Mac) to show all listings, or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `G` Needs review, `S` AI rejected, `R` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
+- **Terminal interface** — the same filter quick-select letters now work while browsing the job list, not just when the filter bar itself is focused.
+
+---
+
 ## v0.54 — Keyboard navigation
 
 - **New keyboard shortcuts** — jump straight to a page by pressing a single key: `H` for Home, `D` for Discover, `S` for Statistics, `T` for Settings, `A` for About, `L` for Logout. Full list also shown on the About page.

@@ -427,6 +427,12 @@ class MainScreen(Screen):
         Binding("slash", "open_prompt_search", "Search", key_display="/"),
         Binding("colon", "open_prompt_command", "Command", key_display=":"),
         Binding("question_mark", "app.show_keys", "Help", key_display="?"),
+    ] + [
+        # Mirrors FilterBar.QUICK_SELECT_KEYS at screen level so filter
+        # shortcuts work while browsing the job list, not just when the
+        # filter bar itself is Tab-focused.
+        Binding(key, f"quick_select_{status}", status, show=False)
+        for key, status in FilterBar.QUICK_SELECT_KEYS.items()
     ]
 
     def __init__(self):
@@ -880,6 +886,18 @@ class MainScreen(Screen):
     def on_screen_resume(self) -> None:
         self.refresh_jobs()
         self.render_detail()
+
+
+# Screen-level counterpart to the generation loop below FilterBar -- same
+# reasoning: Textual resolves a binding to a literal "action_<name>" method,
+# so each quick-select status needs its own real method on MainScreen too.
+for _status in FilterBar.QUICK_SELECT_KEYS.values():
+    setattr(
+        MainScreen,
+        f"action_quick_select_{_status}",
+        lambda self, status=_status: self.query_one(FilterBar).select_filter(status),
+    )
+del _status
 
 
 class FieldEditorScreen(Screen):
