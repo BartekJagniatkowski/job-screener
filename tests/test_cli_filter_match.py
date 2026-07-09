@@ -4,6 +4,7 @@ from cli import job_matches_filter
 def _row(**overrides):
     base = {
         "verdict": "worth_considering",
+        "verdict_confirmed": 1,
         "applied": 0,
         "interview_scheduled": 0,
         "offer_received": 0,
@@ -45,3 +46,15 @@ def test_untouched_verdict_matches_own_verdict():
 
 def test_all_matches_everything():
     assert job_matches_filter(_row(applied=1, company_rejected=1), "all")
+
+
+def test_unconfirmed_rejected_matches_rejected_soft_not_rejected():
+    row = _row(verdict="rejected", verdict_confirmed=0)
+    assert job_matches_filter(row, "rejected_soft")
+    assert not job_matches_filter(row, "rejected")
+
+
+def test_confirmed_rejected_matches_rejected_not_rejected_soft():
+    row = _row(verdict="rejected", verdict_confirmed=1)
+    assert job_matches_filter(row, "rejected")
+    assert not job_matches_filter(row, "rejected_soft")

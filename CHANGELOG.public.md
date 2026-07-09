@@ -6,13 +6,14 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ## v0.55 — Filter keyboard shortcuts
 
-- **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `⌥+A` on Mac) to show all listings (or hide everything if all are already shown), or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `N` Needs review, `S` AI rejected, `U` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
+- **New shortcuts for the Dashboard's filter buttons** — press `Alt+A` (or `⌥+A` on Mac) to show all listings (or hide everything if all are already shown), or `Alt` plus a letter to toggle a single category on/off: `W` Worth considering, `N` Needs review, `R` AI rejected, `U` User rejected, `P` Applied, `C` Rejected by company, `I` Interview, `O` Offer. Documented on the About page.
 - **Terminal interface** — the same filter quick-select letters now work while browsing the job list, not just when the filter bar itself is focused.
 - **Fixed** — the new Alt/Option filter shortcuts didn't actually work on Mac. They do now.
 - **Fixed** — the shortcut labels on the About page overlapped their descriptions.
 - **Changed** — in the terminal interface, `Tab` now switches only between the job list and the detail panel; the filter bar no longer needs to be focused since its letter shortcuts already work from anywhere.
 - **Fixed** — terminal interface filters were showing listings that didn't actually belong to the selected category (e.g. an applied job still showing up under "Worth considering"). Filters now match exactly what's shown in the list.
 - **Improved** — terminal interface filter names and statuses now read as proper words ("User Rejected", "Rejected By Company") instead of raw lowercase codes.
+- **New** — terminal interface now has a separate "AI Rejected" filter for listings the AI rejected but nobody's reviewed yet, matching the web app's AI rejected / User rejected split.
 
 ---
 

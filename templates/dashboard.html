@@ -860,7 +860,7 @@ container_class %}container{% endblock %} {% block content %}
         if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
         var FILTER_KEYS = {
           KeyU: 'rejected', KeyN: 'warning', KeyW: 'worth_considering', KeyP: 'applied',
-          KeyI: 'interview', KeyO: 'offer', KeyC: 'company_rejected', KeyS: 'rejected_soft',
+          KeyI: 'interview', KeyO: 'offer', KeyC: 'company_rejected', KeyR: 'rejected_soft',
         };
         if (e.code === 'KeyA') { e.preventDefault(); toggleShowAll(); return; }
         if (FILTER_KEYS[e.code]) {

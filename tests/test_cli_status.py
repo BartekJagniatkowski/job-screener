@@ -4,6 +4,7 @@ from cli import status_label
 def _row(**overrides):
     base = {
         "verdict": "worth_considering",
+        "verdict_confirmed": 1,
         "applied": 0,
         "interview_scheduled": 0,
         "offer_received": 0,
@@ -46,5 +47,10 @@ def test_company_rejected_overrides_applied():
 
 
 def test_rejected_verdict_shows_user_rejected():
-    label, _ = status_label(_row(verdict="rejected"))
+    label, _ = status_label(_row(verdict="rejected", verdict_confirmed=1))
     assert label == "USER_REJECTED"
+
+
+def test_unconfirmed_rejected_verdict_shows_ai_rejected():
+    label, _ = status_label(_row(verdict="rejected", verdict_confirmed=0))
+    assert label == "AI_REJECTED"

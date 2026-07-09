@@ -80,13 +80,16 @@ LAYER_PANELS = [
 # instead of "$success"/"$warning"/"$error".
 STATUS_DOT_COLOR = {"ok": "#7fd962", "warning": "#ffb454", "flag": "#f07178"}
 VERDICT_COLOR = {
-    "rejected": "#f07178", "warning": "#ffb454", "worth_considering": "#7fd962",
-    "applied": "#7fd962", "offer": "#7fd962",
+    "rejected": "#f07178", "rejected_soft": "#f07178", "warning": "#ffb454",
+    "worth_considering": "#7fd962", "applied": "#7fd962", "offer": "#7fd962",
     "interview": "#d2a6ff", "company_rejected": "#ff8f40",
 }
+# Appended, not reordered: filter_index is persisted per-user (cli_state
+# JSON) as a raw index into this list, so inserting/reordering earlier
+# entries would silently repoint every saved index at a different status.
 FILTER_CYCLE = [
     "all", "rejected", "warning", "worth_considering",
-    "applied", "interview", "offer", "company_rejected",
+    "applied", "interview", "offer", "company_rejected", "rejected_soft",
 ]
 # Human-readable name per status, with "^" marking the quick-select mnemonic
 # letter (must match FilterBar.QUICK_SELECT_KEYS) -- single source for both
@@ -94,7 +97,8 @@ FILTER_CYCLE = [
 # text, so the two surfaces can't drift out of sync with each other.
 STATUS_DISPLAY_MARKED = {
     "all": "^All",
-    "rejected": "User ^Rejected",
+    "rejected": "^User Rejected",
+    "rejected_soft": "AI ^Rejected",
     "warning": "Warnin^g",
     "worth_considering": "^Worth Considering",
     "applied": "A^pplied",
@@ -130,7 +134,15 @@ def status_key(row) -> str:
         return "company_rejected"
     if row["applied"]:
         return "applied"
-    return (row["verdict"] or "").lower()
+    verdict = (row["verdict"] or "").lower()
+    # verdict_confirmed distinguishes an AI-only rejection (0, never
+    # user-reviewed) from one the user has actually endorsed or confirmed
+    # via the status dropdown (1) -- mirrors the web app's
+    # rejected_soft/rejected split (see CLAUDE.md's Rejection confirmation
+    # section) instead of lumping every "rejected" verdict into one bucket.
+    if verdict == "rejected" and not row["verdict_confirmed"]:
+        return "rejected_soft"
+    return verdict
 
 
 def status_label(row) -> tuple[str, str]:
@@ -236,7 +248,8 @@ class FilterBar(Horizontal):
     # exact set was specified directly rather than derived.
     QUICK_SELECT_KEYS = {
         "a": "all",
-        "r": "rejected",
+        "u": "rejected",
+        "r": "rejected_soft",
         "g": "warning",
         "w": "worth_considering",
         "p": "applied",
