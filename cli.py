@@ -122,15 +122,13 @@ def status_label(row) -> tuple[str, str]:
 def job_matches_filter(row, status: str) -> bool:
     if status == "all":
         return True
-    if status == "applied":
-        return bool(row["applied"])
-    if status == "company_rejected":
-        return bool(row["company_rejected"])
-    if status == "interview":
-        return bool(row["interview_scheduled"])
-    if status == "offer":
-        return bool(row["offer_received"])
-    return (row["verdict"] or "").lower() == status
+    # Must reuse status_label's override priority (offer > interview >
+    # company_rejected > applied > verdict) instead of checking flags
+    # independently -- otherwise a job with applied=1 but verdict
+    # "worth_considering" matched BOTH the "applied" and
+    # "worth_considering" filters, while displaying as APPLIED in the
+    # table. One label, one filter bucket.
+    return status_label(row)[0].lower() == status
 
 
 CLI_STATE_DIR = "data"  # already gitignored as a whole directory
