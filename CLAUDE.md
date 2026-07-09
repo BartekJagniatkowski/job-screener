@@ -301,6 +301,24 @@ Automatic rejection without analysis. Configured per user in Settings.
 ### Yellow List
 Forces verdict "warning" but continues analysis. Configured per user.
 
+### Analysis language
+`users.language` (`english`/`polish`/`original`, default `english`) drives a directive appended
+to the end of the system prompt in `build_system()`. `original` explicitly scopes language
+detection to the `<job_listing>` content only and names the CANDIDATE PROFILE/ZERO LIST/YELLOW
+LIST/CRITERIA sections to disregard — those sections sit earlier in the same long prompt and,
+for a user with a Polish CV or lists, previously outweighed an English listing without that
+explicit scoping.
+
+### JSON response repair
+The model occasionally emits a JSON string value containing an unescaped literal control
+character (raw newline/tab) or a stray unescaped quote (e.g. quoting a phrase inline: `...to
+"eco-friendly" pracodawca...`), which breaks a naive `json.loads`. `_escape_json_string_controls()`
+in `analyzer.py` is a single-pass state-machine repair used as a fallback when the first parse
+attempt fails: it escapes literal control chars, and for a `"` inside a string only treats it as
+a real terminator if the next non-whitespace character is a JSON structural character (`,` `}`
+`]` `:`) or end of input — otherwise it's escaped as a literal quote. Imperfect (a stray quote
+immediately followed by real punctuation can still misfire) but strictly better than no repair.
+
 ### Prompt injection mitigation
 Job listing content (pasted by user) is wrapped in `<job_listing>` tags in the user message.
 `SYSTEM_TEMPLATE` instructs the model to treat content inside those tags as data only,
