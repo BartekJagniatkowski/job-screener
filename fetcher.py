@@ -1,5 +1,5 @@
 """
-fetcher.py — fetch job listings from external feeds (Remotive, Lever, Greenhouse, RSS)
+fetcher.py — fetch job listings from external feeds (RemoteOK, Lever, Greenhouse, RSS)
 Returns list of dicts: {external_id, title, company, url, description}
 """
 

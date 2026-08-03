@@ -53,20 +53,24 @@ container_class %}container{% endblock %} {% block content %}
     <h1 class="hero-title">Screen an offer before you apply.</h1>
     <p class="hero-sub">Paste a listing. Six layers of analysis tell you if it's worth your time.</p>
     <div class="cmd-zone">
+    <input
+        type="url"
+        id="cmd-input"
+        class="cmd-url-input"
+        placeholder="Link to the listing (optional, saved as reference)"
+        autocomplete="off"
+    />
     <textarea
         id="cmd-text"
         class="cmd-text-area"
         rows="12"
         placeholder="Paste the job description here…"
     ></textarea>
-    <div class="cmd-url-row">
-        <input
-            type="url"
-            id="cmd-input"
-            class="cmd-input"
-            placeholder="Link to the listing (optional, saved as reference)"
-            autocomplete="off"
-        />
+    <div class="cmd-action-row">
+        <div class="cmd-hint">
+            <span><kbd class="cmd-key" id="hint-submit"></kbd> submit</span>
+            <span><kbd class="cmd-key" id="hint-paste"></kbd> focus</span>
+        </div>
         <button
             class="cmd-btn"
             id="analyze-btn"
@@ -81,10 +85,6 @@ container_class %}container{% endblock %} {% block content %}
         >
             Analyze →
         </button>
-    </div>
-    <div class="cmd-hint">
-        <span><kbd class="cmd-key" id="hint-submit"></kbd> submit</span>
-        <span><kbd class="cmd-key" id="hint-paste"></kbd> focus</span>
     </div>
 </div>
 </div>
@@ -481,6 +481,12 @@ container_class %}container{% endblock %} {% block content %}
                         data-verdict="{{ j.verdict }}"
                         >Applied</span
                     >
+                    {%- elif j.verdict == 'rejected' and j.zero_list_hit
+                    -%}<span
+                        class="badge badge-rejected"
+                        data-verdict="{{ j.verdict }}"
+                        >Zero list</span
+                    >
                     {%- elif j.verdict == 'rejected' and j.verdict_confirmed
                     -%}<span
                         class="badge badge-rejected"
@@ -583,6 +589,10 @@ container_class %}container{% endblock %} {% block content %}
             {%- elif j.applied -%}
             <span class="badge badge-applied" data-verdict="{{ j.verdict }}"
                 >Applied</span
+            >
+            {%- elif j.verdict == 'rejected' and j.zero_list_hit -%}
+            <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
+                >Zero list</span
             >
             {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}
             <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
@@ -1336,6 +1346,7 @@ container_class %}container{% endblock %} {% block content %}
       else if (j.interview_scheduled)                     { bClass='badge-interview';        bText='Interview'; }
       else if (j.company_rejected)                        { bClass='badge-company_rejected'; bText='Rejected by company'; }
       else if (j.applied)                                 { bClass='badge-applied';          bText='Applied'; }
+      else if (j.verdict==='rejected' && j.zero_list_hit) { bClass='badge-rejected';         bText='Zero list'; }
       else if (j.verdict==='rejected' && j.verdict_confirmed) { bClass='badge-rejected';    bText='User rejected'; }
       else if (j.verdict==='rejected')                    { bClass='badge-rejected';         bText='AI rejected'; }
       else {

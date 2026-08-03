@@ -7,8 +7,10 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 ## v0.56 — About page: AI disclosure
 
 - **Added a note to the About page** on which AI models power the analysis and that results can vary slightly between runs — this tool is an assistant, not an oracle, and the final call is always yours.
-- **Fixed** — the "Original" language setting (analyze in the listing's own language) was sometimes ignoring English listings and answering in Polish instead. It now reliably matches the listing.
+- **Improved** — the "Original" language setting (analyze in the listing's own language) was sometimes ignoring English listings and answering in Polish instead. Tightened further to make this less likely; occasional drift may still happen since results aren't fully deterministic.
+- **Fixed** — a listing rejected automatically by your Zero List showed the same "User rejected" badge as one you'd actually reviewed and rejected yourself. Zero List matches now get their own "Zero list" badge.
 - **Fixed** — some analyses failed with a JSON parsing error when the AI's response quoted a phrase inline without escaping it properly. Those responses now parse correctly instead of failing.
+- **Reordered the main analysis form** — the optional link field now sits above the paste box, and the Analyze button moved to share a row with the keyboard-shortcut hint.
 
 ---
 

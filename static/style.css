@@ -2190,8 +2190,8 @@ tr.row-rejected-soft:hover td {
 .cmd-zone {
     margin-bottom: 28px;
 }
-.cmd-input {
-    flex: 1;
+.cmd-url-input {
+    width: 100%;
     height: 44px;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
@@ -2200,14 +2200,14 @@ tr.row-rejected-soft:hover td {
     font-size: var(--fs-base);
     color: var(--text);
     padding: 0 16px;
-    min-width: 0;
+    margin-bottom: 8px;
     transition: border-color 0.15s;
 }
-.cmd-input:invalid {
+.cmd-url-input:invalid {
     box-shadow: none;
     border-color: var(--border);
 }
-.cmd-input::placeholder {
+.cmd-url-input::placeholder {
     color: var(--dim);
 }
 .cmd-btn {
@@ -2239,7 +2239,6 @@ tr.row-rejected-soft:hover td {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-top: 7px;
     padding: 0 2px;
     flex-wrap: wrap;
 }
@@ -2261,9 +2260,11 @@ tr.row-rejected-soft:hover td {
     align-items: center;
     gap: 5px;
 }
-.cmd-url-row {
+.cmd-action-row {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 8px;
 }

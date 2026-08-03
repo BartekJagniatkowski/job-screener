@@ -11,7 +11,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **AI:** Anthropic Claude API (default model: `claude-sonnet-4-6`; override with `ANTHROPIC_MODEL` env var — model must support extended thinking)
 - **Frontend:** Jinja2 + vanilla JS + external CSS
 - **Environment manager:** uv (files `pyproject.toml` + `uv.lock`)
-- **Python dependencies:** `flask`, `flask-wtf` (CSRF), `flask-limiter` (rate limiting), `requests` (feed fetching) — zero external CSS/Markdown libraries; `textual`/`rich` used only by `cli.py` (experimental TUI), never imported by the Flask app
+- **Python dependencies:** `flask`, `flask-wtf` (CSRF), `flask-limiter` (rate limiting), `requests` (feed fetching), `pypdf`/`python-docx` (CV upload parsing, `cv_parser.py`) — zero external CSS/Markdown libraries; `textual`/`rich` used only by `cli.py` (experimental TUI), never imported by the Flask app
 - **Not used:** npm, webpack, any JS frameworks
 
 ## Running the app
@@ -51,6 +51,7 @@ job-screener/
 ├── scraper.py          — URL content fetching, normalize_url, blocked domains
 ├── fetcher.py          — job feed fetching: fetch_remoteok, fetch_lever, fetch_greenhouse, fetch_rss; SSRF guard on RSS URLs
 ├── delete_user.py      — CLI: delete a user account and all associated data (`uv run python delete_user.py <username>`, type-username confirmation, no UI)
+├── cv_parser.py        — extracts plain text from an uploaded CV file (PDF/DOCX/TXT); in-memory only, never written to disk; raises ValueError on unsupported type, corrupt file, or empty extracted text
 ├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar (status-only display, not focusable) + live detail panel with all six layers. `j`/`k` navigate list; Tab toggles list↔detail panel only (filter bar isn't in the focus cycle — its quick-select letters already work screen-wide); `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. Filter quick-select: `a`=All, `u`=User Rejected, `r`=AI Rejected, `g`=Needs Review (warning), `w`=Worth Considering, `p`=Applied, `i`=Interview, `o`=Offer, `c`=Rejected By Company — works from anywhere in the list, not just when the filter bar is focused; `FILTER_CYCLE` in cli.py is append-only since `filter_index` is persisted per-user as a raw list index. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py`. Not a production entry point.
 ├── 11DESIGN.md         — ElevenLabs design system patterns (style reference, not committed)
 ├── CHANGELOG.md        — version history (edit as plain text, rendered by /changelog and embedded in /about)
@@ -180,6 +181,7 @@ POST     /discover/<id>/analyze — analyze a feed item via existing background 
 GET      /statistics
 GET      /settings
 POST     /settings             — saves CV, zero list, yellow list, criteria; blocks save if any entry appears in both zero and yellow list (case-insensitive, strips `- ` prefix)
+POST     /settings/cv_upload   — extracts text from an uploaded PDF/DOCX/TXT CV (`cv_parser.py`); 10/hr rate limit; returns extracted text, does not save it (Save CV still required)
 POST     /settings/password
 GET      /export/csv
 GET      /changelog
@@ -195,7 +197,7 @@ Dropdown `#status-select` with `<optgroup>` groups:
 | `worth_considering` | Worth considering | verdict, confirmed=1 |
 | `warning` | Needs review | verdict, confirmed=1 |
 | `rejected_soft` | AI rejected | verdict=rejected, confirmed=0 — not shown in dropdown (AI-only state) |
-| `rejected` | Rejected (dropdown) / User rejected (badge) | verdict=rejected, confirmed=1 |
+| `rejected` | Rejected (dropdown) / User rejected or Zero list (badge) | verdict=rejected, confirmed=1 |
 | `applied` | Applied | applied=1 |
 | `company_rejected` | Rejected by company | company_rejected=1, applied=1 |
 | `interview` | Interview | interview_scheduled=1, interview_at=`interview_at` param or today, applied=1, clears company_rejected |
@@ -297,6 +299,13 @@ Automatic rejection without analysis. Configured per user in Settings.
 - `zero_list_hit = true` → `verdict_confirmed = 1` set automatically by `save_job()`
 - AI returns `verdict: rejected` without `zero_list_hit` → `verdict_confirmed = 0` (requires user action)
 - User selects "Rejected" in dropdown → `verdict_confirmed = 1` via `update_job_status()`
+
+`verdict_confirmed = 1` is necessary but not sufficient for the "User rejected" badge — it's also true
+for zero-list auto-rejections, which never went through a human decision. Every badge location
+(`job_partial.html`, both dashboard.html Jinja blocks, `insertJobRow()` JS) checks `zero_list_hit` FIRST
+and renders "Zero list" for that case; "User rejected" only renders when confirmed AND not a zero-list hit.
+Don't reintroduce a bare `verdict == 'rejected' and verdict_confirmed` → "User rejected" check without the
+zero_list_hit exclusion — that's what silently mislabeled every automatic Zero List rejection.
 
 ### Yellow List
 Forces verdict "warning" but continues analysis. Configured per user.

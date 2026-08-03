@@ -178,7 +178,7 @@ def fetch(url: str, timeout: int = 12) -> tuple:
         domain = ''
     base_domain = '.'.join(domain.split('.')[-2:]) if domain else ''
     if domain in BLOCKED_DOMAINS or base_domain in BLOCKED_DOMAINS:
-        msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or               'This site blocks automated access. Copy the job description manually.'
+        msg = BLOCKED_DOMAIN_MSG.get(domain) or BLOCKED_DOMAIN_MSG.get(base_domain) or 'This site blocks automated access. Copy the job description manually.'
         return None, 'blocked', msg
 
     headers = {

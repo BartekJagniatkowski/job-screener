@@ -76,7 +76,7 @@ After logging in go to **Settings** and fill in:
 
 | Field | Description |
 |---|---|
-| **CV** | Your experience and skills — the more detail, the better the matching |
+| **CV** | Your experience and skills — the more detail, the better the matching. Type it directly or upload a PDF/DOCX/TXT file |
 | **Zero Rule** | Companies, industries, or categories that trigger automatic rejection without further analysis |
 | **Yellow List** | Signals that force a "needs review" verdict even when all other layers are green |
 | **Additional criteria** | Preferred sectors, cultural red flags, priorities in evaluating listings |
@@ -171,7 +171,9 @@ https://your.domain.com/register?token=YOUR_TOKEN
 
 ## Features
 
-- **Analysis from URL or pasted text** — scrapes the listing automatically; when the site blocks (LinkedIn, Indeed, etc.) prompts to paste the content
+- **Paste-first analysis** — paste the listing text directly; a URL is optional and stored only as a reference link, never fetched (most job boards block scraping anyway, so the tool doesn't try)
+- **CV upload** — drop in a PDF, DOCX, or TXT file and the text is extracted automatically; parsed in memory, never written to disk
+- **Discover feed** — pull new listings from RemoteOK, Lever, Greenhouse, or any RSS/Atom feed, pre-filtered by your Zero Rule, with one-click or bulk analyze
 - **Six analysis layers** with verdict and justification; the reputation layer uses the model's knowledge about the company (Glassdoor, media, C-level history)
 - **Reality check** — plain-English decoding of listing language before the layer analysis; corpo-speak translated to what it actually means
 - **Detail modal** — clicking a row in history or dashboard opens the details in place; ← → navigation between listings, URL reflects the currently viewed listing
@@ -194,7 +196,9 @@ job-screener/
 ├── app.py              — Flask routing, auth, endpoints
 ├── analyzer.py         — system prompt and Claude API integration
 ├── database.py         — SQLite schema, migrations, operations
-├── scraper.py          — URL content fetching, normalisation
+├── scraper.py          — URL normalisation (fetching is off by default — see below)
+├── fetcher.py          — Discover feed fetching: RemoteOK, Lever, Greenhouse, RSS
+├── cv_parser.py        — CV text extraction from uploaded PDF/DOCX/TXT
 ├── static/style.css    — all styles (zero inline CSS in templates)
 ├── templates/          — Jinja2 templates
 ├── data/screener.db    — database (created automatically, do not commit)

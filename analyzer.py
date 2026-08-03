@@ -375,8 +375,11 @@ def build_system(user: User) -> str:
         "original": (
             "Detect the language of the <job_listing> content ONLY — ignore the language of the "
             "CANDIDATE PROFILE, ZERO LIST, YELLOW LIST, and ADDITIONAL CRITERIA sections above, which "
-            "may be written in a different language than the listing itself. Write your entire response "
-            "in the listing's language. Every text field must use that language consistently."
+            "may be written in a different language than the listing itself. Before writing anything else, "
+            "state in your thinking: \"The job listing is written in <language>, so I will write the entire "
+            "response in <language>.\" Then write your entire response in that language — every text field, "
+            "with no exceptions. If you notice any field drifting into a different language, rewrite it "
+            "before finalizing."
         ),
     }
     language_instruction = language_directives.get(language, language_directives["english"])
