@@ -9,6 +9,7 @@ def _row(**overrides):
         "interview_scheduled": 0,
         "offer_received": 0,
         "company_rejected": 0,
+        "zero_list_hit": 0,
     }
     base.update(overrides)
     return base
@@ -58,3 +59,9 @@ def test_confirmed_rejected_matches_rejected_not_rejected_soft():
     row = _row(verdict="rejected", verdict_confirmed=1)
     assert job_matches_filter(row, "rejected")
     assert not job_matches_filter(row, "rejected_soft")
+
+
+def test_zero_list_hit_matches_zero_list_not_rejected():
+    row = _row(verdict="rejected", verdict_confirmed=1, zero_list_hit=1)
+    assert job_matches_filter(row, "zero_list")
+    assert not job_matches_filter(row, "rejected")

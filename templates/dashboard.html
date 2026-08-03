@@ -1,5 +1,6 @@
 {% extends "base.html" %} {% block title %}Job Screener{% endblock %} {% block
 container_class %}container{% endblock %} {% block content %}
+{% from "_macros.html" import verdict_badge %}
 {% macro company_display(j) %}
 {%- set name = j.company or 'Unknown' -%}
 {%- if '(' in name -%}
@@ -460,52 +461,7 @@ container_class %}container{% endblock %} {% block content %}
                 <td class="td-date">{{ j.analyzed_at }}</td>
                 <td class="td-role">{{ j.role or '—' }}</td>
                 <td class="fw-500">{{ company_display(j) }}</td>
-                <td class="td-nowrap">
-                    {%- if j.offer_received -%}<span
-                        class="badge badge-offer"
-                        data-verdict="{{ j.verdict }}"
-                        >Offer received</span
-                    >
-                    {%- elif j.interview_scheduled -%}<span
-                        class="badge badge-interview"
-                        data-verdict="{{ j.verdict }}"
-                        >Interview</span
-                    >
-                    {%- elif j.company_rejected -%}<span
-                        class="badge badge-company_rejected"
-                        data-verdict="{{ j.verdict }}"
-                        >Rejected by company</span
-                    >
-                    {%- elif j.applied -%}<span
-                        class="badge badge-applied"
-                        data-verdict="{{ j.verdict }}"
-                        >Applied</span
-                    >
-                    {%- elif j.verdict == 'rejected' and j.zero_list_hit
-                    -%}<span
-                        class="badge badge-rejected"
-                        data-verdict="{{ j.verdict }}"
-                        >Zero list</span
-                    >
-                    {%- elif j.verdict == 'rejected' and j.verdict_confirmed
-                    -%}<span
-                        class="badge badge-rejected"
-                        data-verdict="{{ j.verdict }}"
-                        >User rejected</span
-                    >
-                    {%- elif j.verdict == 'rejected' -%}<span
-                        class="badge badge-rejected"
-                        data-verdict="{{ j.verdict }}"
-                        >AI rejected</span
-                    >
-                    {%- else -%}<span
-                        class="badge badge-{{ j.verdict }}"
-                        data-verdict="{{ j.verdict }}"
-                        >{{ {'warning':'Needs review','worth_considering':'Worth
-                        considering'}.get(j.verdict, j.verdict) }}</span
-                    >
-                    {%- endif %}
-                </td>
+                <td class="td-nowrap">{{ verdict_badge(j) }}</td>
                 <td
                     class="td-mono {% if j.zero_list_hit %}td-red{% else %}td-dim{% endif %}"
                 >
@@ -572,44 +528,7 @@ container_class %}container{% endblock %} {% block content %}
                 <div class="job-card-company">{{ company_display(j) }}</div>
                 <div class="job-card-role">{{ j.role or '—' }}</div>
             </div>
-            {%- if j.offer_received -%}
-            <span class="badge badge-offer" data-verdict="{{ j.verdict }}"
-                >Offer received</span
-            >
-            {%- elif j.interview_scheduled -%}
-            <span class="badge badge-interview" data-verdict="{{ j.verdict }}"
-                >Interview</span
-            >
-            {%- elif j.company_rejected -%}
-            <span
-                class="badge badge-company_rejected"
-                data-verdict="{{ j.verdict }}"
-                >Rejected by company</span
-            >
-            {%- elif j.applied -%}
-            <span class="badge badge-applied" data-verdict="{{ j.verdict }}"
-                >Applied</span
-            >
-            {%- elif j.verdict == 'rejected' and j.zero_list_hit -%}
-            <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
-                >Zero list</span
-            >
-            {%- elif j.verdict == 'rejected' and j.verdict_confirmed -%}
-            <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
-                >User rejected</span
-            >
-            {%- elif j.verdict == 'rejected' -%}
-            <span class="badge badge-rejected" data-verdict="{{ j.verdict }}"
-                >AI rejected</span
-            >
-            {%- else -%}
-            <span
-                class="badge badge-{{ j.verdict }}"
-                data-verdict="{{ j.verdict }}"
-                >{{ {'warning':'Needs review','worth_considering':'Worth
-                considering'}.get(j.verdict, j.verdict) }}</span
-            >
-            {%- endif %}
+            {{ verdict_badge(j) }}
         </div>
         <div class="job-card-meta">
             <span class="td-date">{{ j.analyzed_at[:10] }}</span>
@@ -857,7 +776,7 @@ container_class %}container{% endblock %} {% block content %}
       if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runAnalysis(); }
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        document.getElementById('cmd-text').focus();
+        document.getElementById('cmd-input').focus();
       }
       // Alt+letter filter shortcuts -- Alt (not Ctrl/Cmd) avoids fighting
       // browser chrome shortcuts (Ctrl+A select-all, Ctrl+W close-tab, etc)

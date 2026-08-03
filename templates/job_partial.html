@@ -1,4 +1,4 @@
-{% set vl = {'rejected':'Rejected','warning':'Needs review','worth_considering':'Worth considering'} %}
+{% from "_macros.html" import verdict_badge %}
 {% set sl = {'ok':'No issues','warning':'Needs review','flag':'Red flag'} %}
 {% set sc = {'ok':'ok','warning':'warning','flag':'flag'} %}
 {% set ssv = {'ok':'OK','warning':'Warn','flag':'Flag'} %}
@@ -14,14 +14,7 @@
 <div class="card">
   <div class="card-header card-header--vertical">
     <div class="card-badges">
-    {%- if job.offer_received %}<span class="badge badge-offer" data-verdict="{{ job.verdict }}">Offer received</span>
-    {%- elif job.interview_scheduled %}<span class="badge badge-interview" data-verdict="{{ job.verdict }}">Interview</span>
-    {%- elif job.company_rejected %}<span class="badge badge-company_rejected" data-verdict="{{ job.verdict }}">Rejected by company</span>
-    {%- elif job.applied %}<span class="badge badge-applied" data-verdict="{{ job.verdict }}">Applied</span>
-    {%- elif job.verdict == 'rejected' and job.zero_list_hit %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">Zero list</span>
-    {%- elif job.verdict == 'rejected' and job.verdict_confirmed %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">User rejected</span>
-    {%- elif job.verdict == 'rejected' %}<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">AI rejected</span>
-    {%- else %}<span class="badge badge-{{ job.verdict }}" data-verdict="{{ job.verdict }}">{{ vl.get(job.verdict, job.verdict) }}</span>{% endif %}
+    {{ verdict_badge(job) }}
     {% if job.role_archetype %}<span class="badge badge-archetype">{{ job.role_archetype }}</span>{% endif %}
     {% if job.fit_score is not none %}<span class="badge badge-fit badge-fit-{{ job.fit_status }}">Fit {{ "%.1f"|format(job.fit_score) }}/5</span>{% endif %}
     </div>

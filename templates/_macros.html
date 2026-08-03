@@ -1,0 +1,19 @@
+{% macro verdict_badge(job) -%}
+{%- if job.offer_received -%}
+<span class="badge badge-offer" data-verdict="{{ job.verdict }}">Offer received</span>
+{%- elif job.interview_scheduled -%}
+<span class="badge badge-interview" data-verdict="{{ job.verdict }}">Interview</span>
+{%- elif job.company_rejected -%}
+<span class="badge badge-company_rejected" data-verdict="{{ job.verdict }}">Rejected by company</span>
+{%- elif job.applied -%}
+<span class="badge badge-applied" data-verdict="{{ job.verdict }}">Applied</span>
+{%- elif job.verdict == 'rejected' and job.zero_list_hit -%}
+<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">Zero list</span>
+{%- elif job.verdict == 'rejected' and job.verdict_confirmed -%}
+<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">User rejected</span>
+{%- elif job.verdict == 'rejected' -%}
+<span class="badge badge-rejected" data-verdict="{{ job.verdict }}">AI rejected</span>
+{%- else -%}
+<span class="badge badge-{{ job.verdict }}" data-verdict="{{ job.verdict }}">{{ {'warning':'Needs review','worth_considering':'Worth considering'}.get(job.verdict, job.verdict) }}</span>
+{%- endif -%}
+{%- endmacro %}

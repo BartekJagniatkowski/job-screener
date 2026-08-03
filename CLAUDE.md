@@ -48,11 +48,11 @@ job-screener/
 ├── app.py              — Flask: routing, auth, all endpoints
 ├── analyzer.py         — Claude API, system prompt with analysis methodology
 ├── database.py         — SQLite: schema, migrations, data operations
-├── scraper.py          — URL content fetching, normalize_url, blocked domains
+├── scraper.py          — normalize_url, _is_internal_host (SSRF guard); no URL fetching — see below
 ├── fetcher.py          — job feed fetching: fetch_remoteok, fetch_lever, fetch_greenhouse, fetch_rss; SSRF guard on RSS URLs
 ├── delete_user.py      — CLI: delete a user account and all associated data (`uv run python delete_user.py <username>`, type-username confirmation, no UI)
 ├── cv_parser.py        — extracts plain text from an uploaded CV file (PDF/DOCX/TXT); in-memory only, never written to disk; raises ValueError on unsupported type, corrupt file, or empty extracted text
-├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar (status-only display, not focusable) + live detail panel with all six layers. `j`/`k` navigate list; Tab toggles list↔detail panel only (filter bar isn't in the focus cycle — its quick-select letters already work screen-wide); `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. Filter quick-select: `a`=All, `u`=User Rejected, `r`=AI Rejected, `g`=Needs Review (warning), `w`=Worth Considering, `p`=Applied, `i`=Interview, `o`=Offer, `c`=Rejected By Company — works from anywhere in the list, not just when the filter bar is focused; `FILTER_CYCLE` in cli.py is append-only since `filter_index` is persisted per-user as a raw list index. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py`. Not a production entry point.
+├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar (status-only display, not focusable) + live detail panel with all six layers. `j`/`k` navigate list; Tab toggles list↔detail panel only (filter bar isn't in the focus cycle — its quick-select letters already work screen-wide); `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. Filter quick-select: `a`=All, `u`=User Rejected, `r`=AI Rejected, `g`=Needs Review (warning), `w`=Worth Considering, `p`=Applied, `i`=Interview, `o`=Offer, `c`=Rejected By Company, `z`=Zero List — works from anywhere in the list, not just when the filter bar is focused; `FILTER_CYCLE` in cli.py is append-only since `filter_index` is persisted per-user as a raw list index. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py`. Not a production entry point.
 ├── 11DESIGN.md         — ElevenLabs design system patterns (style reference, not committed)
 ├── CHANGELOG.md        — version history (edit as plain text, rendered by /changelog and embedded in /about)
 ├── CHANGELOG.public.md — user-facing changelog (strips dev-only details); used by push-public.sh
@@ -67,6 +67,7 @@ job-screener/
 │   └── style.css       — ALL application styles (zero inline styles in templates)
 ├── templates/
 │   ├── base.html       — layout, <link> to style.css, navigation (no footer)
+│   ├── _macros.html    — `verdict_badge(job)`: the offer/interview/company_rejected/applied/zero_list/confirmed-rejected/AI-rejected/else badge, shared by dashboard.html (table + card) and job_partial.html so the priority chain has one source of truth
 │   ├── login.html
 │   ├── register.html
 │   ├── dashboard.html  — unified view: command bar + full analysis table (filters, search, sort, mobile cards) + modal; `/history` and `/job/<id>` redirect here
@@ -144,7 +145,7 @@ Four sources: `remoteok`, `lever`, `greenhouse`, `rss`. Returns `{external_id, t
 
 ## Scraper (scraper.py)
 
-`app.py` imports only `normalize_url` from scraper — the tool no longer fetches job board URLs on the user's behalf. Users paste listing text; URLs are stored as reference links only.
+The tool no longer fetches job board URLs on the user's behalf, anywhere — `scraper.py` has no `fetch()` function. Users paste listing text; URLs are stored as reference links only. (`fetch()` and its JS-wall/redirect-handling helpers were removed once `cli.py` stopped calling it — the CLI now requires pasted text too, matching the web app.)
 
 `normalize_url()` strips tracking params (`utm_*`, `fbclid`, `gclid`, `ref`, `source`, `from`, `vjk`, …) and fragment; preserves listing-specific params (`id`, `jobId`). Used in `/analyze` and `/check_source` to normalise the reference URL before storage and dedup.
 
@@ -261,7 +262,7 @@ PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 - `Server: unknown` (suppresses gunicorn banner)
 
 ### SSRF protection (scraper.py)
-`_is_internal_host(url)` resolves the hostname and rejects private/loopback/link-local IPs before any HTTP connection is made. Covers `10.x`, `172.16–31.x`, `192.168.x`, `127.x`, `169.254.x`, IPv6 equivalents. Called in `fetch()` after the blocked-domain check. Fails **closed** on any unexpected error (treats the host as internal/blocked) — the only exception is `socket.gaierror` (hostname doesn't resolve), which is treated as "not internal" since the real fetch fails identically in that case.
+`_is_internal_host(url)` resolves the hostname and rejects private/loopback/link-local IPs before any HTTP connection is made. Covers `10.x`, `172.16–31.x`, `192.168.x`, `127.x`, `169.254.x`, IPv6 equivalents. Called by `fetcher.py`'s RSS fetcher before each hop of its own redirect-follow loop (the only remaining caller). Fails **closed** on any unexpected error (treats the host as internal/blocked) — the only exception is `socket.gaierror` (hostname doesn't resolve), which is treated as "not internal" since the real fetch fails identically in that case.
 
 ### Username enumeration
 Failed login always calls `_record_failure(username)` regardless of whether the user exists. Prevents timing-based username probing via lockout state differences.
@@ -301,10 +302,10 @@ Automatic rejection without analysis. Configured per user in Settings.
 - User selects "Rejected" in dropdown → `verdict_confirmed = 1` via `update_job_status()`
 
 `verdict_confirmed = 1` is necessary but not sufficient for the "User rejected" badge — it's also true
-for zero-list auto-rejections, which never went through a human decision. Every badge location
-(`job_partial.html`, both dashboard.html Jinja blocks, `insertJobRow()` JS) checks `zero_list_hit` FIRST
-and renders "Zero list" for that case; "User rejected" only renders when confirmed AND not a zero-list hit.
-Don't reintroduce a bare `verdict == 'rejected' and verdict_confirmed` → "User rejected" check without the
+for zero-list auto-rejections, which never went through a human decision. The `verdict_badge(job)` macro
+(`templates/_macros.html`, used by `dashboard.html`'s table and card and by `job_partial.html`) checks
+`zero_list_hit` FIRST and renders "Zero list" for that case; "User rejected" only renders when confirmed
+AND not a zero-list hit. Don't reintroduce a bare `verdict == 'rejected' and verdict_confirmed` → "User rejected" check without the
 zero_list_hit exclusion — that's what silently mislabeled every automatic Zero List rejection.
 
 ### Yellow List

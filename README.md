@@ -196,7 +196,7 @@ job-screener/
 ├── app.py              — Flask routing, auth, endpoints
 ├── analyzer.py         — system prompt and Claude API integration
 ├── database.py         — SQLite schema, migrations, operations
-├── scraper.py          — URL normalisation (fetching is off by default — see below)
+├── scraper.py          — URL normalisation and SSRF guard (no URL fetching — paste-first, see below)
 ├── fetcher.py          — Discover feed fetching: RemoteOK, Lever, Greenhouse, RSS
 ├── cv_parser.py        — CV text extraction from uploaded PDF/DOCX/TXT
 ├── static/style.css    — all styles (zero inline CSS in templates)

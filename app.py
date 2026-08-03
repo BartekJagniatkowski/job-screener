@@ -766,7 +766,7 @@ def change_password():
 
     def _settings_error(msg):
         flash(msg)
-        return render_template("settings.html", user=user), 200
+        return render_template("settings.html", user=user, feeds=get_feeds(user["id"])), 200
 
     if not current_pw or not verify_password(current_pw, user["password_hash"]):
         return _settings_error("Current password is incorrect.")

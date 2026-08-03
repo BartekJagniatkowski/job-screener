@@ -17,7 +17,6 @@ from textual.widgets.data_table import CellDoesNotExist
 
 import analyzer
 import database
-import scraper
 
 # Input's built-in "right" binding description is the longest line shown
 # anywhere in the help panel ("...accept the completion suggestion") --
@@ -80,7 +79,7 @@ LAYER_PANELS = [
 # instead of "$success"/"$warning"/"$error".
 STATUS_DOT_COLOR = {"ok": "#7fd962", "warning": "#ffb454", "flag": "#f07178"}
 VERDICT_COLOR = {
-    "rejected": "#f07178", "rejected_soft": "#f07178", "warning": "#ffb454",
+    "rejected": "#f07178", "rejected_soft": "#f07178", "zero_list": "#f07178", "warning": "#ffb454",
     "worth_considering": "#7fd962", "applied": "#7fd962", "offer": "#7fd962",
     "interview": "#d2a6ff", "company_rejected": "#ff8f40",
 }
@@ -90,6 +89,7 @@ VERDICT_COLOR = {
 FILTER_CYCLE = [
     "all", "rejected", "warning", "worth_considering",
     "applied", "interview", "offer", "company_rejected", "rejected_soft",
+    "zero_list",
 ]
 # Human-readable name per status, with "^" marking the quick-select mnemonic
 # letter (must match FilterBar.QUICK_SELECT_KEYS) -- single source for both
@@ -105,6 +105,7 @@ STATUS_DISPLAY_MARKED = {
     "interview": "^Interview",
     "offer": "^Offer",
     "company_rejected": "Rejected By ^Company",
+    "zero_list": "^Zero List",
 }
 STATUS_DISPLAY = {k: v.replace("^", "") for k, v in STATUS_DISPLAY_MARKED.items()}
 
@@ -135,6 +136,12 @@ def status_key(row) -> str:
     if row["applied"]:
         return "applied"
     verdict = (row["verdict"] or "").lower()
+    # zero_list_hit is an automatic rule match, not a human decision --
+    # checked before the confirmed check below since a zero-list hit always
+    # sets verdict_confirmed=1 too (save_job()), and would otherwise be
+    # indistinguishable from a rejection the user actually reviewed.
+    if verdict == "rejected" and row["zero_list_hit"]:
+        return "zero_list"
     # verdict_confirmed distinguishes an AI-only rejection (0, never
     # user-reviewed) from one the user has actually endorsed or confirmed
     # via the status dropdown (1) -- mirrors the web app's
@@ -256,6 +263,7 @@ class FilterBar(Horizontal):
         "i": "interview",
         "o": "offer",
         "c": "company_rejected",
+        "z": "zero_list",
     }
 
     def __init__(self, main_screen: "MainScreen"):
@@ -681,30 +689,31 @@ class MainScreen(Screen):
     def start_analysis(self, raw: str) -> None:
         status = self.query_one("#status-line", Static)
         if not raw:
-            status.update("[#f07178]Usage: analyze <url|text>[/]")
+            status.update("[#f07178]Usage: analyze <listing text>[/]")
+            return
+        if raw.startswith("http://") or raw.startswith("https://"):
+            status.update(
+                "[#f07178]Paste the listing text -- this tool doesn't fetch URLs "
+                "(most job boards block it; same as the web app).[/]"
+            )
             return
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         if not api_key:
             status.update("[#f07178]ANTHROPIC_API_KEY not set in environment.[/]")
             return
 
-        source_url = ""
-        source_text = ""
-        if raw.startswith("http://") or raw.startswith("https://"):
-            source_url = scraper.normalize_url(raw)
-        else:
-            source_text = raw
+        source_text = raw
 
-        existing = database.check_duplicate(self.app.user["id"], source_url or source_text)
+        existing = database.check_duplicate(self.app.user["id"], source_text)
         if existing is not None:
-            self.awaiting_duplicate_confirm = (source_url, source_text or raw)
+            self.awaiting_duplicate_confirm = ("", source_text)
             status.update(
                 f"[#ffb454]Duplicate of #{existing['id']:03d} ({existing['verdict']}). "
                 f"Type 'yes' to re-analyze, anything else cancels.[/]"
             )
             return
 
-        self.run_pipeline(source_url, source_text or raw)
+        self.run_pipeline("", source_text)
 
     def run_pipeline(self, source_url: str, source_text: str) -> None:
         self.do_pipeline(source_url, source_text)
@@ -714,17 +723,6 @@ class MainScreen(Screen):
         api_key = os.environ.get("ANTHROPIC_API_KEY")
         model = os.environ.get("ANTHROPIC_MODEL", analyzer.DEFAULT_MODEL)
         status = self.query_one("#status-line", Static)
-
-        if source_url:
-            self.app.call_from_thread(status.update, "[dim]Fetching...[/dim]")
-            text, error_code, error_detail = scraper.fetch(source_url)
-            if text is None:
-                self.app.call_from_thread(
-                    status.update,
-                    f"[#f07178]Scrape failed ({error_code}): {error_detail}[/]",
-                )
-                return
-            source_text = text
 
         self.app.call_from_thread(status.update, "[dim]Analyzing...[/dim]")
         try:

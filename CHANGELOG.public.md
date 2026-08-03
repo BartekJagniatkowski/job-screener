@@ -4,6 +4,15 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.57 — Terminal interface catches up
+
+- **Fixed** — the Zero List badge mislabeling from v0.56 also affected the experimental terminal interface; now consistent with the web app.
+- **Terminal interface: `analyze <url>` removed** — it now requires pasted text, same as the web app. Most job boards block automated fetching anyway, so this was quietly failing more often than it worked.
+- **Fixed** — a bug on the Settings page: a failed password-change attempt could make it look like your job feeds had disappeared. They hadn't — just a display glitch on that one error message.
+- **Dashboard: `⌘K`/`Ctrl+K` now focuses the link field** (was the paste box), following up on v0.56's form reorder.
+
+---
+
 ## v0.56 — About page: AI disclosure
 
 - **Added a note to the About page** on which AI models power the analysis and that results can vary slightly between runs — this tool is an assistant, not an oracle, and the final call is always yours.

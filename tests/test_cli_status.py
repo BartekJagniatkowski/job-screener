@@ -9,6 +9,7 @@ def _row(**overrides):
         "interview_scheduled": 0,
         "offer_received": 0,
         "company_rejected": 0,
+        "zero_list_hit": 0,
     }
     base.update(overrides)
     return base
@@ -54,3 +55,8 @@ def test_rejected_verdict_shows_user_rejected():
 def test_unconfirmed_rejected_verdict_shows_ai_rejected():
     label, _ = status_label(_row(verdict="rejected", verdict_confirmed=0))
     assert label == "AI_REJECTED"
+
+
+def test_zero_list_hit_shows_zero_list_not_user_rejected():
+    label, _ = status_label(_row(verdict="rejected", verdict_confirmed=1, zero_list_hit=1))
+    assert label == "ZERO_LIST"
