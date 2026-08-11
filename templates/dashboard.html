@@ -678,7 +678,7 @@ container_class %}container{% endblock %} {% block content %}
           window.dispatchEvent(new CustomEvent('analysisStarted', { detail: active }));
           document.getElementById('cmd-text').value = '';
           document.getElementById('cmd-input').value = '';
-          document.getElementById('cmd-text').focus();
+          document.getElementById('cmd-input').focus();
         } else if (data.error) {
           document.getElementById('error-box').textContent = 'Error: ' + data.error;
           document.getElementById('error-box').style.display = 'block';
