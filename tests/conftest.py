@@ -33,6 +33,20 @@ def app():
     os.unlink(_db_path)
 
 
+@pytest.fixture(autouse=True)
+def _reset_analyses_table(app):
+    """Clear `analyses` before every test.
+
+    The DB is session-scoped and shared by the whole suite; a test that
+    creates a row via create_analysis()/POST /analyze without ever moving it
+    past pending/running permanently eats one of the 3 concurrent-analysis
+    slots (see run_analyze()'s MAX_CONCURRENT check) for every later test.
+    """
+    from database import get_conn
+    with get_conn() as conn:
+        conn.execute("DELETE FROM analyses")
+
+
 @pytest.fixture
 def client(app):
     return app.test_client()

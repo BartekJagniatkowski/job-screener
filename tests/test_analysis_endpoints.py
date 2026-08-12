@@ -12,15 +12,21 @@ def test_analyze_returns_analysis_id(logged_in_client):
     assert "analysis_id" in data
     assert len(data["analysis_id"]) == 36
     assert "result" not in data
+    # Thread is mocked, so it never runs and never flips the row past
+    # "pending" — without this it permanently eats one of the 3 concurrent-
+    # analysis slots for every later test in this session-scoped DB.
+    update_analysis_status(data["analysis_id"], "error", error="test cleanup")
 
 
 def test_analyze_spawns_thread(logged_in_client):
     with patch("app.threading") as mock_threading:
         mock_thread = MagicMock()
         mock_threading.Thread.return_value = mock_thread
-        logged_in_client.post("/analyze", data={"text": "Some job listing"})
+        resp = logged_in_client.post("/analyze", data={"text": "Some job listing"})
     mock_threading.Thread.assert_called_once()
     mock_thread.start.assert_called_once()
+    # Same leaked-"pending"-row issue as test_analyze_returns_analysis_id above.
+    update_analysis_status(resp.get_json()["analysis_id"], "error", error="test cleanup")
 
 
 def test_analysis_status_pending(logged_in_client, app):
@@ -31,6 +37,9 @@ def test_analysis_status_pending(logged_in_client, app):
     assert data["status"] == "pending"
     assert data["source_label"] == "Figma PM"
     assert data["result_job_id"] is None
+    # Left "pending" forever otherwise — eats one of the 3 concurrent-analysis
+    # slots for every later test in this session-scoped DB.
+    update_analysis_status(analysis_id, "error", error="test cleanup")
 
 
 def test_analysis_status_done_includes_job_fields(logged_in_client, app):

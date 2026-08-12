@@ -137,9 +137,18 @@ def test_login_rate_limit(client):
         app_module.limiter.enabled = False
 
 
-def test_analyze_rate_limit(logged_in_client):
+def test_analyze_rate_limit(logged_in_client, monkeypatch):
     """Analyze endpoint rejects requests beyond the rate limit."""
     import app as app_module
+
+    def fake_analyze(user, text, mode, api_key, model):
+        return {"company_name": "Test Co", "role_title": "Engineer", "verdict": "warning"}
+
+    # Without this, each request spawns a background thread hitting the real
+    # (fake-key) Anthropic API; those threads outlive the test and leave
+    # analyses stuck "pending"/"running", tripping the concurrency-limit 429
+    # in later tests that share this session-scoped DB.
+    monkeypatch.setattr(app_module, "analyze", fake_analyze)
     app_module.limiter.reset()
     app_module.limiter.enabled = True
     try:
