@@ -638,11 +638,11 @@ textarea::-webkit-scrollbar-thumb {
 }
 .card-company {
     color: var(--muted);
-    font-size: var(--fs-md);
+    font-size: 14px;
 }
 .card-sub {
     color: var(--muted);
-    font-size: var(--fs-sm);
+    font-size: 14px;
     line-height: 1.65;
     margin-top: 4px;
 }
@@ -651,7 +651,7 @@ textarea::-webkit-scrollbar-thumb {
     align-items: center;
     flex-wrap: wrap;
     gap: 6px 12px;
-    font-size: var(--fs-sm);
+    font-size: 14px;
 }
 .overview-meta-row .source-inline-link {
     overflow: hidden;
@@ -691,7 +691,7 @@ textarea::-webkit-scrollbar-thumb {
     margin-bottom: 2px;
 }
 .evidence-text {
-    font-size: var(--fs-sm);
+    font-size: 14px;
     color: var(--muted);
     font-weight: normal;
     line-height: 1.65;
@@ -964,7 +964,7 @@ tr.row-rejected-soft:hover td {
 /* ── source section ─────────────────────────────────────────────────────── */
 .source-text {
     white-space: pre-wrap;
-    font-size: var(--fs-base);
+    font-size: 14px;
     line-height: 1.6;
     color: var(--muted);
     max-height: 400px;
@@ -988,11 +988,11 @@ tr.row-rejected-soft:hover td {
 .source-url-link {
     color: var(--accent);
     word-break: break-all;
-    font-size: var(--fs-md);
+    font-size: 14px;
 }
 .source-url-hint {
     margin-top: 8px;
-    font-size: var(--fs-sm);
+    font-size: 14px;
     color: var(--dim);
 }
 .source-url-input-row {
@@ -1172,7 +1172,7 @@ tr.row-rejected-soft:hover td {
 }
 #prep-content-box .changelog p,
 #prep-content-box .changelog li {
-    font-size: var(--fs-sm);
+    font-size: 14px;
     line-height: 1.65;
 }
 
@@ -1208,7 +1208,7 @@ tr.row-rejected-soft:hover td {
 }
 .source-old-text {
     color: var(--muted);
-    font-size: var(--fs-md);
+    font-size: 14px;
 }
 .source-old-hint {
     margin-top: 6px;
@@ -1217,7 +1217,7 @@ tr.row-rejected-soft:hover td {
 }
 .source-none {
     color: var(--dim);
-    font-size: var(--fs-md);
+    font-size: 14px;
 }
 
 /* ── card padding ───────────────────────────────────────────────────────── */
@@ -1883,7 +1883,7 @@ tr.row-rejected-soft:hover td {
     padding: 12px 18px 16px;
 }
 .reality-check-summary {
-    font-size: var(--fs-sm);
+    font-size: 14px;
     color: var(--muted);
     line-height: 1.65;
 }
@@ -1901,7 +1901,7 @@ tr.row-rejected-soft:hover td {
 }
 .reality-check-callout {
     margin-bottom: 6px;
-    font-size: var(--fs-md);
+    font-size: 14px;
     line-height: 1.55;
 }
 .reality-check-phrase {
@@ -1935,7 +1935,7 @@ tr.row-rejected-soft:hover td {
     margin-bottom: 8px;
 }
 .zero-list-body {
-    font-size: var(--fs-sm);
+    font-size: 14px;
     color: var(--muted);
     line-height: 1.65;
 }
@@ -1956,7 +1956,7 @@ tr.row-rejected-soft:hover td {
     margin-bottom: 8px;
 }
 .yellow-list-body {
-    font-size: var(--fs-sm);
+    font-size: 14px;
     color: var(--muted);
     line-height: 1.65;
 }
@@ -1987,7 +1987,7 @@ tr.row-rejected-soft:hover td {
     border-radius: var(--radius-sm);
     padding: 10px 12px;
     font-family: var(--fb);
-    font-size: var(--fs-sm);
+    font-size: 14px;
     box-sizing: border-box;
 }
 .notes-save-btn {
@@ -2135,7 +2135,7 @@ tr.row-rejected-soft:hover td {
 .prep-content {
     white-space: pre-wrap;
     font-family: var(--fb);
-    font-size: var(--fs-sm);
+    font-size: 14px;
     line-height: 1.65;
     color: var(--muted);
 }
@@ -2580,7 +2580,7 @@ tr.row-rejected-soft:hover td {
     padding: 12px 0;
 }
 .tab-section-body {
-    font-size: var(--fs-sm);
+    font-size: 14px;
     color: var(--text);
     line-height: 1.65;
 }

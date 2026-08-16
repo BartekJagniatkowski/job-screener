@@ -10,6 +10,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **Terminal interface: `analyze <url>` removed** — it now requires pasted text, same as the web app. Most job boards block automated fetching anyway, so this was quietly failing more often than it worked.
 - **Fixed** — a bug on the Settings page: a failed password-change attempt could make it look like your job feeds had disappeared. They hadn't — just a display glitch on that one error message.
 - **Dashboard: `⌘K`/`Ctrl+K` now focuses the link field** (was the paste box), following up on v0.56's form reorder.
+- **Polish — job detail view: all body text now the same size.** Analysis findings, notes, interview prep, and other text in the job modal used to be slightly different sizes depending on the section; now consistent throughout.
 
 ---
 
