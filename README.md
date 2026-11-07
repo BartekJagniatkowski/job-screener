@@ -131,15 +131,16 @@ A Textual-based TUI for browsing and analyzing listings without the web app — 
 
 ## Deployment to a server
 
-```bash
-./deploy.sh user@yourserver.com /var/www/job-screener
-```
+There is no deploy script — deployment is manual. The reference setup is a VPS with Caddy (automatic HTTPS) in front of gunicorn, run as a systemd service:
 
-The script copies files, installs dependencies via `uv`, and starts the service. After deployment:
+1. Clone the repo, run `uv sync --no-dev`, and create `config.env` from `config.env.template` (set `ANTHROPIC_API_KEY`, `SECRET_KEY`, `INVITE_TOKEN`)
+2. Set `PROXY_HOPS=1` in `config.env` so rate limits see the real client IP behind Caddy
+3. Run gunicorn from a systemd unit bound to `127.0.0.1`:
+   `ExecStart=/path/to/uv run --no-dev gunicorn -w 2 -b 127.0.0.1:5001 app:app --timeout 180` with `EnvironmentFile=…/config.env`
+4. Point Caddy at it: `reverse_proxy localhost:5001`
+5. After updating code: `sudo systemctl restart job-screener`
 
-1. Create `/var/www/job-screener/config.env` with your API key
-2. `sudo systemctl restart job-screener`
-3. Configure nginx (example in the script output)
+`server.sh` is the single entry point for running the daemon locally (see "Managing the server"); production uses systemd instead. `server.sh` binds to `127.0.0.1` by default (`BIND_HOST` overrides).
 
 ---
 
@@ -206,7 +207,7 @@ job-screener/
 ├── config.env.template — configuration template
 ├── pyproject.toml      — project dependencies (uv)
 ├── server.sh           — server management: start|stop|restart|status
-└── deploy.sh           — deployment script
+└── push-public.sh      — push to the public remote with the user-facing changelog
 ```
 
 ---
