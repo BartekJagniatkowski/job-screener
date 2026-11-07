@@ -3,6 +3,7 @@ fetcher.py — fetch job listings from external feeds (RemoteOK, Lever, Greenhou
 Returns list of dicts: {external_id, title, company, url, description}
 """
 
+import json
 import re
 import requests
 import xml.etree.ElementTree as ET
@@ -11,6 +12,24 @@ from urllib.parse import urljoin
 from scraper import _is_internal_host
 
 _TIMEOUT = 10
+_MAX_BYTES = 2_000_000  # cap on a feed response body
+
+
+def _read_capped(resp) -> bytes:
+    """Read a streamed response, refusing bodies larger than _MAX_BYTES."""
+    buf = bytearray()
+    for chunk in resp.iter_content(65536):
+        buf.extend(chunk)
+        if len(buf) > _MAX_BYTES:
+            resp.close()
+            raise ValueError("Feed response too large.")
+    return bytes(buf)
+
+
+def _get_json(url: str, **kwargs):
+    resp = requests.get(url, timeout=_TIMEOUT, stream=True, **kwargs)
+    resp.raise_for_status()
+    return json.loads(_read_capped(resp))
 
 
 def _strip_html(s: str) -> str:
@@ -18,13 +37,11 @@ def _strip_html(s: str) -> str:
 
 
 def fetch_remoteok(tag: str) -> list[dict]:
-    resp = requests.get(
+    data = _get_json(
         "https://remoteok.com/api",
         params={"tag": tag},
-        timeout=_TIMEOUT,
         headers={"User-Agent": "Mozilla/5.0"},
     )
-    resp.raise_for_status()
     return [
         {
             "external_id": str(j["id"]),
@@ -33,7 +50,7 @@ def fetch_remoteok(tag: str) -> list[dict]:
             "url": j.get("url", ""),
             "description": _strip_html(j.get("description", "")),
         }
-        for j in resp.json()
+        for j in data
         if isinstance(j, dict) and j.get("position") and j.get("url")
     ]
 
@@ -48,12 +65,7 @@ def _lever_description(j: dict) -> str:
 
 
 def fetch_lever(company_slug: str) -> list[dict]:
-    resp = requests.get(
-        f"https://api.lever.co/v0/postings/{company_slug}",
-        params={"mode": "json"},
-        timeout=_TIMEOUT,
-    )
-    resp.raise_for_status()
+    data = _get_json(f"https://api.lever.co/v0/postings/{company_slug}", params={"mode": "json"})
     return [
         {
             "external_id": j["id"],
@@ -62,18 +74,16 @@ def fetch_lever(company_slug: str) -> list[dict]:
             "url": j.get("hostedUrl", ""),
             "description": _lever_description(j),
         }
-        for j in resp.json()
+        for j in data
         if j.get("hostedUrl")
     ]
 
 
 def fetch_greenhouse(company_slug: str) -> list[dict]:
-    resp = requests.get(
+    data = _get_json(
         f"https://boards-api.greenhouse.io/v1/boards/{company_slug}/jobs",
         params={"content": "true"},
-        timeout=_TIMEOUT,
     )
-    resp.raise_for_status()
     return [
         {
             "external_id": str(j["id"]),
@@ -82,7 +92,7 @@ def fetch_greenhouse(company_slug: str) -> list[dict]:
             "url": j.get("absolute_url", ""),
             "description": _strip_html(j.get("content", "")),
         }
-        for j in resp.json().get("jobs", [])
+        for j in data.get("jobs", [])
         if j.get("absolute_url")
     ]
 
@@ -93,7 +103,7 @@ def fetch_rss(feed_url: str) -> list[dict]:
     for _ in range(5):
         if _is_internal_host(url):
             raise ValueError("Internal URLs are not allowed.")
-        resp = requests.get(url, timeout=_TIMEOUT, allow_redirects=False)
+        resp = requests.get(url, timeout=_TIMEOUT, allow_redirects=False, stream=True)
         if resp.is_redirect:
             url = urljoin(url, resp.headers["Location"])
             continue
@@ -102,7 +112,10 @@ def fetch_rss(feed_url: str) -> list[dict]:
     else:
         raise ValueError("Too many redirects.")
 
-    root = ET.fromstring(resp.content)
+    content = _read_capped(resp)
+    if b"<!ENTITY" in content:
+        raise ValueError("Feeds with entity declarations are not allowed.")
+    root = ET.fromstring(content)
     items = []
     for item in root.findall(".//item"):
         link = item.findtext("link", "").strip()

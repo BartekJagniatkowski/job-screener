@@ -387,14 +387,13 @@ def build_system(user: User) -> str:
     return base + f"\n\n══════════════════════════════════════════════════\nLANGUAGE — absolute rule, never mix languages\n══════════════════════════════════════════════════\n{language_instruction}"
 
 
-def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: str = DEFAULT_MODEL) -> AnalysisResult:
+def analyze(user: User, input_text: str, api_key: str, model: str = DEFAULT_MODEL) -> AnalysisResult:
     """
     Call the Anthropic API to analyze a job listing.
 
     Args:
         user: User configuration (CV, zero/yellow lists, criteria)
-        input_text: Listing text (if input_mode='text') or URL (if 'url')
-        input_mode: 'url' - fetch from URL, 'text' - use provided text
+        input_text: Pasted listing text
         api_key: Anthropic API key
         model: Anthropic model ID (must support extended thinking)
 
@@ -404,27 +403,11 @@ def analyze(user: User, input_text: str, input_mode: str, api_key: str, model: s
     Raises:
         Exception: When the API returns an error or the JSON cannot be parsed
     """
-    # Build the user message based on input mode
-    if input_mode == "url":
-        if not input_text.startswith("http"):
-            # user pasted text but mode is URL
-            listing_text = input_text[:12000]
-            user_msg: str = (
-                f"Analyze the following listing (URL mode, but text provided):\n\n<job_listing>\n{listing_text}\n</job_listing>\n\n"
-                f"If the listing comes from a recruitment agency, identify the actual employer."
-            )
-        else:
-            user_msg: str = (
-                f"Analyze the job listing at: {input_text}\n\n"
-                f"If you cannot fetch the page, analyze based on the domain and your knowledge of this company. "
-                f"Always identify the actual employer if the listing comes from a recruiter."
-            )
-    else:
-        listing_text = input_text[:12000]
-        user_msg: str = (
-            f"Analyze the following job listing:\n\n<job_listing>\n{listing_text}\n</job_listing>\n\n"
-            f"If the listing comes from a recruitment agency, identify the actual employer."
-        )
+    listing_text = input_text[:12000]
+    user_msg: str = (
+        f"Analyze the following job listing:\n\n<job_listing>\n{listing_text}\n</job_listing>\n\n"
+        f"If the listing comes from a recruitment agency, identify the actual employer."
+    )
 
     # Build the API payload
     payload_bytes: bytes = json.dumps({

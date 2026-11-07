@@ -726,7 +726,7 @@ class MainScreen(Screen):
 
         self.app.call_from_thread(status.update, "[dim]Analyzing...[/dim]")
         try:
-            result = analyzer.analyze(dict(self.app.user), source_text, "text", api_key, model)
+            result = analyzer.analyze(dict(self.app.user), source_text, api_key, model)
         except Exception as e:
             self.app.call_from_thread(status.update, f"[#f07178]Analysis failed: {e}[/]")
             return

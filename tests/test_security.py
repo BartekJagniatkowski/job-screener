@@ -141,7 +141,7 @@ def test_analyze_rate_limit(logged_in_client, monkeypatch):
     """Analyze endpoint rejects requests beyond the rate limit."""
     import app as app_module
 
-    def fake_analyze(user, text, mode, api_key, model):
+    def fake_analyze(user, text, api_key, model):
         return {"company_name": "Test Co", "role_title": "Engineer", "verdict": "warning"}
 
     # Without this, each request spawns a background thread hitting the real
@@ -180,7 +180,7 @@ def test_analyze_rejects_oversized_raw_body(logged_in_client):
 def test_analyze_accepts_normal_sized_body(logged_in_client, monkeypatch):
     import app as app_module
 
-    def fake_analyze(user, text, mode, api_key, model):
+    def fake_analyze(user, text, api_key, model):
         return {"company_name": "Test Co", "role_title": "Engineer", "verdict": "warning"}
 
     monkeypatch.setattr(app_module, "analyze", fake_analyze)

@@ -14,7 +14,7 @@ _start() {
   source "$DIR/config.env"
   set +a
 
-  uv run gunicorn -w 2 -b "0.0.0.0:${PORT:-5000}" app:app \
+  uv run --no-dev gunicorn -w 2 -b "${BIND_HOST:-127.0.0.1}:${PORT:-5000}" app:app \
     --daemon \
     --pid "$PID_FILE" \
     --timeout 180 \

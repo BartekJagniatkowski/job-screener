@@ -4,6 +4,17 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 
 ---
 
+## v0.58 — Security and reliability fixes
+
+- Analysis results are validated before they are stored, and the dashboard escapes them when a new row appears.
+- Stronger network-address checks on RSS feeds (IPv6 was not covered).
+- Passwords are hashed with PBKDF2-SHA256; existing accounts upgrade on next login.
+- Re-analyze updates the existing entry instead of creating a duplicate; duplicate detection also matches pasted text saved with a URL.
+- Discover loads faster (feeds refresh in the background) and skips items without listing text.
+- The dashboard loads faster with large histories.
+
+---
+
 ## v0.57 — Terminal interface catches up
 
 - **Fixed** — the Zero List badge mislabeling from v0.56 also affected the experimental terminal interface; now consistent with the web app.

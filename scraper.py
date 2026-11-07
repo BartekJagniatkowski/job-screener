@@ -24,15 +24,18 @@ _PRIVATE_NETWORKS = [
 def _is_internal_host(url: str) -> bool:
     try:
         host = urlparse(url).hostname or ""
-    except Exception:
-        return True  # malformed URL — fail closed
-    try:
-        ip = ipaddress.ip_address(socket.gethostbyname(host))
+        infos = socket.getaddrinfo(host, None)
     except socket.gaierror:
         return False  # host doesn't resolve; the fetch will fail on its own
     except Exception:
-        return True  # unexpected error — fail closed
-    return any(ip in net for net in _PRIVATE_NETWORKS)
+        return True  # malformed URL or unexpected error — fail closed
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0].split("%")[0])
+        if getattr(ip, "ipv4_mapped", None):
+            ip = ip.ipv4_mapped
+        if any(ip in net for net in _PRIVATE_NETWORKS):
+            return True
+    return False
 
 
 # Query string parameters to strip from URL (all lowercase — compared via k.lower())

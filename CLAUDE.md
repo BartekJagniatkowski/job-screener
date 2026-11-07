@@ -11,7 +11,7 @@ A tool for ethical evaluation of job listings. Every listing passes through six 
 - **AI:** Anthropic Claude API (default model: `claude-sonnet-4-6`; override with `ANTHROPIC_MODEL` env var — model must support extended thinking)
 - **Frontend:** Jinja2 + vanilla JS + external CSS
 - **Environment manager:** uv (files `pyproject.toml` + `uv.lock`)
-- **Python dependencies:** `flask`, `flask-wtf` (CSRF), `flask-limiter` (rate limiting), `requests` (feed fetching), `pypdf`/`python-docx` (CV upload parsing, `cv_parser.py`) — zero external CSS/Markdown libraries; `textual`/`rich` used only by `cli.py` (experimental TUI), never imported by the Flask app
+- **Python dependencies:** `flask`, `flask-wtf` (CSRF), `flask-limiter` (rate limiting), `requests` (feed fetching), `pypdf`/`python-docx` (CV upload parsing, `cv_parser.py`) — zero external CSS/Markdown libraries; `textual`/`rich` (uv `cli` dependency group, pulled in by `dev`) used only by `cli.py` (experimental TUI), never imported by the Flask app; `server.sh` runs `uv run --no-dev` so production skips them
 - **Not used:** npm, webpack, any JS frameworks
 
 ## Running the app
@@ -52,7 +52,7 @@ job-screener/
 ├── fetcher.py          — job feed fetching: fetch_remoteok, fetch_lever, fetch_greenhouse, fetch_rss; SSRF guard on RSS URLs
 ├── delete_user.py      — CLI: delete a user account and all associated data (`uv run python delete_user.py <username>`, type-username confirmation, no UI)
 ├── cv_parser.py        — extracts plain text from an uploaded CV file (PDF/DOCX/TXT); in-memory only, never written to disk; raises ValueError on unsupported type, corrupt file, or empty extracted text
-├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar (status-only display, not focusable) + live detail panel with all six layers. `j`/`k` navigate list; Tab toggles list↔detail panel only (filter bar isn't in the focus cycle — its quick-select letters already work screen-wide); `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. Filter quick-select: `a`=All, `u`=User Rejected, `r`=AI Rejected, `g`=Needs Review (warning), `w`=Worth Considering, `p`=Applied, `i`=Interview, `o`=Offer, `c`=Rejected By Company, `z`=Zero List — works from anywhere in the list, not just when the filter bar is focused; `FILTER_CYCLE` in cli.py is append-only since `filter_index` is persisted per-user as a raw list index. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py`. Not a production entry point.
+├── cli.py              — experimental Textual TUI (learning project). Combined view: job list + persistent filter bar (status-only display, not focusable) + live detail panel with all six layers. `j`/`k` navigate list; Tab toggles list↔detail panel only (filter bar isn't in the focus cycle — its quick-select letters already work screen-wide); `/`/`:` open a merged search/command prompt. `Ctrl+S` opens Settings (theme picker, CV/lists editor); `Ctrl+P` saves screenshot. Filter quick-select: `a`=All, `u`=User Rejected, `r`=AI Rejected, `g`=Needs Review (warning), `w`=Worth Considering, `p`=Applied, `i`=Interview, `o`=Offer, `c`=Rejected By Company, `z`=Zero List — works from anywhere in the list, not just when the filter bar is focused; `FILTER_CYCLE` in cli.py is append-only since `filter_index` is persisted per-user as a raw list index. State persists per-user in `data/cli_state_<username>.json` (gitignored). Wraps database.py/analyzer.py/scraper.py directly, no HTTP. Run via `uv run --env-file config.env python cli.py` (needs the `dev`/`cli` group; `uv run --no-dev` omits it). Not a production entry point.
 ├── 11DESIGN.md         — ElevenLabs design system patterns (style reference, not committed)
 ├── CHANGELOG.md        — version history (edit as plain text, rendered by /changelog and embedded in /about)
 ├── CHANGELOG.public.md — user-facing changelog (strips dev-only details); used by push-public.sh
@@ -241,9 +241,15 @@ In-memory per-worker storage (2 gunicorn workers = independent counters, accepta
 Module-level `_login_attempts` dict: `{username_lower: [failure_timestamps]}`.
 - Lock triggers after 5 failures within 5-minute window
 - Lockout duration: 15 minutes
-- Only tracks existing usernames — unknown usernames never get an entry
+- Entries are recorded for any username tried (prevents enumeration); entries older than the lockout duration are pruned on each new failure
 - Cleared on successful login
 - Not shared across gunicorn workers (accepted tradeoff)
+
+### Reverse proxy / bind address
+`PROXY_HOPS` (env, default 0) wraps the app in werkzeug `ProxyFix` so Flask-Limiter sees the real client IP behind Caddy; leave 0 when not behind a proxy (the header is spoofable otherwise). `BIND_HOST` (default `127.0.0.1`) is used by `server.sh` and `app.py`'s dev runner.
+
+### Model output is untrusted
+`save_job()` whitelists `verdict` (`rejected|warning|worth_considering`, else `warning`) and every layer/fit `status` (`ok|warning|flag`, else `""`) before storing — these values reach the DOM via live row injection. Re-analysis passes `replace_job_id` to `save_job()`, which updates the analysis columns in place (status, notes, URL, prep and tailoring survive) instead of inserting a second row.
 
 ### Session cookies
 ```python
@@ -262,7 +268,7 @@ PERMANENT_SESSION_LIFETIME = timedelta(days=7)
 - `Server: unknown` (suppresses gunicorn banner)
 
 ### SSRF protection (scraper.py)
-`_is_internal_host(url)` resolves the hostname and rejects private/loopback/link-local IPs before any HTTP connection is made. Covers `10.x`, `172.16–31.x`, `192.168.x`, `127.x`, `169.254.x`, IPv6 equivalents. Called by `fetcher.py`'s RSS fetcher before each hop of its own redirect-follow loop (the only remaining caller). Fails **closed** on any unexpected error (treats the host as internal/blocked) — the only exception is `socket.gaierror` (hostname doesn't resolve), which is treated as "not internal" since the real fetch fails identically in that case.
+`_is_internal_host(url)` resolves every address of the hostname with `getaddrinfo` (IPv4 and IPv6, IPv4-mapped IPv6 unwrapped) and rejects private/loopback/link-local IPs before any HTTP connection is made. Covers `10.x`, `172.16–31.x`, `192.168.x`, `127.x`, `169.254.x`, IPv6 equivalents. Called by `fetcher.py`'s RSS fetcher before each hop of its own redirect-follow loop (the only remaining caller). Fails **closed** on any unexpected error (treats the host as internal/blocked) — the only exception is `socket.gaierror` (hostname doesn't resolve), which is treated as "not internal" since the real fetch fails identically in that case.
 
 ### Username enumeration
 Failed login always calls `_record_failure(username)` regardless of whether the user exists. Prevents timing-based username probing via lockout state differences.
@@ -271,8 +277,7 @@ Failed login always calls `_record_failure(username)` regardless of whether the 
 Minimum 10 characters enforced in the `/register` route.
 
 ### Password hashing
-SHA-256 with random salt (`secrets.token_hex(16)`), stored as `salt:hash`.
-Verified with `secrets.compare_digest()` (constant-time, prevents timing attacks).
+PBKDF2-SHA256 (600k rounds) via werkzeug `generate_password_hash`, stored in werkzeug format (contains `$`). Legacy `salt:sha256hex` hashes still verify (constant-time `secrets.compare_digest`) and are re-hashed on the next successful login (`needs_rehash()`).
 
 ---
 

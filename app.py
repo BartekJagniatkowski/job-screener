@@ -6,13 +6,13 @@ import re
 from typing import Optional
 import threading
 import time
-import webbrowser
 import html as _html
 import json as _json
 from flask import (
     Flask, render_template, request, redirect, url_for,
     session, jsonify, make_response, flash
 )
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -20,7 +20,8 @@ from database import (
     init_db, get_user, create_user, get_user_by_id,
     update_user_profile, update_user_language, update_password, save_job, get_jobs, get_job,
     export_csv, user_count, check_duplicate, update_verdict, update_job_url, delete_job, update_applied,
-    update_company_rejected, update_job_status, update_job_notes, verify_password, get_statistics,
+    update_company_rejected, update_job_status, update_job_notes, verify_password, needs_rehash, get_statistics,
+    get_job_rows,
     create_analysis, update_analysis_status, get_analysis, get_active_analyses_labels, count_active_analyses,
     save_interview_prep, get_interview_prep,
     save_cv_tailoring, get_cv_tailoring,
@@ -40,6 +41,11 @@ if not _secret_key:
         "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
     )
 app.secret_key = _secret_key
+# Number of reverse proxies (e.g. Caddy) in front of the app. Without this every request
+# looks like it comes from the proxy and the per-IP rate limits become global.
+_proxy_hops = int(os.environ.get("PROXY_HOPS", 0))
+if _proxy_hops:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=_proxy_hops)
 app.config["WTF_CSRF_SECRET_KEY"] = _secret_key
 csrf = CSRFProtect(app)
 limiter = Limiter(
@@ -79,6 +85,8 @@ def _is_locked_out(username: str) -> bool:
 
 def _record_failure(username: str) -> None:
     now = time.time()
+    for name in [n for n, ts in _login_attempts.items() if now - ts[-1] >= _LOCKOUT_DURATION]:
+        del _login_attempts[name]
     attempts = _login_attempts.setdefault(username, [])
     attempts[:] = [t for t in attempts if now - t < _LOCKOUT_WINDOW]
     attempts.append(now)
@@ -162,6 +170,8 @@ def login() -> str:
         user = get_user(username)
         if user and verify_password(password, user["password_hash"]):
             _clear_attempts(username)
+            if needs_rehash(user["password_hash"]):
+                update_password(user["id"], password)
             session.permanent = True
             session["user_id"] = user["id"]
             return redirect(url_for("dashboard"))
@@ -233,7 +243,7 @@ def dashboard() -> str:
         Rendered dashboard template
     """
     user = current_user()
-    jobs = get_jobs(user["id"])
+    jobs = get_job_rows(user["id"])
     has_cv = bool((user["cv"] or "").strip())
     has_api_key = bool(API_KEY)
     return render_template("dashboard.html",
@@ -247,17 +257,20 @@ def _run_analysis_bg(
     input_text: str,
     url: str,
     feed_item_id: Optional[int] = None,
+    replace_job_id: Optional[int] = None,
 ) -> None:
     try:
         update_analysis_status(analysis_id, "running")
-        result = analyze(user, input_text, "text", API_KEY, MODEL)
-        job_id = save_job(user["id"], result, source_url=url, source_text=input_text)
+        result = analyze(user, input_text, API_KEY, MODEL)
+        job_id = save_job(user["id"], result, source_url=url, source_text=input_text,
+                          replace_job_id=replace_job_id)
         update_analysis_status(analysis_id, "done", result_job_id=job_id)
         if feed_item_id is not None:
             mark_feed_item_analyzed(feed_item_id, job_id)
-    except Exception as e:
+    except Exception:
+        app.logger.exception("Analysis %s failed", analysis_id)
         try:
-            update_analysis_status(analysis_id, "error", error=str(e))
+            update_analysis_status(analysis_id, "error", error="Analysis failed. Please try again.")
         except Exception:
             app.logger.exception("Failed to persist error status for analysis %s", analysis_id)
 
@@ -381,7 +394,7 @@ def reanalyze(job_id):
     analysis_id = create_analysis(user["id"], source_label)
     t = threading.Thread(
         target=_run_analysis_bg,
-        args=(analysis_id, {k: user[k] for k in user.keys()}, input_text, saved_url),
+        args=(analysis_id, {k: user[k] for k in user.keys()}, input_text, saved_url, None, job_id),
         daemon=True,
     )
     t.start()
@@ -801,6 +814,23 @@ def statistics():
     data = get_statistics(user["id"])
     return render_template("statistics.html", user=user, data=data)
 
+_feed_refreshing: set = set()  # user ids with a background refresh running (per worker)
+
+
+def _refresh_feeds_bg(user_id: int, feeds: list) -> None:
+    """Fetch stale feeds off the request thread so one slow feed can't hold a worker."""
+    try:
+        for feed in feeds:
+            try:
+                items = fetch_feed(feed)
+                save_feed_items(feed["id"], user_id, items, feed["keywords"] or "")
+                update_feed_fetched(feed["id"])
+            except Exception:
+                app.logger.exception("Feed fetch failed: %s", feed["label"])
+    finally:
+        _feed_refreshing.discard(user_id)
+
+
 @app.route("/discover")
 @login_required
 def discover():
@@ -808,26 +838,22 @@ def discover():
     user_id = user["id"]
     feeds = get_feeds(user_id)
 
-    if feeds:
-        fetch_errors = []
-        for feed in feeds:
-            if not feed["active"]:
-                continue
-            last = feed["last_fetched_at"]
-            if last:
-                try:
-                    if datetime.now() - datetime.fromisoformat(last) < timedelta(hours=1):
-                        continue
-                except Exception:
-                    pass
+    stale = []
+    for feed in feeds:
+        if not feed["active"]:
+            continue
+        last = feed["last_fetched_at"]
+        if last:
             try:
-                items = fetch_feed(dict(feed))
-                save_feed_items(feed["id"], user_id, items, feed["keywords"] or "")
-                update_feed_fetched(feed["id"])
-            except Exception as e:
-                fetch_errors.append(f"{feed['label']}: {e}")
-        if fetch_errors:
-            flash("Some feeds failed to fetch — " + "; ".join(fetch_errors), "error")
+                if datetime.now() - datetime.fromisoformat(last) < timedelta(hours=1):
+                    continue
+            except Exception:
+                pass
+        stale.append(dict(feed))
+    if stale and user_id not in _feed_refreshing:
+        _feed_refreshing.add(user_id)
+        threading.Thread(target=_refresh_feeds_bg, args=(user_id, stale), daemon=True).start()
+        flash("Fetching feeds in the background. Reload in a moment to see new listings.")
 
     feed_items = get_feed_items(user_id, analyzed=False)
 
@@ -942,7 +968,9 @@ def discover_analyze(item_id):
             },
         })
 
-    input_text = text if text else url
+    if not text.strip():
+        return jsonify({"error": "This feed item has no listing text. Open the link and paste the listing instead."}), 400
+    input_text = text
     source_label = url or (text[:60].replace("\n", " "))
     analysis_id = create_analysis(user["id"], source_label)
     t = threading.Thread(
@@ -961,10 +989,4 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_DEBUG", "0") == "1"
 
-    if not os.environ.get("NO_BROWSER"):
-        def open_browser():
-            time.sleep(1.2)
-            webbrowser.open(f"http://localhost:{port}")
-        threading.Thread(target=open_browser, daemon=True).start()
-
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(host=os.environ.get("BIND_HOST", "127.0.0.1"), port=port, debug=debug)

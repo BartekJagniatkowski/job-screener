@@ -12,6 +12,7 @@ os.close(_db_fd)
 
 import database
 database.DB_PATH = pathlib.Path(_db_path)
+database._PBKDF2 = "pbkdf2:sha256:1000"  # keep the suite fast
 
 import app as _app_module
 from app import app as flask_app

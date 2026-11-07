@@ -8,6 +8,7 @@ import uuid
 import csv
 import io
 from pathlib import Path
+from werkzeug.security import generate_password_hash, check_password_hash
 from analyzer import AnalysisResult
 
 # Row type for sqlite3.Row
@@ -240,33 +241,33 @@ def init_db() -> None:
             pass  # analyses table may not exist in very old DBs yet
 
 
+_PBKDF2 = "pbkdf2:sha256:600000"
+
+
 def hash_password(password: str) -> str:
     """
-    Hash a password with SHA-256 and a random salt.
-
-    Args:
-        password: Password to hash
+    Hash a password with salted PBKDF2-SHA256 (werkzeug format, contains "$").
 
     Returns:
-        String in format "salt:hash" where salt is 16 hex characters
+        Werkzeug hash string
     """
-    salt = secrets.token_hex(16)
-    h = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
-    return f"{salt}:{h}"
+    return generate_password_hash(password, method=_PBKDF2)
+
+
+def needs_rehash(stored: str) -> bool:
+    """True for legacy single-round "salt:sha256" hashes (no "$" separator)."""
+    return "$" not in stored
 
 
 def verify_password(password: str, stored: str) -> bool:
     """
-    Check whether a password matches a stored salted hash.
+    Check whether a password matches a stored hash.
 
-    Args:
-        password: Provided password
-        stored: Stored salted hash (format: "salt:hash")
-
-    Returns:
-        True if the passwords match, False otherwise
+    Accepts the current werkzeug format and the legacy "salt:sha256hex" format.
     """
     try:
+        if not needs_rehash(stored):
+            return check_password_hash(stored, password)
         salt, h = stored.split(":", 1)
         computed = hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
         return secrets.compare_digest(computed, h)
@@ -481,17 +482,29 @@ def get_analysis(analysis_id: str, user_id: int) -> Optional[sqlite3.Row]:
         ).fetchone()
 
 
+_LAYER_STATUSES = {"ok", "warning", "flag"}
+_VERDICTS = {"rejected", "warning", "worth_considering"}
+
+
+def _layer_status(value) -> str:
+    """Model output is untrusted: keep only known layer statuses ("" = unknown)."""
+    return value if value in _LAYER_STATUSES else ""
+
+
 def save_job(
     user_id: int,
     result: AnalysisResult,
     source_url: str = "",
-    source_text: str = ""
+    source_text: str = "",
+    replace_job_id: Optional[int] = None,
 ) -> int:
     """
     Save an analysis result to the database.
 
     source_url — job listing URL (stored as job_url and used for deduplication)
     source_text — listing content (scraped or pasted by the user)
+    replace_job_id — re-analysis: overwrite the analysis columns of this job in place,
+        keeping its status, notes, URL, interview prep and CV tailoring
 
     Args:
         user_id: User ID
@@ -504,63 +517,72 @@ def save_job(
     l = (result.get("layers") or {})
     fit = (result.get("fit") or {})
 
-    # deduplication: prefer URL if available, otherwise use text
-    dedup_source = (source_url or source_text or "").strip()
+    # deduplication hash is always of the text, matching check_duplicate()'s first lookup
+    dedup_source = (source_text or source_url or "").strip()
     # source_full = full listing text that was analyzed
     full_text = source_text.strip() if source_text else source_url.strip()
     # source = short identifier for display
     source_display = (source_url or source_text or "")[:300]
 
+    verdict = d("verdict") if d("verdict") in _VERDICTS else "warning"
     zero_list_hit = 1 if d("zero_list_hit") else 0
     # auto-confirm when rejected by zero list; manual confirmation required otherwise
-    verdict_confirmed = 1 if (zero_list_hit and d("verdict") == "rejected") else 0
+    verdict_confirmed = 1 if (zero_list_hit and verdict == "rejected") else 0
+    triage_status = _layer_status((result.get("triage") or {}).get("status"))
+    layer_status = {k: _layer_status((l.get(k) or {}).get("status"))
+                    for k in ("product", "business", "reputation", "values")}
+    fit_status = _layer_status(fit.get("status"))
+
+    analysis = {
+        "company": d("company_name", ""),
+        "role": d("role_title", ""),
+        "verdict": verdict,
+        "verdict_confirmed": verdict_confirmed,
+        "zero_list_hit": zero_list_hit,
+        "zero_list_reason": d("zero_list_reason", ""),
+        "triage_status": triage_status,
+        "product_status": layer_status["product"],
+        "business_status": layer_status["business"],
+        "reputation_status": layer_status["reputation"],
+        "values_status": layer_status["values"],
+        "fit_status": fit_status,
+        "verdict_summary": d("verdict_summary", ""),
+        "triage_findings": (result.get("triage") or {}).get("findings", ""),
+        "product_findings": l.get("product", {}).get("findings", ""),
+        "business_findings": l.get("business", {}).get("findings", ""),
+        "reputation_findings": l.get("reputation", {}).get("findings", ""),
+        "values_findings": l.get("values", {}).get("findings", ""),
+        "fit_strengths": fit.get("strengths", ""),
+        "fit_gaps": fit.get("gaps", ""),
+        "fit_improve": fit.get("improve", ""),
+        "gut_feeling": d("gut_feeling", ""),
+        "reasoning": d("_reasoning", ""),
+        "role_archetype": (result.get("triage") or {}).get("role_archetype", None),
+        "fit_score": fit.get("score", None),
+        "raw_json": _json.dumps(result, ensure_ascii=False),
+    }
 
     with get_conn() as conn:
+        if replace_job_id is not None:
+            sets = ", ".join(f"{k}=?" for k in analysis)
+            cur = conn.execute(
+                f"UPDATE jobs SET {sets}, analyzed_at=datetime('now') WHERE id=? AND user_id=?",
+                (*analysis.values(), replace_job_id, user_id),
+            )
+            if cur.rowcount == 0:
+                raise Exception(f"Job to re-analyze not found: {replace_job_id}")
+            return replace_job_id
+        analysis.update({
+            "user_id": user_id,
+            "source": source_display,
+            "source_full": full_text,
+            "source_hash": compute_hash(dedup_source),
+            "job_url": source_url.strip() or "",
+        })
+        cols = ", ".join(analysis)
+        marks = ",".join("?" * len(analysis))
         try:
-            conn.execute("""
-                INSERT INTO jobs (
-                    user_id, company, role, verdict, verdict_confirmed, zero_list_hit, zero_list_reason,
-                    triage_status, product_status, business_status,
-                    reputation_status, values_status, fit_status,
-                    verdict_summary, triage_findings, product_findings,
-                    business_findings, reputation_findings, values_findings,
-                    fit_strengths, fit_gaps, fit_improve,
-                    gut_feeling, source, source_full, source_hash, reasoning, job_url,
-                    role_archetype, fit_score, raw_json
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-            """, (
-                user_id,
-                d("company_name", ""),
-                d("role_title", ""),
-                d("verdict", ""),
-                verdict_confirmed,
-                zero_list_hit,
-                d("zero_list_reason", ""),
-                (result.get("triage") or {}).get("status", ""),
-                l.get("product", {}).get("status", ""),
-                l.get("business", {}).get("status", ""),
-                l.get("reputation", {}).get("status", ""),
-                l.get("values", {}).get("status", ""),
-                fit.get("status", ""),
-                d("verdict_summary", ""),
-                (result.get("triage") or {}).get("findings", ""),
-                l.get("product", {}).get("findings", ""),
-                l.get("business", {}).get("findings", ""),
-                l.get("reputation", {}).get("findings", ""),
-                l.get("values", {}).get("findings", ""),
-                fit.get("strengths", ""),
-                fit.get("gaps", ""),
-                fit.get("improve", ""),
-                d("gut_feeling", ""),
-                source_display,
-                full_text,
-                compute_hash(dedup_source),
-                d("_reasoning", ""),
-                source_url.strip() or "",
-                (result.get("triage") or {}).get("role_archetype", None),
-                fit.get("score", None),
-                _json.dumps(result, ensure_ascii=False),
-            ))
+            conn.execute(f"INSERT INTO jobs ({cols}) VALUES ({marks})", tuple(analysis.values()))
         except sqlite3.IntegrityError as e:
             raise Exception(f"Database integrity error: {e}")
         return conn.execute("SELECT last_insert_rowid()").fetchone()[0]
@@ -586,6 +608,23 @@ def get_jobs(user_id: int, limit: Optional[int] = None) -> list[dict]:
         return conn.execute(
             "SELECT * FROM jobs WHERE user_id=? ORDER BY id DESC LIMIT ?",
             (user_id, limit),
+        ).fetchall()
+
+
+_ROW_COLUMNS = (
+    "id, analyzed_at, company, role, verdict, verdict_confirmed, zero_list_hit, "
+    "applied, company_rejected, interview_scheduled, offer_received, "
+    "triage_status, product_status, business_status, reputation_status, values_status, "
+    "fit_status, fit_score"
+)
+
+
+def get_job_rows(user_id: int) -> list:
+    """Dashboard table rows: only the columns the list renders, not the large text columns."""
+    with get_conn() as conn:
+        return conn.execute(
+            f"SELECT {_ROW_COLUMNS} FROM jobs WHERE user_id=? ORDER BY id DESC",
+            (user_id,),
         ).fetchall()
 
 
