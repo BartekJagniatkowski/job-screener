@@ -165,6 +165,8 @@ https://your.domain.com/register?token=YOUR_TOKEN
 | `SECRET_KEY` | Flask session key — **required**, app won't start without it. Generate: `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `INVITE_TOKEN` | Invitation token for new users |
 | `PORT` | Application port (default: `5001`) |
+| `BIND_HOST` | Interface `server.sh` and the dev runner bind to (default: `127.0.0.1`) |
+| `PROXY_HOPS` | Number of reverse proxies in front of the app (default: `0`); set `1` behind Caddy so rate limits see the real client IP |
 | `FLASK_DEBUG` | Set to `1` for local development only — never in production (default: `0`) |
 | `SESSION_COOKIE_SECURE` | Defaults to `True` (cookies only sent over HTTPS). Set to `False` for local dev without HTTPS. |
 
